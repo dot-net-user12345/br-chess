@@ -1,1 +1,35 @@
 /* You can add global styles to this file, and also import other style files */
+@use '@angular/material' as mat;
+
+html {
+  color-scheme: light dark;
+
+  @include mat.theme(
+    (
+      color: mat.$azure-palette,
+      typography: Roboto,
+      density: 0,
+    )
+  );
+
+  /* Reduce Material's default rounding across buttons, list items, cards, etc.
+     by overriding the M3 shape (corner) system tokens. */
+  --mat-sys-corner-extra-small: 2px;
+  --mat-sys-corner-small: 4px;
+  --mat-sys-corner-medium: 6px;
+  --mat-sys-corner-large: 8px;
+  --mat-sys-corner-extra-large: 12px;
+  --mat-sys-corner-full: 8px;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: light-dark(#e8edf2, #23262d);
+  color: var(--mat-sys-on-surface);
+  font-family: Roboto, 'Helvetica Neue', sans-serif;
+}

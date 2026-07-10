@@ -1,50 +1,17 @@
 :host {
   display: block;
+  padding: 0.75rem;
 }
 
-.side-nav {
-  position: fixed;
-  top: 3.5rem;
-  bottom: 0;
-  left: 0;
-  z-index: 20;
-  width: 16rem;
-  max-width: 80vw;
-  padding: 1rem;
-  background: #111827;
-  color: #fff;
-  transform: translateX(-100%);
-  transition: transform 0.2s ease;
+mat-nav-list {
+  padding-top: 0;
 }
 
-.side-nav--open {
-  transform: translateX(0);
-}
-
-.nav-list {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.nav-link {
-  display: block;
-  padding: 0.625rem 0.75rem;
-  border-radius: 0.375rem;
-  color: inherit;
-  text-decoration: none;
-}
-
-.nav-link:hover {
-  background: rgb(255 255 255 / 12%);
-}
-
-.nav-link:focus-visible {
-  outline: 2px solid #fff;
-  outline-offset: 2px;
-}
-
-.nav-link--active {
-  background: rgb(255 255 255 / 20%);
-  font-weight: 600;
+/* Tone down the saturation of the active/selected item by mixing Material's
+   secondary-container token toward the surface color. */
+:host ::ng-deep .mat-mdc-list-item.mdc-list-item--activated {
+  background-color: light-dark(
+    color-mix(in srgb, var(--mat-sys-secondary-container) 20%, var(--mat-sys-surface)),
+    #2b3242
+  ) !important;
 }

@@ -1,22 +1,20 @@
 <div class="app-shell">
   <app-header (menuToggle)="toggleSideNav()" />
 
-  <div class="app-body">
-    <app-side-nav [open]="sideNavOpen()" (navigate)="closeSideNav()" />
+  <mat-sidenav-container class="app-body">
+    <mat-sidenav
+      class="app-sidenav"
+      mode="over"
+      [opened]="sideNavOpen()"
+      (openedChange)="sideNavOpen.set($event)"
+    >
+      <app-side-nav (navigate)="closeSideNav()" />
+    </mat-sidenav>
 
-    @if (sideNavOpen()) {
-      <button
-        type="button"
-        class="backdrop"
-        aria-label="Close navigation menu"
-        (click)="closeSideNav()"
-      ></button>
-    }
-
-    <main class="app-content">
-      <router-outlet />
-    </main>
-  </div>
-
-  <app-footer />
+    <mat-sidenav-content class="app-content-wrapper">
+      <main class="app-content">
+        <router-outlet />
+      </main>
+    </mat-sidenav-content>
+  </mat-sidenav-container>
 </div>

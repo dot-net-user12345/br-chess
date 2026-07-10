@@ -1,21 +1,33 @@
-<header class="header">
+<mat-toolbar color="primary" class="header">
   <button
+    matIconButton
     type="button"
     class="hamburger"
     aria-label="Toggle navigation menu"
     (click)="menuToggle.emit()"
   >
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      width="24"
-      height="24"
-      viewBox="0 -960 960 960"
-      fill="currentColor"
-      aria-hidden="true"
-    >
-      <path d="M120-240v-80h720v80H120Zm0-200v-80h720v80H120Zm0-200v-80h720v80H120Z" />
-    </svg>
+    <mat-icon fontSet="material-symbols-outlined">menu</mat-icon>
   </button>
 
-  <span class="title">br-chess</span>
-</header>
+  @let dark = themeService.theme() === 'dark';
+
+  <img
+    class="logo"
+    [ngSrc]="dark ? 'assets/logo-dark.svg' : 'assets/logo-light.svg'"
+    width="242"
+    height="45"
+    priority
+    alt="Chessified"
+  />
+
+  <span class="spacer"></span>
+
+  <button
+    matIconButton
+    type="button"
+    [attr.aria-label]="dark ? 'Switch to light theme' : 'Switch to dark theme'"
+    (click)="themeService.toggle()"
+  >
+    <mat-icon fontSet="material-symbols-outlined">{{ dark ? 'light_mode' : 'dark_mode' }}</mat-icon>
+  </button>
+</mat-toolbar>

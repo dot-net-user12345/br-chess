@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run *)",
+      "Bash(node gen.js)",
+      "Bash(node preview.js)"
+    ]
+  }
+}

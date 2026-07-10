@@ -1,15 +1,15 @@
-<nav class="side-nav" [class.side-nav--open]="open()" aria-label="Main navigation">
-  <ul class="nav-list">
-    <li>
-      <a
-        class="nav-link"
-        routerLink="/"
-        routerLinkActive="nav-link--active"
-        [routerLinkActiveOptions]="{ exact: true }"
-        (click)="navigate.emit()"
-      >
-        Home
-      </a>
-    </li>
-  </ul>
-</nav>
+<mat-nav-list aria-label="Main navigation">
+  <a
+    mat-list-item
+    routerLink="/"
+    routerLinkActive
+    #homeLink="routerLinkActive"
+    [routerLinkActiveOptions]="{ exact: true }"
+    [activated]="homeLink.isActive"
+    [attr.aria-current]="homeLink.isActive ? 'page' : null"
+    (click)="navigate.emit()"
+  >
+    <mat-icon matListItemIcon fontSet="material-symbols-outlined">home</mat-icon>
+    <span matListItemTitle>Home</span>
+  </a>
+</mat-nav-list>

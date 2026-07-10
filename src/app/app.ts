@@ -1,12 +1,12 @@
 import { ChangeDetectionStrategy, Component, signal } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
+import { MatSidenavModule } from '@angular/material/sidenav';
 import { Header } from '../layout/header/header';
 import { SideNav } from '../layout/side-nav/side-nav';
-import { Footer } from '../layout/footer/footer';
 
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet, Header, SideNav, Footer],
+  imports: [RouterOutlet, MatSidenavModule, Header, SideNav],
   templateUrl: './app.html',
   styleUrl: './app.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
