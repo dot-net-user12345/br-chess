@@ -1,0 +1,15 @@
+<nav class="side-nav" [class.side-nav--open]="open()" aria-label="Main navigation">
+  <ul class="nav-list">
+    <li>
+      <a
+        class="nav-link"
+        routerLink="/"
+        routerLinkActive="nav-link--active"
+        [routerLinkActiveOptions]="{ exact: true }"
+        (click)="navigate.emit()"
+      >
+        Home
+      </a>
+    </li>
+  </ul>
+</nav>

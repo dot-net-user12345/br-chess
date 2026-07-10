@@ -1,0 +1,31 @@
+:host {
+  display: block;
+  height: 100dvh;
+}
+
+.app-shell {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+}
+
+.app-body {
+  position: relative;
+  display: flex;
+  flex: 1;
+}
+
+.app-content {
+  flex: 1;
+  padding: 1rem;
+}
+
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  background: rgb(0 0 0 / 40%);
+}

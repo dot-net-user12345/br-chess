@@ -1,0 +1,41 @@
+:host {
+  display: block;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  height: 3.5rem;
+  padding-inline: 1rem;
+  background: #1f2937;
+  color: #fff;
+}
+
+.hamburger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  padding: 0;
+  border: 0;
+  border-radius: 0.375rem;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+.hamburger:hover {
+  background: rgb(255 255 255 / 12%);
+}
+
+.hamburger:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+
+.title {
+  font-size: 1.125rem;
+  font-weight: 600;
+}
