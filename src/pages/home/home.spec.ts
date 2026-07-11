@@ -1,7 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
 import { Home } from './home';
-import { PageStoreService } from '../../core/page-store-service';
+import { WorkspaceRepository } from '../../core/workspace-repository';
 
 describe('Home', () => {
   let component: Home;
@@ -12,8 +12,8 @@ describe('Home', () => {
       imports: [Home],
       providers: [
         {
-          provide: PageStoreService,
-          useValue: { isConfigured: false, savePage: async () => 'test-id' },
+          provide: WorkspaceRepository,
+          useValue: { isConfigured: false, loadAll: async () => [], saveNode: async () => {}, deleteNode: async () => {} },
         },
       ],
     }).compileComponents();

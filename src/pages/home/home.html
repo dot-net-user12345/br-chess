@@ -1,52 +1,31 @@
-<section class="home">
-  <header class="home__header">
-    <h1 class="home__title">Chess Pages</h1>
-    <p class="home__lead">
-      Add one or more text containers, paste a chess PGN into each, and preview the game as a grid
-      of boards. Once every container holds valid PGN, save the page.
-    </p>
-  </header>
+<section class="workspace">
+  <aside class="workspace__explorer">
+    <app-file-explorer />
+  </aside>
 
-  <mat-form-field appearance="outline" class="home__page-title">
-    <mat-label>Page title</mat-label>
-    <input matInput [formControl]="titleControl" placeholder="My opening repertoire" />
-  </mat-form-field>
+  <div class="workspace__main">
+    @if (status(); as status) {
+      <p
+        class="workspace__status"
+        [class.workspace__status--error]="status.type === 'error'"
+        [class.workspace__status--success]="status.type === 'success'"
+        role="status"
+        aria-live="polite"
+      >
+        {{ status.text }}
+      </p>
+    }
 
-  <div class="home__containers">
-    @for (container of containers(); track container.id; let i = $index) {
-      <app-pgn-container
-        [label]="'Game ' + (i + 1)"
-        [canRemove]="containers().length > 1"
-        (contentChange)="onContentChange(container.id, $event)"
-        (remove)="removeContainer(container.id)"
-      />
+    @if (selectedFile(); as file) {
+      <app-pgn-grid-editor [fileId]="file.id" />
+    } @else {
+      <div class="workspace__empty">
+        <h1 class="workspace__empty-title">Chess workspace</h1>
+        <p>
+          Create folders and PGN grid files in the panel on the left, then select a file to paste
+          its PGNs and preview each game as a grid of boards.
+        </p>
+      </div>
     }
   </div>
-
-  <div class="home__actions">
-    <button matButton="outlined" type="button" (click)="addContainer()">
-      <mat-icon>add</mat-icon>
-      Add text container
-    </button>
-    <button
-      matButton="filled"
-      type="button"
-      (click)="save()"
-      [disabled]="!canSave() || saving()"
-    >
-      {{ saving() ? 'Saving…' : 'Save page' }}
-    </button>
-  </div>
-
-  @if (status(); as status) {
-    <p
-      class="home__status"
-      [class.home__status--error]="status.type === 'error'"
-      [class.home__status--success]="status.type === 'success'"
-      role="status"
-      aria-live="polite"
-    >
-      {{ status.text }}
-    </p>
-  }
 </section>

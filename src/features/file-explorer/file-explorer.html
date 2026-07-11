@@ -1,0 +1,38 @@
+<div class="file-explorer">
+  <div class="file-explorer__toolbar">
+    <h2 class="file-explorer__title">Files</h2>
+    <span class="file-explorer__spacer"></span>
+    <button
+      matIconButton
+      type="button"
+      (click)="newFolder()"
+      matTooltip="New folder"
+      aria-label="New folder"
+    >
+      <mat-icon>create_new_folder</mat-icon>
+    </button>
+    <button
+      matIconButton
+      type="button"
+      (click)="newFile()"
+      matTooltip="New PGN grid file"
+      aria-label="New PGN grid file"
+    >
+      <mat-icon>note_add</mat-icon>
+    </button>
+  </div>
+
+  @if (rootNodes().length > 0) {
+    <ul class="file-explorer__tree" role="tree" aria-label="Workspace files">
+      @for (node of rootNodes(); track node.id) {
+        <li>
+          <app-tree-node [nodeId]="node.id" />
+        </li>
+      }
+    </ul>
+  } @else {
+    <p class="file-explorer__empty">
+      No files yet. Use the buttons above to create a folder or a PGN grid file.
+    </p>
+  }
+</div>

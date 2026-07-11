@@ -1,0 +1,66 @@
+@if (node(); as node) {
+  <div
+    class="tree-node__row"
+    [class.tree-node__row--selected]="selected()"
+    role="treeitem"
+    [attr.aria-selected]="selected()"
+    [attr.aria-expanded]="isFolderNode() ? expanded() : null"
+  >
+    @if (editing()) {
+      <input
+        class="tree-node__rename"
+        type="text"
+        [formControl]="nameControl"
+        (keydown.enter)="commitRename()"
+        (keydown.escape)="cancelRename()"
+        (blur)="commitRename()"
+        [attr.aria-label]="'Rename ' + node.name"
+      />
+    } @else {
+      <button class="tree-node__label" type="button" (click)="activate()">
+        @if (isFolderNode()) {
+          <mat-icon class="tree-node__chevron">{{
+            expanded() ? 'expand_more' : 'chevron_right'
+          }}</mat-icon>
+        } @else {
+          <span class="tree-node__chevron"></span>
+        }
+        <mat-icon class="tree-node__icon">{{ icon() }}</mat-icon>
+        <span class="tree-node__name">{{ node.name }}</span>
+      </button>
+
+      <span class="tree-node__actions">
+        <button
+          matIconButton
+          type="button"
+          class="tree-node__action"
+          (click)="startRename()"
+          [attr.aria-label]="'Rename ' + node.name"
+        >
+          <mat-icon>edit</mat-icon>
+        </button>
+        <button
+          matIconButton
+          type="button"
+          class="tree-node__action"
+          (click)="remove()"
+          [attr.aria-label]="'Delete ' + node.name"
+        >
+          <mat-icon>delete_outline</mat-icon>
+        </button>
+      </span>
+    }
+  </div>
+
+  @if (isFolderNode() && expanded()) {
+    <ul class="tree-node__children" role="group">
+      @for (child of children(); track child.id) {
+        <li>
+          <app-tree-node [nodeId]="child.id" />
+        </li>
+      } @empty {
+        <li class="tree-node__empty">Empty folder</li>
+      }
+    </ul>
+  }
+}

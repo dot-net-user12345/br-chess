@@ -1,0 +1,38 @@
+@if (file(); as file) {
+  <div class="pgn-grid-editor">
+    <header class="pgn-grid-editor__header">
+      <div class="pgn-grid-editor__heading">
+        <h2 class="pgn-grid-editor__title">{{ file.name }}</h2>
+        <p class="pgn-grid-editor__summary">
+          {{ summary().valid }} of {{ summary().total }} valid
+        </p>
+      </div>
+      <button
+        matButton="filled"
+        type="button"
+        (click)="save()"
+        [disabled]="!summary().allValid"
+      >
+        <mat-icon>save</mat-icon>
+        Save file
+      </button>
+    </header>
+
+    <div class="pgn-grid-editor__entries">
+      @for (entry of entries(); track entry.id; let i = $index) {
+        <app-pgn-container
+          [label]="'Game ' + (i + 1)"
+          [initialPgn]="entry.pgn"
+          [canRemove]="entries().length > 1"
+          (contentChange)="onEntryChange(entry.id, $event)"
+          (remove)="removeEntry(entry.id)"
+        />
+      }
+    </div>
+
+    <button matButton="outlined" type="button" (click)="addEntry()">
+      <mat-icon>add</mat-icon>
+      Add PGN
+    </button>
+  </div>
+}

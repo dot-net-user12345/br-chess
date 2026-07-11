@@ -1,0 +1,46 @@
+import { inject, Injectable } from '@angular/core';
+import { collection, deleteDoc, doc, Firestore, getDocs, setDoc } from '@angular/fire/firestore';
+import { environment } from '../environment/environment';
+import { NodeId, WorkspaceNode } from './workspace-models';
+
+const NODES_COLLECTION = 'nodes';
+
+/**
+ * Persists each workspace node as its own Firestore document in the `nodes`
+ * collection. All methods no-op (or return empty) until Firebase is configured
+ * with real credentials, so the app stays fully usable locally.
+ */
+@Injectable({ providedIn: 'root' })
+export class WorkspaceRepository {
+  private readonly firestore = inject(Firestore);
+
+  get isConfigured(): boolean {
+    return environment.firebase.apiKey !== 'YOUR_API_KEY';
+  }
+
+  async loadAll(): Promise<WorkspaceNode[]> {
+    if (!this.isConfigured) {
+      return [];
+    }
+    const snapshot = await getDocs(collection(this.firestore, NODES_COLLECTION));
+    return snapshot.docs.map((docSnap) => ({
+      ...(docSnap.data() as Omit<WorkspaceNode, 'id'>),
+      id: docSnap.id,
+    })) as WorkspaceNode[];
+  }
+
+  async saveNode(node: WorkspaceNode): Promise<void> {
+    if (!this.isConfigured) {
+      return;
+    }
+    const { id, ...data } = node;
+    await setDoc(doc(this.firestore, NODES_COLLECTION, id), data);
+  }
+
+  async deleteNode(id: NodeId): Promise<void> {
+    if (!this.isConfigured) {
+      return;
+    }
+    await deleteDoc(doc(this.firestore, NODES_COLLECTION, id));
+  }
+}

@@ -4,9 +4,10 @@ import {
   computed,
   inject,
   input,
+  OnInit,
   output,
+  signal,
 } from '@angular/core';
-import { toSignal } from '@angular/core/rxjs-interop';
 import { FormControl, ReactiveFormsModule, ValidatorFn } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
@@ -41,11 +42,13 @@ interface BoardTile {
   styleUrl: './pgn-container.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class PgnContainer {
+export class PgnContainer implements OnInit {
   private readonly chess = inject(ChessService);
 
   readonly label = input<string>('Game');
   readonly canRemove = input<boolean>(true);
+  /** Seeds the editor once, e.g. when opening a saved file. */
+  readonly initialPgn = input<string>('');
 
   readonly contentChange = output<{ pgn: string; result: PgnParseResult }>();
   readonly remove = output<void>();
@@ -64,7 +67,7 @@ export class PgnContainer {
     validators: [this.pgnValidator],
   });
 
-  private readonly value = toSignal(this.control.valueChanges, { initialValue: '' });
+  private readonly value = signal('');
 
   protected readonly result = computed(() => this.chess.parsePgn(this.value()));
 
@@ -81,8 +84,15 @@ export class PgnContainer {
 
   constructor() {
     this.control.valueChanges.subscribe((value) => {
+      this.value.set(value);
       this.contentChange.emit({ pgn: value, result: this.chess.parsePgn(value) });
     });
+  }
+
+  ngOnInit(): void {
+    const seed = this.initialPgn();
+    this.control.setValue(seed, { emitEvent: false });
+    this.value.set(seed);
   }
 
   protected removeContainer(): void {
