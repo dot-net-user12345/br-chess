@@ -1,0 +1,41 @@
+<mat-card class="pgn-container" appearance="outlined">
+  <mat-card-header class="pgn-container__header">
+    <mat-card-title>{{ label() }}</mat-card-title>
+    <button
+      matIconButton
+      type="button"
+      (click)="removeContainer()"
+      [disabled]="!canRemove()"
+      [attr.aria-label]="'Remove ' + label()"
+    >
+      <mat-icon>delete_outline</mat-icon>
+    </button>
+  </mat-card-header>
+
+  <mat-card-content>
+    <mat-form-field appearance="outline" class="pgn-container__field">
+      <mat-label>PGN</mat-label>
+      <textarea
+        matInput
+        [formControl]="control"
+        rows="4"
+        spellcheck="false"
+        placeholder="1. e4 e5 2. Nf3 Nc6 3. Bb5 a6"
+      ></textarea>
+      @if (control.hasError('pgn')) {
+        <mat-error>{{ control.getError('pgn') }}</mat-error>
+      }
+    </mat-form-field>
+
+    @if (result().valid) {
+      <ol class="pgn-container__grid" aria-label="Move-by-move board progression">
+        @for (tile of tiles(); track $index) {
+          <li class="pgn-container__tile">
+            <app-chess-board [fen]="tile.fen" [caption]="tile.caption" />
+            <span class="pgn-container__caption">{{ tile.caption }}</span>
+          </li>
+        }
+      </ol>
+    }
+  </mat-card-content>
+</mat-card>
