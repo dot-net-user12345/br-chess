@@ -131,7 +131,7 @@ export class WorkspaceStore {
       id: this.id(),
       kind: 'file',
       fileType,
-      name: this.uniqueName(parentId, 'New game'),
+      name: this.uniqueName(parentId, 'New Comparison'),
       parentId,
       createdAt: now,
       updatedAt: now,

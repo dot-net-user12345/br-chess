@@ -10,7 +10,8 @@
       "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" http://localhost:4287/assets/pieces/Chess_nlt45.svg)",
       "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" http://localhost:4287/chunk-EDZWFKDU.js)",
       "Read(//c/Users/bjrat/OneDrive/Desktop/Chess/br-chess/**)",
-      "Read(//c/Users/bjrat/.claude/projects/c--Users-bjrat-OneDrive-Desktop-Chess-br-chess/memory/**)"
+      "Read(//c/Users/bjrat/.claude/projects/c--Users-bjrat-OneDrive-Desktop-Chess-br-chess/memory/**)",
+      "Bash(firebase --version)"
     ]
   }
 }

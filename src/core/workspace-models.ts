@@ -7,6 +7,8 @@ export type FileType = 'pgn-grid';
 export interface PgnEntry {
   readonly id: string;
   readonly pgn: string;
+  /** User-editable display label. Falls back to a positional default when unset. */
+  readonly label?: string;
 }
 
 /** Content of a `pgn-grid` file: one or more PGNs, each rendered as a board grid. */

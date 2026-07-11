@@ -45,12 +45,14 @@ interface BoardTile {
 export class PgnContainer implements OnInit {
   private readonly chess = inject(ChessService);
 
+  /** Seeds the label once; the field is editable thereafter. */
   readonly label = input<string>('Game');
   readonly canRemove = input<boolean>(true);
   /** Seeds the editor once, e.g. when opening a saved file. */
   readonly initialPgn = input<string>('');
 
   readonly contentChange = output<{ pgn: string; result: PgnParseResult }>();
+  readonly labelChange = output<string>();
   readonly remove = output<void>();
 
   private readonly pgnValidator: ValidatorFn = (control) => {
@@ -67,7 +69,12 @@ export class PgnContainer implements OnInit {
     validators: [this.pgnValidator],
   });
 
+  protected readonly labelControl = new FormControl('', { nonNullable: true });
+
   private readonly value = signal('');
+
+  /** Live label text, kept in sync with {@link labelControl} for the aria label. */
+  protected readonly labelText = signal('');
 
   protected readonly result = computed(() => this.chess.parsePgn(this.value()));
 
@@ -87,12 +94,20 @@ export class PgnContainer implements OnInit {
       this.value.set(value);
       this.contentChange.emit({ pgn: value, result: this.chess.parsePgn(value) });
     });
+    this.labelControl.valueChanges.subscribe((value) => {
+      this.labelText.set(value);
+      this.labelChange.emit(value);
+    });
   }
 
   ngOnInit(): void {
     const seed = this.initialPgn();
     this.control.setValue(seed, { emitEvent: false });
     this.value.set(seed);
+
+    const label = this.label();
+    this.labelControl.setValue(label, { emitEvent: false });
+    this.labelText.set(label);
   }
 
   protected removeContainer(): void {

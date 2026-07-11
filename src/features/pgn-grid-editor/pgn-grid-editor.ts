@@ -48,6 +48,14 @@ export class PgnGridEditor {
     );
   }
 
+  protected onLabelChange(entryId: string, label: string): void {
+    this.writeEntries(
+      this.entries().map((entry) =>
+        entry.id === entryId ? { ...entry, label } : entry,
+      ),
+    );
+  }
+
   protected addEntry(): void {
     this.writeEntries([...this.entries(), { id: crypto.randomUUID(), pgn: '' }]);
   }

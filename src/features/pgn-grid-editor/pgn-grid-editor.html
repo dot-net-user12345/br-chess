@@ -21,10 +21,11 @@
     <div class="pgn-grid-editor__entries">
       @for (entry of entries(); track entry.id; let i = $index) {
         <app-pgn-container
-          [label]="'Game ' + (i + 1)"
+          [label]="entry.label || 'Line ' + (i + 1)"
           [initialPgn]="entry.pgn"
           [canRemove]="entries().length > 1"
           (contentChange)="onEntryChange(entry.id, $event)"
+          (labelChange)="onLabelChange(entry.id, $event)"
           (remove)="removeEntry(entry.id)"
         />
       }

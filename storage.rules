@@ -1,0 +1,23 @@
+rules_version = '2';
+
+// Cloud Storage security rules for br-chess.
+//
+// File content blobs are written by WorkspaceRepository at `files/{fileId}.json`.
+// The app currently has no authentication, so these rules leave that path open
+// for development. Lock it down before shipping — see the `request.auth` note.
+service firebase.storage {
+  match /b/{bucket}/o {
+    // PGN-grid file content, one JSON blob per file node.
+    match /files/{fileId} {
+      // DEVELOPMENT ONLY: anyone can read/write file content.
+      // For production, gate on auth, e.g.:
+      //   allow read, write: if request.auth != null;
+      allow read, write: if true;
+    }
+
+    // Deny everything outside the known path.
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

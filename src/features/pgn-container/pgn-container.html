@@ -1,12 +1,20 @@
 <mat-card class="pgn-container" appearance="outlined">
   <mat-card-header class="pgn-container__header">
-    <mat-card-title>{{ label() }}</mat-card-title>
+    <mat-card-title class="pgn-container__title">
+      <input
+        class="pgn-container__label-input"
+        type="text"
+        [formControl]="labelControl"
+        aria-label="Game label"
+        placeholder="Game label"
+      />
+    </mat-card-title>
     <button
       matIconButton
       type="button"
       (click)="removeContainer()"
       [disabled]="!canRemove()"
-      [attr.aria-label]="'Remove ' + label()"
+      [attr.aria-label]="'Remove ' + labelText()"
     >
       <mat-icon>delete_outline</mat-icon>
     </button>
