@@ -184,10 +184,13 @@ export class WorkspaceStore {
 
   /** Explicitly persists a file document to Firestore. */
   async saveFile(id: NodeId): Promise<void> {
+    console.log('[saveFile] called with id=', id);
     const node = this.nodes()[id];
     if (!node) {
+      console.warn('[saveFile] no node found for id=', id);
       return;
     }
+    console.log('[saveFile] node=', node, 'isConfigured=', this.repo.isConfigured);
     if (!this.repo.isConfigured) {
       this.status.set({
         type: 'info',
@@ -196,9 +199,12 @@ export class WorkspaceStore {
       return;
     }
     try {
+      console.log('[saveFile] calling repo.saveNode...');
       await this.repo.saveNode(node);
+      console.log('[saveFile] repo.saveNode resolved OK');
       this.status.set({ type: 'success', text: `Saved “${node.name}”.` });
     } catch (err) {
+      console.error('[saveFile] repo.saveNode threw', err);
       this.status.set({ type: 'error', text: this.describe(err, 'Saving the file failed.') });
     }
   }

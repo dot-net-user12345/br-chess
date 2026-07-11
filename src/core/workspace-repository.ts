@@ -68,9 +68,13 @@ export class WorkspaceRepository {
       return;
     }
     const { id, ...data } = this.metadataOf(node);
+    console.log('[saveNode] writing Firestore doc', id, data);
     await setDoc(doc(this.firestore, NODES_COLLECTION, id), data);
+    console.log('[saveNode] Firestore setDoc resolved');
     if (node.kind === 'file') {
+      console.log('[saveNode] uploading content blob for', node.id);
       await this.saveContent(node.id, node.content);
+      console.log('[saveNode] content upload resolved');
     }
   }
 
