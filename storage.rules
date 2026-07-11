@@ -2,14 +2,15 @@ rules_version = '2';
 
 // Cloud Storage security rules for br-chess.
 //
-// File content blobs are written by WorkspaceRepository at `files/{fileId}.json`.
-// The app currently has no authentication, so these rules leave that path open
-// for development. Lock it down before shipping — see the `request.auth` note.
+// Rendered board images are written by BoardImageService at `moves/{hash}.png`
+// (content-addressed by a hash of the position's FEN). The app currently has no
+// authentication, so this path is left open for development. Lock it down
+// before shipping — see the `request.auth` note.
 service firebase.storage {
   match /b/{bucket}/o {
-    // PGN-grid file content, one JSON blob per file node.
-    match /files/{fileId} {
-      // DEVELOPMENT ONLY: anyone can read/write file content.
+    // Rendered board position images.
+    match /moves/{image} {
+      // DEVELOPMENT ONLY: anyone can read/write board images.
       // For production, gate on auth, e.g.:
       //   allow read, write: if request.auth != null;
       allow read, write: if true;

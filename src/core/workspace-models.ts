@@ -9,6 +9,12 @@ export interface PgnEntry {
   readonly pgn: string;
   /** User-editable display label. Falls back to a positional default when unset. */
   readonly label?: string;
+  /**
+   * Cloud Storage download URLs for each rendered board position, in ply order
+   * (index 0 is the starting position). Populated on save; absent for entries
+   * whose PGN is empty or invalid.
+   */
+  readonly boardImageUrls?: readonly string[];
 }
 
 /** Content of a `pgn-grid` file: one or more PGNs, each rendered as a board grid. */

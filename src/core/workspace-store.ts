@@ -1,4 +1,6 @@
 import { computed, inject, Injectable, signal } from '@angular/core';
+import { BoardImageService } from './board-image-service';
+import { ChessService } from './chess-service';
 import { WorkspaceRepository } from './workspace-repository';
 import {
   FileType,
@@ -6,6 +8,7 @@ import {
   isFile,
   isFolder,
   NodeId,
+  PgnEntry,
   PgnGridContent,
   WorkspaceNode,
 } from './workspace-models';
@@ -34,6 +37,8 @@ function sortNodes(nodes: WorkspaceNode[]): WorkspaceNode[] {
 @Injectable({ providedIn: 'root' })
 export class WorkspaceStore {
   private readonly repo = inject(WorkspaceRepository);
+  private readonly chess = inject(ChessService);
+  private readonly boardImages = inject(BoardImageService);
 
   private readonly nodes = signal<Record<NodeId, WorkspaceNode>>({});
   private readonly selectedId = signal<NodeId | null>(null);
@@ -184,13 +189,10 @@ export class WorkspaceStore {
 
   /** Explicitly persists a file document to Firestore. */
   async saveFile(id: NodeId): Promise<void> {
-    console.log('[saveFile] called with id=', id);
     const node = this.nodes()[id];
     if (!node) {
-      console.warn('[saveFile] no node found for id=', id);
       return;
     }
-    console.log('[saveFile] node=', node, 'isConfigured=', this.repo.isConfigured);
     if (!this.repo.isConfigured) {
       this.status.set({
         type: 'info',
@@ -199,14 +201,45 @@ export class WorkspaceStore {
       return;
     }
     try {
-      console.log('[saveFile] calling repo.saveNode...');
-      await this.repo.saveNode(node);
-      console.log('[saveFile] repo.saveNode resolved OK');
-      this.status.set({ type: 'success', text: `Saved “${node.name}”.` });
+      this.status.set({ type: 'info', text: `Rendering boards and saving “${node.name}”…` });
+      const rendered = await this.withRenderedBoards(node);
+      await this.repo.saveNode(rendered);
+      // Keep the local copy in sync with the persisted image URLs.
+      this.put(rendered);
+      this.status.set({ type: 'success', text: `Saved “${rendered.name}”.` });
     } catch (err) {
-      console.error('[saveFile] repo.saveNode threw', err);
       this.status.set({ type: 'error', text: this.describe(err, 'Saving the file failed.') });
     }
+  }
+
+  /**
+   * Returns a copy of the node with each pgn-grid entry's board positions
+   * rendered to Storage and their URLs attached. Non-file nodes and non-grid
+   * files pass through unchanged; invalid/empty entries have any stale image
+   * URLs dropped.
+   */
+  private async withRenderedBoards(node: WorkspaceNode): Promise<WorkspaceNode> {
+    if (!isFile(node) || node.fileType !== 'pgn-grid') {
+      return node;
+    }
+    const entries = await Promise.all(
+      node.content.entries.map(async (entry): Promise<PgnEntry> => {
+        const parsed = this.chess.parsePgn(entry.pgn);
+        if (!parsed.valid) {
+          // Drop any stale board URLs; keep id, pgn, and label (when present).
+          return {
+            id: entry.id,
+            pgn: entry.pgn,
+            ...(entry.label !== undefined ? { label: entry.label } : {}),
+          };
+        }
+        const boardImageUrls = await this.boardImages.urlsForFens(
+          parsed.positions.map((position) => position.fen),
+        );
+        return { ...entry, boardImageUrls };
+      }),
+    );
+    return { ...node, content: { entries } };
   }
 
   private put(node: WorkspaceNode): void {

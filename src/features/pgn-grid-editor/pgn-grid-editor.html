@@ -2,7 +2,17 @@
   <div class="pgn-grid-editor">
     <header class="pgn-grid-editor__header">
       <div class="pgn-grid-editor__heading">
-        <h2 class="pgn-grid-editor__title">{{ file.name }}</h2>
+        <h2 class="pgn-grid-editor__title">
+          <input
+            class="pgn-grid-editor__title-input"
+            type="text"
+            [formControl]="titleControl"
+            (blur)="commitTitle()"
+            (keydown.enter)="commitTitle()"
+            aria-label="Comparison file title"
+            placeholder="Untitled comparison"
+          />
+        </h2>
         <p class="pgn-grid-editor__summary">
           {{ summary().valid }} of {{ summary().total }} valid
         </p>
