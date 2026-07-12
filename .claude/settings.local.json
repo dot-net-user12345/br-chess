@@ -12,7 +12,9 @@
       "Read(//c/Users/bjrat/OneDrive/Desktop/Chess/br-chess/**)",
       "Read(//c/Users/bjrat/.claude/projects/c--Users-bjrat-OneDrive-Desktop-Chess-br-chess/memory/**)",
       "Bash(firebase --version)",
-      "Bash(node \"C:/Users/bjrat/AppData/Local/Temp/claude/c--Users-bjrat-source-repos-br-chess/949d694a-8fe4-46cb-b2ff-aa43c29f02d9/scratchpad/make-favicon.js\" \"C:/Users/bjrat/source/repos/br-chess/public/favicon.ico\" \"C:/Users/bjrat/AppData/Local/Temp/claude/c--Users-bjrat-source-repos-br-chess/949d694a-8fe4-46cb-b2ff-aa43c29f02d9/scratchpad/favicon-preview.png\")"
+      "Bash(node \"C:/Users/bjrat/AppData/Local/Temp/claude/c--Users-bjrat-source-repos-br-chess/949d694a-8fe4-46cb-b2ff-aa43c29f02d9/scratchpad/make-favicon.js\" \"C:/Users/bjrat/source/repos/br-chess/public/favicon.ico\" \"C:/Users/bjrat/AppData/Local/Temp/claude/c--Users-bjrat-source-repos-br-chess/949d694a-8fe4-46cb-b2ff-aa43c29f02d9/scratchpad/favicon-preview.png\")",
+      "Bash(node -e ' *)",
+      "Bash(node -e 'const b=require\\(\"fs\"\\).readFileSync\\(\"dist/br-chess/browser/favicon.ico\"\\);console.log\\(\"dist favicon bytes:\",b.length,\"icons:\",b.readUInt16LE\\(4\\)\\)')"
     ]
   }
 }
