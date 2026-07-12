@@ -128,11 +128,6 @@ export class PgnGridEditor {
     return rows;
   });
 
-  /** Total differing moves across all lines, shown in the panel header. */
-  protected readonly differenceCount = computed(() =>
-    this.comparisonRows().reduce((total, row) => total + row.boards.length, 0),
-  );
-
   /** Whether the differences panel is expanded; closed by default. */
   protected readonly differencesExpanded = signal(false);
 

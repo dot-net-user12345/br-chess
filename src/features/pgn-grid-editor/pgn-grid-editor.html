@@ -196,10 +196,7 @@
         (expandedChange)="differencesExpanded.set($event)"
       >
         <mat-expansion-panel-header>
-          <mat-panel-title>Differences</mat-panel-title>
-          <mat-panel-description>
-            {{ differenceCount() }} differing {{ differenceCount() === 1 ? 'move' : 'moves' }}
-          </mat-panel-description>
+          <mat-panel-title>Deviations - where a line branches from previous</mat-panel-title>
         </mat-expansion-panel-header>
 
         <div class="comparison__body">
