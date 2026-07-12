@@ -83,6 +83,14 @@
     border-radius: var(--mat-sys-corner-small);
   }
 
+  // Zero-size, cursor-anchored element the right-click menu opens from.
+  &__context-trigger {
+    position: fixed;
+    width: 0;
+    height: 0;
+    visibility: hidden;
+  }
+
   &__children {
     list-style: none;
     margin: 0;

@@ -1,14 +1,24 @@
-import { ChangeDetectionStrategy, Component, computed, inject, input, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  ElementRef,
+  inject,
+  input,
+  signal,
+  viewChild,
+} from '@angular/core';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
+import { MatMenuModule, MatMenuTrigger } from '@angular/material/menu';
 import { WorkspaceStore } from '../../core/workspace-store';
 import { isFolder, NodeId, WorkspaceNode } from '../../core/workspace-models';
 
 /** One row in the workspace tree; recurses to render a folder's children. */
 @Component({
   selector: 'app-tree-node',
-  imports: [ReactiveFormsModule, MatButtonModule, MatIconModule],
+  imports: [ReactiveFormsModule, MatButtonModule, MatIconModule, MatMenuModule],
   templateUrl: './tree-node.html',
   styleUrl: './tree-node.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -34,6 +44,10 @@ export class TreeNode {
 
   /** True while a valid drag is hovering this folder as a drop target. */
   protected readonly dropActive = signal(false);
+
+  /** Cursor-anchored trigger for the folder right-click menu. */
+  private readonly contextTrigger = viewChild<ElementRef<HTMLElement>>('contextTrigger');
+  private readonly contextMenu = viewChild(MatMenuTrigger);
 
   protected activate(): void {
     if (this.isFolderNode()) {
@@ -70,8 +84,28 @@ export class TreeNode {
     this.store.createFile(this.nodeId());
   }
 
+  protected newFolderInFolder(): void {
+    this.store.createFolder(this.nodeId());
+  }
+
   protected remove(): void {
     this.store.deleteNode(this.nodeId());
+  }
+
+  protected onContextMenu(event: MouseEvent): void {
+    if (!this.isFolderNode()) {
+      return;
+    }
+    event.preventDefault();
+    const trigger = this.contextMenu();
+    const el = this.contextTrigger()?.nativeElement;
+    if (!trigger || !el) {
+      return;
+    }
+    // Position the hidden trigger at the cursor, then open the menu there.
+    el.style.left = `${event.clientX}px`;
+    el.style.top = `${event.clientY}px`;
+    trigger.openMenu();
   }
 
   protected onDragStart(event: DragEvent): void {
