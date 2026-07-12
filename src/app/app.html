@@ -17,4 +17,26 @@
       </main>
     </mat-sidenav-content>
   </mat-sidenav-container>
+
+  @let dark = themeService.theme() === 'dark';
+
+  <div class="corner-links">
+    <a
+      class="corner-links__github"
+      href="https://github.com/dot-net-user12345/br-chess"
+      target="_blank"
+      rel="noopener noreferrer"
+      aria-label="View source on GitHub"
+    >
+      <img
+        [ngSrc]="
+          dark ? 'assets/icons/GitHub_Invertocat_White.svg' : 'assets/icons/GitHub_Invertocat_Black.svg'
+        "
+        width="20"
+        height="20"
+        alt=""
+      />
+    </a>
+    <a class="privacy-link" routerLink="/privacy">Privacy Policy</a>
+  </div>
 </div>

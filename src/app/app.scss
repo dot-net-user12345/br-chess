@@ -30,3 +30,55 @@
   flex: 1;
   padding: 1rem;
 }
+
+.corner-links {
+  position: fixed;
+  right: 0.5rem;
+  bottom: 0.4rem;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+
+  &__github {
+    display: inline-flex;
+    padding: 0.25rem;
+    border-radius: var(--mat-sys-corner-small);
+    opacity: 0.7;
+    transition: opacity 0.15s ease;
+
+    &:hover {
+      opacity: 1;
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--mat-sys-primary);
+      outline-offset: 2px;
+    }
+
+    img {
+      display: block;
+      width: 18px;
+      height: 18px;
+    }
+  }
+}
+
+.privacy-link {
+  padding: 0.2rem 0.55rem;
+  border-radius: var(--mat-sys-corner-small);
+  font: var(--mat-sys-label-small);
+  color: var(--mat-sys-on-surface-variant);
+  background: color-mix(in srgb, var(--mat-sys-surface) 78%, transparent);
+  text-decoration: none;
+
+  &:hover {
+    color: var(--mat-sys-primary);
+    text-decoration: underline;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--mat-sys-primary);
+    outline-offset: 2px;
+  }
+}
