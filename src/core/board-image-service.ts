@@ -7,11 +7,17 @@ import {
   moveArrowGeometry,
   MOVE_ARROW_COLOR,
   pieceAssetPath,
-  SQUARE_SIZE,
 } from './board-assets';
 import { GamePosition } from './chess-models';
 
-const BOARD_SIZE = SQUARE_SIZE * 8;
+/**
+ * Pixel size of one square in the exported PNG (independent of the on-screen
+ * board). The full image is 8× this. Bump for higher-resolution exports — the
+ * value is part of the storage key, so changing it re-renders rather than
+ * reusing an image at the old size.
+ */
+const RENDER_SQUARE = 128;
+const BOARD_SIZE = RENDER_SQUARE * 8;
 
 function isNotFound(err: unknown): boolean {
   return err instanceof StorageError && err.code === 'storage/object-not-found';
@@ -43,7 +49,7 @@ export class BoardImageService {
   }
 
   private urlForPosition(position: GamePosition): Promise<string> {
-    const key = `${position.fen}|${position.from ?? ''}${position.to ?? ''}`;
+    const key = `${RENDER_SQUARE}|${position.fen}|${position.from ?? ''}${position.to ?? ''}`;
     const existing = this.urlByKey.get(key);
     if (existing) {
       return existing;
@@ -79,13 +85,13 @@ export class BoardImageService {
     }
     for (let rank = 0; rank < 8; rank++) {
       for (let file = 0; file < 8; file++) {
-        const x = file * SQUARE_SIZE;
-        const y = rank * SQUARE_SIZE;
+        const x = file * RENDER_SQUARE;
+        const y = rank * RENDER_SQUARE;
         ctx.fillStyle = (rank + file) % 2 === 0 ? LIGHT_SQUARE : DARK_SQUARE;
-        ctx.fillRect(x, y, SQUARE_SIZE, SQUARE_SIZE);
+        ctx.fillRect(x, y, RENDER_SQUARE, RENDER_SQUARE);
         const piece = rows[rank]?.[file] ?? null;
         if (piece) {
-          ctx.drawImage(await this.pieceImage(pieceAssetPath(piece)), x, y, SQUARE_SIZE, SQUARE_SIZE);
+          ctx.drawImage(await this.pieceImage(pieceAssetPath(piece)), x, y, RENDER_SQUARE, RENDER_SQUARE);
         }
       }
     }
@@ -104,7 +110,7 @@ export class BoardImageService {
   private drawArrow(ctx: CanvasRenderingContext2D, from: string, to: string): void {
     // Geometry is in board units (1 unit = 1 square); scale up to pixels.
     const arrow = moveArrowGeometry(from, to);
-    const s = SQUARE_SIZE;
+    const s = RENDER_SQUARE;
 
     ctx.save();
     ctx.strokeStyle = MOVE_ARROW_COLOR;
@@ -133,7 +139,7 @@ export class BoardImageService {
       return existing;
     }
     const pending = new Promise<HTMLImageElement>((resolve, reject) => {
-      const img = new Image(SQUARE_SIZE, SQUARE_SIZE);
+      const img = new Image(RENDER_SQUARE, RENDER_SQUARE);
       img.decoding = 'async';
       img.onload = () => resolve(img);
       img.onerror = () => reject(new Error(`Could not load piece asset ${path}.`));
