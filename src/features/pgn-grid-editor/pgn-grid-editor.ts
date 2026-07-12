@@ -20,6 +20,7 @@ import { ChessService } from '../../core/chess-service';
 import { PgnParseResult } from '../../core/chess-models';
 import { WorkspaceStore } from '../../core/workspace-store';
 import { NodeId, PgnEntry, PgnGridFileNode } from '../../core/workspace-models';
+import { comparisonIndex, divergentPlies } from '../../core/move-comparison';
 import { FocusOnInit } from '../../shared/focus-on-init';
 import { ConfirmDialog, ConfirmDialogData } from '../confirm-dialog/confirm-dialog';
 import { PgnContainer } from '../pgn-container/pgn-container';
@@ -60,6 +61,29 @@ export class PgnGridEditor {
     () => this.file()?.content.entries ?? [],
   );
 
+  /** Each entry's parsed positions, in list order; drives status and comparisons. */
+  private readonly parsedEntries = computed(() =>
+    this.entries().map((entry) => this.chess.parsePgn(entry.pgn)),
+  );
+
+  /**
+   * Per entry (by index), the plies whose move diverges from the line it is
+   * compared against — the previous entry, or the next one when it is first.
+   */
+  protected readonly divergentPliesByIndex = computed<ReadonlySet<number>[]>(() => {
+    const parsed = this.parsedEntries();
+    return parsed.map((result, index) => {
+      if (!result.valid) {
+        return new Set<number>();
+      }
+      const reference = parsed[comparisonIndex(index, parsed.length)];
+      if (!reference?.valid) {
+        return new Set<number>();
+      }
+      return divergentPlies(result.positions, reference.positions);
+    });
+  });
+
   /** Editable file title. Kept in sync with the selected file's name. */
   protected readonly titleControl = new FormControl('', { nonNullable: true });
 
@@ -94,12 +118,12 @@ export class PgnGridEditor {
   }
 
   protected readonly summary = computed(() => {
-    const items = this.entries();
-    const validCount = items.filter((entry) => this.chess.parsePgn(entry.pgn).valid).length;
+    const results = this.parsedEntries();
+    const validCount = results.filter((result) => result.valid).length;
     return {
-      total: items.length,
+      total: results.length,
       valid: validCount,
-      allValid: items.length > 0 && validCount === items.length,
+      allValid: results.length > 0 && validCount === results.length,
     };
   });
 

@@ -10,6 +10,8 @@ export interface BoardDialogTile {
   readonly caption: string;
   readonly from: string | null;
   readonly to: string | null;
+  /** Whether this move diverges from the compared line (drawn in the accent color). */
+  readonly highlighted?: boolean;
 }
 
 /** Data passed to {@link BoardDialog}: the full sequence of boards and where to start. */
@@ -60,6 +62,7 @@ export interface BoardDialogData {
           [caption]="current().caption"
           [from]="current().from"
           [to]="current().to"
+          [highlighted]="current().highlighted ?? false"
         />
       </div>
     </div>

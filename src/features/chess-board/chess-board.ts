@@ -2,7 +2,12 @@ import { ChangeDetectionStrategy, Component, computed, inject, input } from '@an
 import { NgOptimizedImage } from '@angular/common';
 import { ChessService } from '../../core/chess-service';
 import { PieceCode } from '../../core/chess-models';
-import { moveArrowGeometry, MOVE_ARROW_COLOR, pieceAssetPath } from '../../core/board-assets';
+import {
+  DIVERGENT_MOVE_COLOR,
+  moveArrowGeometry,
+  MOVE_ARROW_COLOR,
+  pieceAssetPath,
+} from '../../core/board-assets';
 
 interface RenderedSquare {
   readonly light: boolean;
@@ -35,7 +40,13 @@ const PIECE_NAMES: Record<string, string> = {
   selector: 'app-chess-board',
   imports: [NgOptimizedImage],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  host: { class: 'chess-board', '[attr.aria-label]': 'ariaLabel()', role: 'img' },
+  host: {
+    class: 'chess-board',
+    '[class.chess-board--divergent]': 'highlighted()',
+    '[style.--board-highlight-color]': 'highlighted() ? divergentColor : null',
+    '[attr.aria-label]': 'ariaLabel()',
+    role: 'img',
+  },
   template: `
     @for (square of squares(); track $index) {
       <span
@@ -56,11 +67,11 @@ const PIECE_NAMES: Record<string, string> = {
           [attr.y1]="arrow.shaftFrom.y"
           [attr.x2]="arrow.shaftTo.x"
           [attr.y2]="arrow.shaftTo.y"
-          [attr.stroke]="arrowColor"
+          [attr.stroke]="arrowColor()"
           [attr.stroke-width]="arrow.strokeWidth"
           stroke-linecap="round"
         />
-        <polygon [attr.points]="arrow.headPoints" [attr.fill]="arrowColor" />
+        <polygon [attr.points]="arrow.headPoints" [attr.fill]="arrowColor()" />
       </svg>
     }
   `,
@@ -75,10 +86,19 @@ export class ChessBoard {
   readonly from = input<string | null>(null);
   /** Move destination square (e.g. `e4`); pair with `from` to draw the move arrow. */
   readonly to = input<string | null>(null);
+  /** When true, draws the move in the divergent color with a matching outline. */
+  readonly highlighted = input<boolean>(false);
 
-  protected readonly arrowColor = MOVE_ARROW_COLOR;
+  protected readonly divergentColor = DIVERGENT_MOVE_COLOR;
 
-  protected readonly ariaLabel = computed(() => this.caption() || 'Chess position');
+  protected readonly arrowColor = computed(() =>
+    this.highlighted() ? DIVERGENT_MOVE_COLOR : MOVE_ARROW_COLOR,
+  );
+
+  protected readonly ariaLabel = computed(() => {
+    const base = this.caption() || 'Chess position';
+    return this.highlighted() ? `${base} (differs from compared line)` : base;
+  });
 
   protected readonly arrow = computed<RenderedArrow | null>(() => {
     const from = this.from();

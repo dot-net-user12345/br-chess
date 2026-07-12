@@ -1,6 +1,7 @@
 import { computed, inject, Injectable, signal } from '@angular/core';
 import { BoardImageService } from './board-image-service';
 import { ChessService } from './chess-service';
+import { comparisonIndex, divergentPlies } from './move-comparison';
 import { WorkspaceRepository } from './workspace-repository';
 import {
   FileType,
@@ -289,10 +290,13 @@ export class WorkspaceStore {
     if (!isFile(node) || node.fileType !== 'pgn-grid') {
       return node;
     }
+    // Parse every entry up front so each can be compared against its neighbor.
+    const source = node.content.entries;
+    const parsed = source.map((entry) => this.chess.parsePgn(entry.pgn));
     const entries = await Promise.all(
-      node.content.entries.map(async (entry): Promise<PgnEntry> => {
-        const parsed = this.chess.parsePgn(entry.pgn);
-        if (!parsed.valid) {
+      source.map(async (entry, index): Promise<PgnEntry> => {
+        const result = parsed[index];
+        if (!result.valid) {
           // Drop any stale board URLs; keep id, pgn, and label (when present).
           return {
             id: entry.id,
@@ -300,7 +304,11 @@ export class WorkspaceStore {
             ...(entry.label !== undefined ? { label: entry.label } : {}),
           };
         }
-        const boardImageUrls = await this.boardImages.urlsForPositions(parsed.positions);
+        const reference = parsed[comparisonIndex(index, parsed.length)];
+        const highlighted = reference?.valid
+          ? divergentPlies(result.positions, reference.positions)
+          : new Set<number>();
+        const boardImageUrls = await this.boardImages.urlsForPositions(result.positions, highlighted);
         return { ...entry, boardImageUrls };
       }),
     );

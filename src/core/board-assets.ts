@@ -26,6 +26,12 @@ export const SQUARE_SIZE = 45;
 /** Fill/stroke color for the move arrow drawn on generated board images. */
 export const MOVE_ARROW_COLOR = 'rgba(255, 145, 0, 0.85)';
 
+/**
+ * Arrow, outline, and drop-shadow color marking a move that diverges from the
+ * line a PGN is compared against. Shared by the live board and the exported PNG.
+ */
+export const DIVERGENT_MOVE_COLOR = 'rgba(142, 36, 170, 0.9)';
+
 /** Path to the piece image for a FEN piece code, relative to the app root. */
 export function pieceAssetPath(piece: PieceCode): string {
   return `assets/pieces/Chess_${PIECE_ASSETS[piece]}.svg`;

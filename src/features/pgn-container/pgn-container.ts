@@ -20,6 +20,7 @@ import { BoardDialog } from '../board-dialog/board-dialog';
 import { ChessBoard } from '../chess-board/chess-board';
 
 interface BoardTile {
+  readonly ply: number;
   readonly fen: string;
   readonly caption: string;
   readonly from: string | null;
@@ -50,6 +51,8 @@ export class PgnContainer implements OnInit {
 
   /** Seeds the editor once, e.g. when opening a saved file. */
   readonly initialPgn = input<string>('');
+  /** Plies whose move diverges from the compared line; drawn in the accent color. */
+  readonly highlightedPlies = input<ReadonlySet<number>>(new Set());
 
   readonly contentChange = output<{ pgn: string; result: PgnParseResult }>();
 
@@ -77,6 +80,7 @@ export class PgnContainer implements OnInit {
       return [];
     }
     return parsed.positions.map((position) => ({
+      ply: position.ply,
       fen: position.fen,
       caption: this.captionFor(position.ply, position.moveNumber, position.color, position.san),
       from: position.from,
@@ -99,8 +103,13 @@ export class PgnContainer implements OnInit {
 
   /** Opens a fullscreen modal at the clicked preview, navigable through the whole game. */
   protected openTile(index: number): void {
+    const highlights = this.highlightedPlies();
+    const tiles = this.tiles().map((tile) => ({
+      ...tile,
+      highlighted: highlights.has(tile.ply),
+    }));
     this.dialog.open(BoardDialog, {
-      data: { tiles: this.tiles(), index },
+      data: { tiles, index },
       panelClass: 'board-dialog-panel',
       ariaLabel: 'Board preview',
       maxWidth: '98vw',

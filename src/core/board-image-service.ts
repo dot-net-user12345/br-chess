@@ -3,6 +3,7 @@ import { getDownloadURL, ref, Storage, StorageError, uploadBytes } from '@angula
 import { ChessService } from './chess-service';
 import {
   DARK_SQUARE,
+  DIVERGENT_MOVE_COLOR,
   LIGHT_SQUARE,
   moveArrowGeometry,
   MOVE_ARROW_COLOR,
@@ -43,23 +44,34 @@ export class BoardImageService {
   /** Cached decoded piece images, keyed by asset path. */
   private readonly imageByPath = new Map<string, Promise<HTMLImageElement>>();
 
-  /** Resolves a Storage download URL for every position, in order. */
-  urlsForPositions(positions: readonly GamePosition[]): Promise<string[]> {
-    return Promise.all(positions.map((position) => this.urlForPosition(position)));
+  /**
+   * Resolves a Storage download URL for every position, in order. Plies listed
+   * in `highlightedPlies` render in the divergent color with a matching border.
+   */
+  urlsForPositions(
+    positions: readonly GamePosition[],
+    highlightedPlies: ReadonlySet<number> = new Set(),
+  ): Promise<string[]> {
+    return Promise.all(
+      positions.map((position) => this.urlForPosition(position, highlightedPlies.has(position.ply))),
+    );
   }
 
-  private urlForPosition(position: GamePosition): Promise<string> {
-    const key = `${RENDER_SQUARE}|${position.fen}|${position.from ?? ''}${position.to ?? ''}`;
+  private urlForPosition(position: GamePosition, highlighted: boolean): Promise<string> {
+    const key =
+      `${RENDER_SQUARE}|${position.fen}|${position.from ?? ''}${position.to ?? ''}` +
+      // Only appended when highlighted, so normal renders keep their existing keys.
+      (highlighted ? '|divergent' : '');
     const existing = this.urlByKey.get(key);
     if (existing) {
       return existing;
     }
-    const pending = this.resolveUrl(position, key);
+    const pending = this.resolveUrl(position, key, highlighted);
     this.urlByKey.set(key, pending);
     return pending;
   }
 
-  private async resolveUrl(position: GamePosition, key: string): Promise<string> {
+  private async resolveUrl(position: GamePosition, key: string, highlighted: boolean): Promise<string> {
     const fileRef = ref(this.storage, `moves/${await this.hash(key)}.png`);
     try {
       // Reuse an already-uploaded render (content-addressed, so it's this position+move).
@@ -69,12 +81,12 @@ export class BoardImageService {
         throw err;
       }
     }
-    const blob = await this.render(position);
+    const blob = await this.render(position, highlighted);
     await uploadBytes(fileRef, blob, { contentType: 'image/png' });
     return getDownloadURL(fileRef);
   }
 
-  private async render(position: GamePosition): Promise<Blob> {
+  private async render(position: GamePosition, highlighted: boolean): Promise<Blob> {
     const rows = this.chess.fenToSquares(position.fen);
     const canvas = document.createElement('canvas');
     canvas.width = BOARD_SIZE;
@@ -96,7 +108,10 @@ export class BoardImageService {
       }
     }
     if (position.from && position.to) {
-      this.drawArrow(ctx, position.from, position.to);
+      this.drawArrow(ctx, position.from, position.to, highlighted ? DIVERGENT_MOVE_COLOR : MOVE_ARROW_COLOR);
+    }
+    if (highlighted) {
+      this.drawHighlightBorder(ctx);
     }
     return new Promise<Blob>((resolve, reject) => {
       canvas.toBlob(
@@ -107,14 +122,14 @@ export class BoardImageService {
   }
 
   /** Draws a colored arrow with a triangular head from the `from` to the `to` square. */
-  private drawArrow(ctx: CanvasRenderingContext2D, from: string, to: string): void {
+  private drawArrow(ctx: CanvasRenderingContext2D, from: string, to: string, color: string): void {
     // Geometry is in board units (1 unit = 1 square); scale up to pixels.
     const arrow = moveArrowGeometry(from, to);
     const s = RENDER_SQUARE;
 
     ctx.save();
-    ctx.strokeStyle = MOVE_ARROW_COLOR;
-    ctx.fillStyle = MOVE_ARROW_COLOR;
+    ctx.strokeStyle = color;
+    ctx.fillStyle = color;
     ctx.lineWidth = arrow.strokeWidth * s;
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
@@ -130,6 +145,17 @@ export class BoardImageService {
     ctx.lineTo(arrow.head[2].x * s, arrow.head[2].y * s);
     ctx.closePath();
     ctx.fill();
+    ctx.restore();
+  }
+
+  /** Frames the board in the divergent color to match the live board's outline. */
+  private drawHighlightBorder(ctx: CanvasRenderingContext2D): void {
+    const width = RENDER_SQUARE * 0.12;
+    const inset = width / 2;
+    ctx.save();
+    ctx.strokeStyle = DIVERGENT_MOVE_COLOR;
+    ctx.lineWidth = width;
+    ctx.strokeRect(inset, inset, BOARD_SIZE - width, BOARD_SIZE - width);
     ctx.restore();
   }
 

@@ -12,6 +12,15 @@
   overflow: hidden;
 }
 
+// A move that diverges from the compared line: outline + drop-shadow in the same
+// color as its arrow (--board-highlight-color is set on the host when active).
+:host(.chess-board--divergent) {
+  border-color: var(--board-highlight-color);
+  outline: 3px solid var(--board-highlight-color);
+  outline-offset: 1px;
+  box-shadow: 0 0 8px 1px var(--board-highlight-color);
+}
+
 .chess-board__arrow {
   position: absolute;
   inset: 0;

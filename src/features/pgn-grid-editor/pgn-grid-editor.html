@@ -115,6 +115,7 @@
 
             <app-pgn-container
               [initialPgn]="entry.pgn"
+              [highlightedPlies]="divergentPliesByIndex()[i]"
               (contentChange)="onEntryChange(entry.id, $event)"
             />
           </mat-expansion-panel>
