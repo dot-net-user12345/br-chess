@@ -111,7 +111,7 @@
             class="entry-panel__remove"
             [disabled]="entries().length <= 1"
             [attr.aria-label]="'Remove ' + labelFor(entry, i)"
-            (click)="removeEntry(entry.id)"
+            (click)="confirmRemove(entry.id, labelFor(entry, i))"
           >
             <mat-icon>delete_outline</mat-icon>
           </button>

@@ -10,12 +10,14 @@ import {
 import { CdkDragDrop, DragDropModule, moveItemInArray } from '@angular/cdk/drag-drop';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
+import { MatDialog } from '@angular/material/dialog';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { MatIconModule } from '@angular/material/icon';
 import { ChessService } from '../../core/chess-service';
 import { PgnParseResult } from '../../core/chess-models';
 import { WorkspaceStore } from '../../core/workspace-store';
 import { NodeId, PgnEntry, PgnGridFileNode } from '../../core/workspace-models';
+import { ConfirmDialog, ConfirmDialogData } from '../confirm-dialog/confirm-dialog';
 import { PgnContainer } from '../pgn-container/pgn-container';
 
 /** Validity of a single entry's PGN, used to badge its collapsed panel header. */
@@ -39,6 +41,7 @@ type EntryStatus = 'empty' | 'valid' | 'invalid';
 export class PgnGridEditor {
   private readonly store = inject(WorkspaceStore);
   private readonly chess = inject(ChessService);
+  private readonly dialog = inject(MatDialog);
 
   readonly fileId = input.required<NodeId>();
 
@@ -102,6 +105,23 @@ export class PgnGridEditor {
 
   protected addEntry(): void {
     this.writeEntries([...this.entries(), { id: crypto.randomUUID(), pgn: '' }]);
+  }
+
+  /** Confirms with the user before removing the entry, since deletion is local-only. */
+  protected confirmRemove(entryId: string, label: string): void {
+    const data: ConfirmDialogData = {
+      title: 'Delete line?',
+      message: `“${label}” and its board preview will be removed.`,
+      confirmLabel: 'Delete',
+    };
+    this.dialog
+      .open(ConfirmDialog, { data, autoFocus: 'first-tabbable' })
+      .afterClosed()
+      .subscribe((confirmed) => {
+        if (confirmed) {
+          this.removeEntry(entryId);
+        }
+      });
   }
 
   protected removeEntry(entryId: string): void {
