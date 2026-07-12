@@ -24,7 +24,7 @@
         [disabled]="!summary().allValid"
       >
         <mat-icon>save</mat-icon>
-        Save file
+        Save
       </button>
     </header>
 
@@ -48,19 +48,23 @@
             <mat-icon>drag_indicator</mat-icon>
           </button>
 
-          <!-- The title input is a sibling of the header (not nested in its
-               role="button"), overlaid on the header's title zone so it stays
-               AXE-clean while remaining editable even when collapsed. -->
-          <input
-            #labelInput
-            class="entry-panel__title-input"
-            type="text"
-            [value]="entry.label || ''"
-            [attr.placeholder]="'Line ' + (i + 1)"
-            [attr.aria-label]="'Line ' + (i + 1) + ' title'"
-            (change)="onLabelChange(entry.id, labelInput.value)"
-            (keydown.enter)="labelInput.blur()"
-          />
+          <!-- Rename field: shown only while editing. It is a sibling of the
+               header (not nested in its role="button"), overlaid on the title
+               zone, so it stays AXE-clean and editable even when collapsed. -->
+          @if (isEditing(entry.id)) {
+            <input
+              #labelInput
+              appFocusOnInit
+              class="entry-panel__title-input"
+              type="text"
+              [value]="entry.label || ''"
+              [attr.placeholder]="'Line ' + (i + 1)"
+              [attr.aria-label]="'Rename line ' + (i + 1)"
+              (keydown.enter)="commitRename(entry.id, labelInput.value)"
+              (keydown.escape)="cancelRename(entry.id)"
+              (blur)="commitRename(entry.id, labelInput.value)"
+            />
+          }
 
           <mat-expansion-panel
             class="entry-panel__panel"
@@ -68,7 +72,7 @@
             [expanded]="isExpanded(entry.id)"
             (expandedChange)="setExpanded(entry.id, $event)"
           >
-            <mat-expansion-panel-header>
+            <mat-expansion-panel-header (keydown.f2)="startRename(entry.id)">
               <mat-panel-title class="entry-panel__title">
                 <mat-icon
                   class="entry-panel__chevron"
@@ -77,6 +81,16 @@
                 >
                   expand_more
                 </mat-icon>
+                @if (!isEditing(entry.id)) {
+                  <!-- Left-click toggles the panel (via the header); right-click
+                       opens the rename menu. -->
+                  <span
+                    class="entry-panel__name"
+                    (contextmenu)="onTitleContextMenu($event, entry.id)"
+                  >
+                    {{ labelFor(entry, i) }}
+                  </span>
+                }
               </mat-panel-title>
               <mat-panel-description class="entry-panel__meta">
                 @switch (statusOf(entry)) {
@@ -118,6 +132,19 @@
         </div>
       }
     </mat-accordion>
+
+    <!-- Zero-size, cursor-anchored element the title right-click menu opens from. -->
+    <div
+      #contextTrigger
+      class="entry-panel__context-trigger"
+      [matMenuTriggerFor]="titleMenu"
+    ></div>
+    <mat-menu #titleMenu>
+      <button mat-menu-item type="button" (click)="renameMenuTarget()">
+        <mat-icon>edit</mat-icon>
+        <span>Rename</span>
+      </button>
+    </mat-menu>
 
     <button matButton="outlined" type="button" (click)="addEntry()">
       <mat-icon>add</mat-icon>

@@ -3,9 +3,11 @@ import {
   Component,
   computed,
   effect,
+  ElementRef,
   inject,
   input,
   signal,
+  viewChild,
 } from '@angular/core';
 import { CdkDragDrop, DragDropModule, moveItemInArray } from '@angular/cdk/drag-drop';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
@@ -13,10 +15,12 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatDialog } from '@angular/material/dialog';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { MatIconModule } from '@angular/material/icon';
+import { MatMenuModule, MatMenuTrigger } from '@angular/material/menu';
 import { ChessService } from '../../core/chess-service';
 import { PgnParseResult } from '../../core/chess-models';
 import { WorkspaceStore } from '../../core/workspace-store';
 import { NodeId, PgnEntry, PgnGridFileNode } from '../../core/workspace-models';
+import { FocusOnInit } from '../../shared/focus-on-init';
 import { ConfirmDialog, ConfirmDialogData } from '../confirm-dialog/confirm-dialog';
 import { PgnContainer } from '../pgn-container/pgn-container';
 
@@ -32,6 +36,8 @@ type EntryStatus = 'empty' | 'valid' | 'invalid';
     MatButtonModule,
     MatExpansionModule,
     MatIconModule,
+    MatMenuModule,
+    FocusOnInit,
     PgnContainer,
   ],
   templateUrl: './pgn-grid-editor.html',
@@ -59,6 +65,16 @@ export class PgnGridEditor {
 
   /** Ids of entries whose panels the user has collapsed; all open by default. */
   private readonly collapsedIds = signal<ReadonlySet<string>>(new Set());
+
+  /** Ids of entries whose title is currently being edited (inline rename). */
+  private readonly editingIds = signal<ReadonlySet<string>>(new Set());
+
+  /** Entry the right-click context menu currently targets. */
+  private readonly menuTargetId = signal<string | null>(null);
+
+  /** Cursor-anchored trigger for the title right-click menu. */
+  private readonly contextTrigger = viewChild<ElementRef<HTMLElement>>('contextTrigger');
+  private readonly contextMenu = viewChild(MatMenuTrigger);
 
   constructor() {
     // Seed the title field, and re-seed when a different file is selected or the
@@ -104,7 +120,60 @@ export class PgnGridEditor {
   }
 
   protected addEntry(): void {
-    this.writeEntries([...this.entries(), { id: crypto.randomUUID(), pgn: '' }]);
+    const id = crypto.randomUUID();
+    this.writeEntries([...this.entries(), { id, pgn: '' }]);
+    // A freshly created entry opens with its title ready to edit.
+    this.editingIds.update((ids) => new Set(ids).add(id));
+  }
+
+  protected isEditing(entryId: string): boolean {
+    return this.editingIds().has(entryId);
+  }
+
+  protected startRename(entryId: string): void {
+    this.editingIds.update((ids) => new Set(ids).add(entryId));
+  }
+
+  protected commitRename(entryId: string, value: string): void {
+    // Guard against a blur that fires after Escape has already cancelled.
+    if (!this.editingIds().has(entryId)) {
+      return;
+    }
+    this.onLabelChange(entryId, value.trim());
+    this.stopEditing(entryId);
+  }
+
+  protected cancelRename(entryId: string): void {
+    this.stopEditing(entryId);
+  }
+
+  /** Opens the rename menu anchored at the cursor for the right-clicked title. */
+  protected onTitleContextMenu(event: MouseEvent, entryId: string): void {
+    event.preventDefault();
+    this.menuTargetId.set(entryId);
+    const trigger = this.contextMenu();
+    const el = this.contextTrigger()?.nativeElement;
+    if (!trigger || !el) {
+      return;
+    }
+    el.style.left = `${event.clientX}px`;
+    el.style.top = `${event.clientY}px`;
+    trigger.openMenu();
+  }
+
+  protected renameMenuTarget(): void {
+    const id = this.menuTargetId();
+    if (id) {
+      this.startRename(id);
+    }
+  }
+
+  private stopEditing(entryId: string): void {
+    this.editingIds.update((ids) => {
+      const next = new Set(ids);
+      next.delete(entryId);
+      return next;
+    });
   }
 
   /** Confirms with the user before removing the entry, since deletion is local-only. */

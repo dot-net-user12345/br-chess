@@ -114,6 +114,22 @@
     }
   }
 
+  // Read-only title shown in the header. Left-click toggles the panel, right-
+  // click renames; it must clear the chevron on the left.
+  &__name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  // Zero-size, cursor-anchored element the right-click menu opens from.
+  &__context-trigger {
+    position: fixed;
+    width: 0;
+    height: 0;
+    visibility: hidden;
+  }
+
   // Editable title overlaid on the header's title zone. Offsets clear the drag
   // handle + chevron on the left and the status badge + remove button on the
   // right so it never sits over another control.
