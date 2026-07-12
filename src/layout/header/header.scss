@@ -16,10 +16,25 @@
   --mat-icon-button-icon-color: #fff;
 }
 
+.logo-button {
+  display: inline-flex;
+  flex: none;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  border-radius: var(--mat-sys-corner-small);
+
+  &:focus-visible {
+    outline: 2px solid #fff;
+    outline-offset: 3px;
+  }
+}
+
 .logo {
   height: 2.2rem;
   width: auto;
-  flex: none;
+  display: block;
 }
 
 .spacer {

@@ -11,14 +11,16 @@
 
   @let dark = themeService.theme() === 'dark';
 
-  <img
-    class="logo"
-    [ngSrc]="dark ? 'assets/logo-dark.svg' : 'assets/logo-light.svg'"
-    width="242"
-    height="45"
-    priority
-    alt="Chessified"
-  />
+  <button type="button" class="logo-button" (click)="goHome()" aria-label="Chessifiled home">
+    <img
+      class="logo"
+      [ngSrc]="dark ? 'assets/logo-dark.svg' : 'assets/logo-light.svg'"
+      width="269"
+      height="45"
+      priority
+      alt="Chessifiled"
+    />
+  </button>
 
   <span class="spacer"></span>
 
