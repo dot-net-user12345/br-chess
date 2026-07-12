@@ -36,6 +36,12 @@ body {
   border-radius: var(--mat-sys-corner-large);
 }
 
+/* The comparison dialog manages its own padding; trim the surface default. */
+.comparison-dialog-panel .mat-mdc-dialog-surface {
+  padding: 0.5rem;
+  border-radius: var(--mat-sys-corner-large);
+}
+
 body {
   margin: 0;
   background: light-dark(#e8edf2, #23262d);

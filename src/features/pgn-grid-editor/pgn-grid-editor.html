@@ -181,5 +181,55 @@
       <mat-icon>add</mat-icon>
       Add PGN
     </button>
+
+    @if (comparisonRows().length > 0) {
+      <mat-expansion-panel
+        class="comparison"
+        [expanded]="differencesExpanded()"
+        (expandedChange)="differencesExpanded.set($event)"
+      >
+        <mat-expansion-panel-header>
+          <mat-panel-title>Differences</mat-panel-title>
+          <mat-panel-description>
+            {{ differenceCount() }} differing {{ differenceCount() === 1 ? 'move' : 'moves' }}
+          </mat-panel-description>
+        </mat-expansion-panel-header>
+
+        <div class="comparison__body">
+          <p class="comparison__hint">
+            Each line shows that PGN's differing moves. Select it to view them fullscreen.
+          </p>
+
+          <ol class="comparison__rows">
+            @for (row of comparisonRows(); track row.flatIndex) {
+              <li>
+                <button
+                  type="button"
+                  class="comparison__row"
+                  (click)="openComparison(row)"
+                  [attr.aria-label]="'View differing moves in ' + row.label + ' fullscreen'"
+                >
+                  <span class="comparison__label">{{ row.label }}</span>
+                  <span class="comparison__cells">
+                    @for (board of row.boards; track $index) {
+                      <span class="comparison__cell">
+                        <app-chess-board
+                          [fen]="board.fen"
+                          [caption]="board.caption"
+                          [from]="board.from"
+                          [to]="board.to"
+                          [highlighted]="true"
+                        />
+                        <span class="comparison__caption">{{ board.caption }}</span>
+                      </span>
+                    }
+                  </span>
+                </button>
+              </li>
+            }
+          </ol>
+        </div>
+      </mat-expansion-panel>
+    }
   </div>
 }

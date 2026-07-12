@@ -19,17 +19,28 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule, MatMenuTrigger } from '@angular/material/menu';
 import { AuthService } from '../../core/auth-service';
 import { ChessService } from '../../core/chess-service';
-import { PgnParseResult } from '../../core/chess-models';
+import { GamePosition, PgnParseResult } from '../../core/chess-models';
 import { WorkspaceStore } from '../../core/workspace-store';
 import { NodeId, PgnEntry, PgnGridFileNode } from '../../core/workspace-models';
 import { comparisonIndex, divergentPlies } from '../../core/move-comparison';
 import { FocusOnInit } from '../../shared/focus-on-init';
+import { ChessBoard } from '../chess-board/chess-board';
+import {
+  ComparisonBoard,
+  ComparisonDialog,
+  ComparisonDialogItem,
+} from '../comparison-dialog/comparison-dialog';
 import { ConfirmDialog, ConfirmDialogData } from '../confirm-dialog/confirm-dialog';
 import { LoginDialog } from '../login-dialog/login-dialog';
 import { PgnContainer } from '../pgn-container/pgn-container';
 
 /** Validity of a single entry's PGN, used to badge its collapsed panel header. */
 type EntryStatus = 'empty' | 'valid' | 'invalid';
+
+/** One PGN line's differing moves, with its index for dialog navigation. */
+interface ComparisonRow extends ComparisonDialogItem {
+  readonly flatIndex: number;
+}
 
 /** Editor for a `pgn-grid` file: manages its PGN entries and their board grids. */
 @Component({
@@ -42,6 +53,7 @@ type EntryStatus = 'empty' | 'valid' | 'invalid';
     MatIconModule,
     MatMenuModule,
     FocusOnInit,
+    ChessBoard,
     PgnContainer,
   ],
   templateUrl: './pgn-grid-editor.html',
@@ -87,6 +99,39 @@ export class PgnGridEditor {
       return divergentPlies(result.positions, reference.positions);
     });
   });
+
+  /**
+   * One row per line that diverges: that line's own differing-move boards
+   * (the first and second moves that differ from its compared neighbor), paired.
+   */
+  protected readonly comparisonRows = computed<ComparisonRow[]>(() => {
+    const parsed = this.parsedEntries();
+    const entries = this.entries();
+    const divergent = this.divergentPliesByIndex();
+    const rows: ComparisonRow[] = [];
+    let flatIndex = 0;
+    parsed.forEach((result, i) => {
+      if (!result.valid) {
+        return;
+      }
+      const boards = [...divergent[i]]
+        .map((ply) => this.boardAt(result.positions, ply))
+        .filter((board): board is ComparisonBoard => board !== null);
+      if (boards.length === 0) {
+        return;
+      }
+      rows.push({ flatIndex: flatIndex++, label: this.labelFor(entries[i], i), boards });
+    });
+    return rows;
+  });
+
+  /** Total differing moves across all lines, shown in the panel header. */
+  protected readonly differenceCount = computed(() =>
+    this.comparisonRows().reduce((total, row) => total + row.boards.length, 0),
+  );
+
+  /** Whether the differences panel is expanded. */
+  protected readonly differencesExpanded = signal(true);
 
   /** Editable file title. Kept in sync with the selected file's name. */
   protected readonly titleControl = new FormControl('', { nonNullable: true });
@@ -289,6 +334,35 @@ export class PgnGridEditor {
       }
       return next;
     });
+  }
+
+  /** Opens the fullscreen comparison, starting at the clicked differing move. */
+  protected openComparison(row: ComparisonRow): void {
+    this.dialog.open(ComparisonDialog, {
+      data: { items: this.comparisonRows(), index: row.flatIndex },
+      panelClass: 'comparison-dialog-panel',
+      ariaLabel: 'Move comparison',
+      maxWidth: '98vw',
+      maxHeight: '98vh',
+      autoFocus: 'dialog',
+    });
+  }
+
+  private boardAt(positions: readonly GamePosition[], ply: number): ComparisonBoard | null {
+    const position = positions[ply];
+    if (!position) {
+      return null;
+    }
+    return { fen: position.fen, caption: this.caption(position), from: position.from, to: position.to };
+  }
+
+  private caption(position: GamePosition): string {
+    if (position.ply === 0 || position.san === null) {
+      return 'Start';
+    }
+    return position.color === 'white'
+      ? `${position.moveNumber}. ${position.san}`
+      : `${position.moveNumber}… ${position.san}`;
   }
 
   protected async save(): Promise<void> {
