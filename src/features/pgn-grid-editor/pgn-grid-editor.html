@@ -126,7 +126,9 @@
             <app-pgn-container
               [initialPgn]="entry.pgn"
               [highlightedPlies]="divergentPliesByIndex()[i]"
+              [captions]="entry.captions ?? {}"
               (contentChange)="onEntryChange(entry.id, $event)"
+              (captionsChange)="onCaptionsChange(entry.id, $event)"
             />
           </mat-expansion-panel>
 

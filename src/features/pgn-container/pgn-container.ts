@@ -14,6 +14,7 @@ import { MatDialog } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { ChessService } from '../../core/chess-service';
 import { PgnParseResult } from '../../core/chess-models';
 import { BoardDialog } from '../board-dialog/board-dialog';
@@ -39,6 +40,7 @@ interface BoardTile {
     MatFormFieldModule,
     MatInputModule,
     MatIconModule,
+    MatTooltipModule,
     ChessBoard,
   ],
   templateUrl: './pgn-container.html',
@@ -53,8 +55,12 @@ export class PgnContainer implements OnInit {
   readonly initialPgn = input<string>('');
   /** Plies whose move diverges from the compared line; drawn in the accent color. */
   readonly highlightedPlies = input<ReadonlySet<number>>(new Set());
+  /** User-entered captions per board position, keyed by ply. */
+  readonly captions = input<Readonly<Record<number, string>>>({});
 
   readonly contentChange = output<{ pgn: string; result: PgnParseResult }>();
+  /** Emits the full updated caption map when the user saves a caption. */
+  readonly captionsChange = output<Record<number, string>>();
 
   private readonly pgnValidator: ValidatorFn = (control) => {
     const value = (control.value ?? '').trim();
@@ -109,7 +115,12 @@ export class PgnContainer implements OnInit {
       highlighted: highlights.has(tile.ply),
     }));
     this.dialog.open(BoardDialog, {
-      data: { tiles, index },
+      data: {
+        tiles,
+        index,
+        captions: this.captions(),
+        onCaptionChange: (captions: Record<number, string>) => this.captionsChange.emit(captions),
+      },
       panelClass: 'board-dialog-panel',
       ariaLabel: 'Board preview',
       maxWidth: '98vw',

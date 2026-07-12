@@ -1,11 +1,16 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MAT_DIALOG_DATA, MatDialogModule } from '@angular/material/dialog';
+import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
+import { MatInputModule } from '@angular/material/input';
 import { ChessBoard } from '../chess-board/chess-board';
 
 /** One board position the dialog can display. */
 export interface BoardDialogTile {
+  /** Half-move index this board sits at (0 = starting position); keys its caption. */
+  readonly ply: number;
   readonly fen: string;
   readonly caption: string;
   readonly from: string | null;
@@ -14,16 +19,28 @@ export interface BoardDialogTile {
   readonly highlighted?: boolean;
 }
 
-/** Data passed to {@link BoardDialog}: the full sequence of boards and where to start. */
+/** Data passed to {@link BoardDialog}: the boards, where to start, and caption plumbing. */
 export interface BoardDialogData {
   readonly tiles: readonly BoardDialogTile[];
   readonly index: number;
+  /** Current captions, keyed by ply. */
+  readonly captions: Readonly<Record<number, string>>;
+  /** Called with the full updated caption map whenever the user saves one. */
+  readonly onCaptionChange: (captions: Record<number, string>) => void;
 }
 
 /** A board position shown large in a modal, navigable through the whole game. */
 @Component({
   selector: 'app-board-dialog',
-  imports: [MatDialogModule, MatButtonModule, MatIconModule, ChessBoard],
+  imports: [
+    MatDialogModule,
+    MatButtonModule,
+    MatIconModule,
+    MatFormFieldModule,
+    MatInputModule,
+    ReactiveFormsModule,
+    ChessBoard,
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: {
     '(keydown.arrowleft)': 'prev()',
@@ -76,14 +93,44 @@ export interface BoardDialogData {
           <mat-icon>close</mat-icon>
         </button>
       </div>
-      <div class="board-dialog__board">
-        <app-chess-board
-          [fen]="current().fen"
-          [caption]="current().caption"
-          [from]="current().from"
-          [to]="current().to"
-          [highlighted]="current().highlighted ?? false"
-        />
+      <div class="board-dialog__body">
+        <div class="board-dialog__board">
+          <app-chess-board
+            [fen]="current().fen"
+            [caption]="current().caption"
+            [from]="current().from"
+            [to]="current().to"
+            [highlighted]="current().highlighted ?? false"
+          />
+        </div>
+        <div class="board-dialog__caption">
+          <h3 class="board-dialog__caption-heading">Caption</h3>
+          @if (showInput()) {
+            <mat-form-field appearance="outline" class="board-dialog__caption-field">
+              <mat-label>Caption</mat-label>
+              <textarea
+                matInput
+                [formControl]="captionControl"
+                rows="4"
+                [attr.aria-label]="'Caption for ' + current().caption"
+              ></textarea>
+            </mat-form-field>
+            <div class="board-dialog__caption-actions">
+              <button matButton="filled" type="button" (click)="saveCaption()">Save</button>
+              @if (savedCaption()) {
+                <button matButton type="button" (click)="cancelEdit()">Cancel</button>
+              }
+            </div>
+          } @else {
+            <p class="board-dialog__caption-text">{{ savedCaption() }}</p>
+            <div class="board-dialog__caption-actions">
+              <button matButton="outlined" type="button" (click)="startEdit()">
+                <mat-icon>edit</mat-icon>
+                Edit
+              </button>
+            </div>
+          }
+        </div>
       </div>
     </div>
   `,
@@ -92,6 +139,9 @@ export interface BoardDialogData {
       /* Fixed-height title bar; the square board fills the rest of the dialog,
          and bar + board together stay within 98% of the smaller viewport side. */
       --bar-height: 3.25rem;
+      /* Reserved for the caption column (its own width + gap + padding), so the
+         board never grows so wide that the caption is pushed off the surface. */
+      --caption-column: 21rem;
       display: flex;
       flex-direction: column;
     }
@@ -119,9 +169,56 @@ export interface BoardDialogData {
       flex: 1 1 auto;
     }
 
+    .board-dialog__body {
+      display: flex;
+      gap: 1rem;
+      align-items: flex-start;
+    }
+
     .board-dialog__board {
-      width: min(98vw, calc(98vh - var(--bar-height)));
+      /* Sized so the board plus the reserved caption column fit within 97vw, and
+         so board + title bar fit within 98vh. Whichever is smaller wins, keeping
+         the caption always beside the board rather than wrapping off-surface. */
+      flex: 0 0 auto;
+      width: min(calc(97vw - var(--caption-column)), calc(98vh - var(--bar-height)));
       aspect-ratio: 1;
+    }
+
+    .board-dialog__caption {
+      /* Fixed width so read-only text wraps to the same width as the input
+         instead of its long max-content stretching the dialog wide. */
+      flex: 0 0 20rem;
+      max-width: 20rem;
+      /* The dialog surface has padding: 0 (so the board can fill it) and
+         overflow: hidden, which would jam this column against the top/right
+         edges and clip the form field's floating label. Inset it here. */
+      padding: 1rem 1rem 1rem 0;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .board-dialog__caption-heading {
+      margin: 0;
+      font: var(--mat-sys-title-small);
+      color: var(--mat-sys-on-surface-variant);
+    }
+
+    .board-dialog__caption-field {
+      width: 100%;
+    }
+
+    .board-dialog__caption-text {
+      margin: 0;
+      font: var(--mat-sys-body-large);
+      color: var(--mat-sys-on-surface);
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+    }
+
+    .board-dialog__caption-actions {
+      display: flex;
+      gap: 0.5rem;
     }
   `,
 })
@@ -133,23 +230,71 @@ export class BoardDialog {
   protected readonly hasPrev = computed(() => this.index() > 0);
   protected readonly hasNext = computed(() => this.index() < this.data.tiles.length - 1);
 
+  /** Working copy of the caption map, mutated as the user saves captions. */
+  private readonly captions = signal<Record<number, string>>({ ...this.data.captions });
+
+  /** The saved caption for the board currently shown, or '' if none. */
+  protected readonly savedCaption = computed(() => this.captions()[this.current().ply] ?? '');
+
+  /** Whether the caption editor is open (explicitly, or because none exists yet). */
+  private readonly editing = signal(false);
+  protected readonly showInput = computed(() => this.editing() || this.savedCaption() === '');
+
+  protected readonly captionControl = new FormControl('', { nonNullable: true });
+
+  constructor() {
+    // Seed the field for the starting position.
+    this.captionControl.setValue(this.savedCaption(), { emitEvent: false });
+  }
+
   protected prev(): void {
     if (this.hasPrev()) {
-      this.index.update((i) => i - 1);
+      this.goTo(this.index() - 1);
     }
   }
 
   protected next(): void {
     if (this.hasNext()) {
-      this.index.update((i) => i + 1);
+      this.goTo(this.index() + 1);
     }
   }
 
   protected first(): void {
-    this.index.set(0);
+    this.goTo(0);
   }
 
   protected last(): void {
-    this.index.set(this.data.tiles.length - 1);
+    this.goTo(this.data.tiles.length - 1);
+  }
+
+  protected startEdit(): void {
+    this.captionControl.setValue(this.savedCaption(), { emitEvent: false });
+    this.editing.set(true);
+  }
+
+  protected cancelEdit(): void {
+    this.captionControl.setValue(this.savedCaption(), { emitEvent: false });
+    this.editing.set(false);
+  }
+
+  protected saveCaption(): void {
+    const value = this.captionControl.value.trim();
+    const ply = this.current().ply;
+    const next = { ...this.captions() };
+    if (value) {
+      next[ply] = value;
+    } else {
+      delete next[ply];
+    }
+    this.captions.set(next);
+    this.editing.set(false);
+    this.data.onCaptionChange({ ...next });
+  }
+
+  /** Moves to board `i`, closing the editor and re-seeding the field for it. */
+  private goTo(i: number): void {
+    this.index.set(i);
+    this.editing.set(false);
+    this.captionControl.setValue(this.savedCaption(), { emitEvent: false });
   }
 }

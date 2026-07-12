@@ -187,6 +187,14 @@ export class PgnGridEditor {
     );
   }
 
+  protected onCaptionsChange(entryId: string, captions: Record<number, string>): void {
+    this.writeEntries(
+      this.entries().map((entry) =>
+        entry.id === entryId ? { ...entry, captions } : entry,
+      ),
+    );
+  }
+
   protected onLabelChange(entryId: string, label: string): void {
     this.writeEntries(
       this.entries().map((entry) =>

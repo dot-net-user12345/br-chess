@@ -8,7 +8,11 @@
 8. Bd3 b6
 9. e4 Be7
 10. e5 Nh5
-11. Ng5 Nxg3
-12. Bxh7+ Kh8
-13. Nxf7+ Rxf7
-14. hxg3
+11. Ng5 Bxg5
+12. Qxh5 g6
+13. Qe2 cxd4
+14. h4 Bh6
+15. h5 dxc3
+16. bxc3 Bg7
+17. Kf1 d4
+18. c4

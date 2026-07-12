@@ -22,6 +22,7 @@
               type="button"
               class="pgn-container__tile-button"
               (click)="openTile(i)"
+              [matTooltip]="captions()[tile.ply]"
               [attr.aria-label]="'View ' + tile.caption + ' fullscreen'"
             >
               <app-chess-board
