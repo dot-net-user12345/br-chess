@@ -144,6 +144,36 @@
         <mat-icon>edit</mat-icon>
         <span>Rename</span>
       </button>
+      <button
+        mat-menu-item
+        type="button"
+        [matMenuTriggerFor]="moveMenu"
+        [disabled]="entries().length <= 1"
+      >
+        <mat-icon>format_list_numbered</mat-icon>
+        <span>Move to</span>
+      </button>
+      <button
+        mat-menu-item
+        type="button"
+        [disabled]="entries().length <= 1"
+        (click)="deleteMenuTarget()"
+      >
+        <mat-icon>delete_outline</mat-icon>
+        <span>Delete</span>
+      </button>
+    </mat-menu>
+    <mat-menu #moveMenu>
+      @for (entry of entries(); track entry.id; let i = $index) {
+        <button
+          mat-menu-item
+          type="button"
+          [disabled]="i === menuTargetIndex()"
+          (click)="moveMenuTarget(i)"
+        >
+          Position {{ i + 1 }}
+        </button>
+      }
     </mat-menu>
 
     <button matButton="outlined" type="button" (click)="addEntry()">

@@ -168,6 +168,33 @@ export class PgnGridEditor {
     }
   }
 
+  /** Index of the entry the context menu targets, or -1 if it has gone away. */
+  protected menuTargetIndex(): number {
+    const id = this.menuTargetId();
+    return id ? this.entries().findIndex((entry) => entry.id === id) : -1;
+  }
+
+  /** Moves the menu's target entry to `targetIndex` in the list. */
+  protected moveMenuTarget(targetIndex: number): void {
+    const entries = this.entries();
+    const currentIndex = this.menuTargetIndex();
+    if (currentIndex === -1 || currentIndex === targetIndex) {
+      return;
+    }
+    const reordered = [...entries];
+    moveItemInArray(reordered, currentIndex, targetIndex);
+    this.writeEntries(reordered);
+  }
+
+  protected deleteMenuTarget(): void {
+    const index = this.menuTargetIndex();
+    if (index === -1) {
+      return;
+    }
+    const entry = this.entries()[index];
+    this.confirmRemove(entry.id, this.labelFor(entry, index));
+  }
+
   private stopEditing(entryId: string): void {
     this.editingIds.update((ids) => {
       const next = new Set(ids);
