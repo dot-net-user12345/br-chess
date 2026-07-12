@@ -52,6 +52,112 @@
   &__entries {
     display: flex;
     flex-direction: column;
-    gap: 1.25rem;
+    gap: 0.75rem;
   }
+}
+
+// The handle and remove button overlay the header row (they are DOM siblings of
+// the header, not nested inside its role="button"), so they sit inside the card
+// beside the title. The header's side padding (set globally) reserves their space.
+.entry-panel {
+  position: relative;
+
+  &__panel {
+    width: 100%;
+
+    // Material adds a 16px vertical margin to an expanded panel inside an
+    // accordion, which would shift the header down and away from the handle and
+    // remove button overlaid at its top. Spacing between panels is provided by
+    // the accordion's flex gap instead, so drop the margin.
+    &.mat-expansion-panel-spacing {
+      margin: 0;
+    }
+  }
+
+  &__handle,
+  &__remove {
+    position: absolute;
+    top: 0;
+    // Match the (globally fixed) header height so both center on its title row.
+    height: 48px;
+    z-index: 2;
+  }
+
+  &__handle {
+    left: 0.25rem;
+    cursor: grab;
+
+    &:active {
+      cursor: grabbing;
+    }
+  }
+
+  &__remove {
+    right: 0.25rem;
+  }
+
+  &__title {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    min-width: 0;
+  }
+
+  &__chevron {
+    flex: none;
+    color: var(--mat-sys-on-surface-variant);
+    transform: rotate(-90deg);
+    transition: transform 200ms cubic-bezier(0, 0, 0.2, 1);
+
+    &--open {
+      transform: rotate(0deg);
+    }
+  }
+
+  &__name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  &__meta {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+  }
+
+  &__status {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    font: var(--mat-sys-label-medium);
+
+    mat-icon {
+      font-size: 1.125rem;
+      width: 1.125rem;
+      height: 1.125rem;
+    }
+
+    &--valid {
+      color: var(--mat-sys-primary);
+    }
+
+    &--invalid {
+      color: var(--mat-sys-error);
+    }
+
+    &--empty {
+      color: var(--mat-sys-on-surface-variant);
+    }
+  }
+}
+
+// The gap left behind in the list at the panel's original position.
+.cdk-drag-placeholder {
+  opacity: 0.4;
+}
+
+// Smooth the shuffle of surrounding panels as one is dragged past them.
+.entry-panel.cdk-drag {
+  transition: transform 200ms cubic-bezier(0, 0, 0.2, 1);
 }

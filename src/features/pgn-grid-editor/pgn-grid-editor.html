@@ -28,18 +28,85 @@
       </button>
     </header>
 
-    <div class="pgn-grid-editor__entries">
+    <mat-accordion
+      class="pgn-grid-editor__entries"
+      multi
+      cdkDropList
+      (cdkDropListDropped)="onReorder($event)"
+    >
       @for (entry of entries(); track entry.id; let i = $index) {
-        <app-pgn-container
-          [label]="entry.label || 'Line ' + (i + 1)"
-          [initialPgn]="entry.pgn"
-          [canRemove]="entries().length > 1"
-          (contentChange)="onEntryChange(entry.id, $event)"
-          (labelChange)="onLabelChange(entry.id, $event)"
-          (remove)="removeEntry(entry.id)"
-        />
+        <!-- Handle and remove sit beside the panel (not inside its role="button"
+             header) so no interactive control is nested inside another. -->
+        <div class="entry-panel" cdkDrag cdkDragLockAxis="y">
+          <button
+            matIconButton
+            type="button"
+            cdkDragHandle
+            class="entry-panel__handle"
+            aria-label="Reorder line (drag)"
+          >
+            <mat-icon>drag_indicator</mat-icon>
+          </button>
+
+          <mat-expansion-panel
+            class="entry-panel__panel"
+            hideToggle
+            [expanded]="isExpanded(entry.id)"
+            (expandedChange)="setExpanded(entry.id, $event)"
+          >
+            <mat-expansion-panel-header>
+              <mat-panel-title class="entry-panel__title">
+                <mat-icon
+                  class="entry-panel__chevron"
+                  [class.entry-panel__chevron--open]="isExpanded(entry.id)"
+                  aria-hidden="true"
+                >
+                  expand_more
+                </mat-icon>
+                <span class="entry-panel__name">{{ labelFor(entry, i) }}</span>
+              </mat-panel-title>
+              <mat-panel-description class="entry-panel__meta">
+                @switch (statusOf(entry)) {
+                  @case ('valid') {
+                    <span class="entry-panel__status entry-panel__status--valid">
+                      <mat-icon aria-hidden="true">check_circle</mat-icon>
+                      Valid
+                    </span>
+                  }
+                  @case ('invalid') {
+                    <span class="entry-panel__status entry-panel__status--invalid">
+                      <mat-icon aria-hidden="true">error</mat-icon>
+                      Invalid
+                    </span>
+                  }
+                  @default {
+                    <span class="entry-panel__status entry-panel__status--empty">Empty</span>
+                  }
+                }
+              </mat-panel-description>
+            </mat-expansion-panel-header>
+
+            <app-pgn-container
+              [label]="entry.label || 'Line ' + (i + 1)"
+              [initialPgn]="entry.pgn"
+              (contentChange)="onEntryChange(entry.id, $event)"
+              (labelChange)="onLabelChange(entry.id, $event)"
+            />
+          </mat-expansion-panel>
+
+          <button
+            matIconButton
+            type="button"
+            class="entry-panel__remove"
+            [disabled]="entries().length <= 1"
+            [attr.aria-label]="'Remove ' + labelFor(entry, i)"
+            (click)="removeEntry(entry.id)"
+          >
+            <mat-icon>delete_outline</mat-icon>
+          </button>
+        </div>
       }
-    </div>
+    </mat-accordion>
 
     <button matButton="outlined" type="button" (click)="addEntry()">
       <mat-icon>add</mat-icon>

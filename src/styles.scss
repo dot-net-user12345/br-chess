@@ -42,3 +42,22 @@ body {
   color: var(--mat-sys-on-surface);
   font-family: Roboto, 'Helvetica Neue', sans-serif;
 }
+
+/* Floating clone shown under the cursor while a PGN entry panel is dragged. CDK
+   appends it to the body, outside any component's view encapsulation, so this
+   override must live globally. */
+.cdk-drag-preview {
+  border-radius: var(--mat-sys-corner-medium);
+  box-shadow: var(--mat-sys-level3);
+}
+
+/* Keep the PGN entry panel header a constant height whether collapsed or
+   expanded, and reserve side padding so its title clears the drag handle and
+   remove button overlaid at the header's left/right edges. The header lives
+   inside Material's own encapsulated view, so this override must be global. */
+.entry-panel__panel .mat-expansion-panel-header,
+.entry-panel__panel .mat-expansion-panel-header.mat-expanded {
+  height: 48px;
+  padding-left: 3rem;
+  padding-right: 3rem;
+}

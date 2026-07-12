@@ -1,6 +1,16 @@
-import { ChangeDetectionStrategy, Component, computed, effect, inject, input } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  effect,
+  inject,
+  input,
+  signal,
+} from '@angular/core';
+import { CdkDragDrop, DragDropModule, moveItemInArray } from '@angular/cdk/drag-drop';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
+import { MatExpansionModule } from '@angular/material/expansion';
 import { MatIconModule } from '@angular/material/icon';
 import { ChessService } from '../../core/chess-service';
 import { PgnParseResult } from '../../core/chess-models';
@@ -8,10 +18,20 @@ import { WorkspaceStore } from '../../core/workspace-store';
 import { NodeId, PgnEntry, PgnGridFileNode } from '../../core/workspace-models';
 import { PgnContainer } from '../pgn-container/pgn-container';
 
+/** Validity of a single entry's PGN, used to badge its collapsed panel header. */
+type EntryStatus = 'empty' | 'valid' | 'invalid';
+
 /** Editor for a `pgn-grid` file: manages its PGN entries and their board grids. */
 @Component({
   selector: 'app-pgn-grid-editor',
-  imports: [ReactiveFormsModule, MatButtonModule, MatIconModule, PgnContainer],
+  imports: [
+    ReactiveFormsModule,
+    DragDropModule,
+    MatButtonModule,
+    MatExpansionModule,
+    MatIconModule,
+    PgnContainer,
+  ],
   templateUrl: './pgn-grid-editor.html',
   styleUrl: './pgn-grid-editor.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -33,6 +53,9 @@ export class PgnGridEditor {
 
   /** Editable file title. Kept in sync with the selected file's name. */
   protected readonly titleControl = new FormControl('', { nonNullable: true });
+
+  /** Ids of entries whose panels the user has collapsed; all open by default. */
+  private readonly collapsedIds = signal<ReadonlySet<string>>(new Set());
 
   constructor() {
     // Seed the title field, and re-seed when a different file is selected or the
@@ -83,6 +106,45 @@ export class PgnGridEditor {
 
   protected removeEntry(entryId: string): void {
     this.writeEntries(this.entries().filter((entry) => entry.id !== entryId));
+  }
+
+  /** Reorders entries when a panel is dropped in its new position. */
+  protected onReorder(event: CdkDragDrop<readonly PgnEntry[]>): void {
+    if (event.previousIndex === event.currentIndex) {
+      return;
+    }
+    const reordered = [...this.entries()];
+    moveItemInArray(reordered, event.previousIndex, event.currentIndex);
+    this.writeEntries(reordered);
+  }
+
+  /** Display label for an entry's collapsed panel header. */
+  protected labelFor(entry: PgnEntry, index: number): string {
+    return entry.label || `Line ${index + 1}`;
+  }
+
+  /** Validity badge shown in a collapsed panel header. */
+  protected statusOf(entry: PgnEntry): EntryStatus {
+    if (entry.pgn.trim().length === 0) {
+      return 'empty';
+    }
+    return this.chess.parsePgn(entry.pgn).valid ? 'valid' : 'invalid';
+  }
+
+  protected isExpanded(entryId: string): boolean {
+    return !this.collapsedIds().has(entryId);
+  }
+
+  protected setExpanded(entryId: string, expanded: boolean): void {
+    this.collapsedIds.update((ids) => {
+      const next = new Set(ids);
+      if (expanded) {
+        next.delete(entryId);
+      } else {
+        next.add(entryId);
+      }
+      return next;
+    });
   }
 
   protected save(): void {
