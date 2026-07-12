@@ -32,6 +32,20 @@ export const MOVE_ARROW_COLOR = 'rgba(255, 145, 0, 0.85)';
  */
 export const DIVERGENT_MOVE_COLOR = 'rgba(142, 36, 170, 0.9)';
 
+/**
+ * Distinct highlight colors for the Differences panel — one per comparison,
+ * cycled when there are more comparisons than colors. Deliberately excludes the
+ * purple {@link DIVERGENT_MOVE_COLOR} used inside the PGN containers.
+ */
+export const COMPARISON_PALETTE = [
+  'rgba(0, 150, 136, 0.9)', // teal
+  'rgba(245, 124, 0, 0.9)', // orange
+  'rgba(216, 27, 96, 0.9)', // pink
+  'rgba(30, 136, 229, 0.9)', // blue
+  'rgba(67, 160, 71, 0.9)', // green
+  'rgba(229, 57, 53, 0.9)', // red
+];
+
 /** Path to the piece image for a FEN piece code, relative to the app root. */
 export function pieceAssetPath(piece: PieceCode): string {
   return `assets/pieces/Chess_${PIECE_ASSETS[piece]}.svg`;

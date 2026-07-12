@@ -22,6 +22,7 @@ import { ChessService } from '../../core/chess-service';
 import { GamePosition, PgnParseResult } from '../../core/chess-models';
 import { WorkspaceStore } from '../../core/workspace-store';
 import { NodeId, PgnEntry, PgnGridFileNode } from '../../core/workspace-models';
+import { COMPARISON_PALETTE } from '../../core/board-assets';
 import { comparisonIndex, divergentPlies } from '../../core/move-comparison';
 import { FocusOnInit } from '../../shared/focus-on-init';
 import { ChessBoard } from '../chess-board/chess-board';
@@ -120,7 +121,9 @@ export class PgnGridEditor {
       if (boards.length === 0) {
         return;
       }
-      rows.push({ flatIndex: flatIndex++, label: this.labelFor(entries[i], i), boards });
+      // Each comparison gets its own color, cycling through the palette.
+      const color = COMPARISON_PALETTE[flatIndex % COMPARISON_PALETTE.length];
+      rows.push({ flatIndex: flatIndex++, label: this.labelFor(entries[i], i), color, boards });
     });
     return rows;
   });
@@ -130,8 +133,8 @@ export class PgnGridEditor {
     this.comparisonRows().reduce((total, row) => total + row.boards.length, 0),
   );
 
-  /** Whether the differences panel is expanded. */
-  protected readonly differencesExpanded = signal(true);
+  /** Whether the differences panel is expanded; closed by default. */
+  protected readonly differencesExpanded = signal(false);
 
   /** Editable file title. Kept in sync with the selected file's name. */
   protected readonly titleControl = new FormControl('', { nonNullable: true });

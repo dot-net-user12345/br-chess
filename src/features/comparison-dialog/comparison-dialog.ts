@@ -15,6 +15,8 @@ export interface ComparisonBoard {
 /** A single PGN line's differing moves, shown together. */
 export interface ComparisonDialogItem {
   readonly label: string;
+  /** Highlight color for this line's boards (arrow, outline, destination glow). */
+  readonly color: string;
   readonly boards: readonly ComparisonBoard[];
 }
 
@@ -91,6 +93,7 @@ export interface ComparisonDialogData {
               [from]="board.from"
               [to]="board.to"
               [highlighted]="true"
+              [highlightColor]="current().color"
             />
             <p class="cmp__move">{{ board.caption }}</p>
           </figure>

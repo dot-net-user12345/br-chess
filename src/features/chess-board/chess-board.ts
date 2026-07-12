@@ -43,7 +43,7 @@ const PIECE_NAMES: Record<string, string> = {
   host: {
     class: 'chess-board',
     '[class.chess-board--divergent]': 'highlighted()',
-    '[style.--board-highlight-color]': 'highlighted() ? divergentColor : null',
+    '[style.--board-highlight-color]': 'highlighted() ? highlightHue() : null',
     '[attr.aria-label]': 'ariaLabel()',
     role: 'img',
   },
@@ -87,13 +87,16 @@ export class ChessBoard {
   readonly from = input<string | null>(null);
   /** Move destination square (e.g. `e4`); pair with `from` to draw the move arrow. */
   readonly to = input<string | null>(null);
-  /** When true, draws the move in the divergent color with a matching outline. */
+  /** When true, draws the move in the highlight color with a matching outline. */
   readonly highlighted = input<boolean>(false);
+  /** Overrides the highlight color; defaults to the divergent purple. */
+  readonly highlightColor = input<string | null>(null);
 
-  protected readonly divergentColor = DIVERGENT_MOVE_COLOR;
+  /** Resolved highlight color: the override when set, else the divergent purple. */
+  protected readonly highlightHue = computed(() => this.highlightColor() ?? DIVERGENT_MOVE_COLOR);
 
   protected readonly arrowColor = computed(() =>
-    this.highlighted() ? DIVERGENT_MOVE_COLOR : MOVE_ARROW_COLOR,
+    this.highlighted() ? this.highlightHue() : MOVE_ARROW_COLOR,
   );
 
   /**
