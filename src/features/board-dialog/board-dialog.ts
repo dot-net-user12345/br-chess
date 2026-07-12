@@ -28,10 +28,21 @@ export interface BoardDialogData {
   host: {
     '(keydown.arrowleft)': 'prev()',
     '(keydown.arrowright)': 'next()',
+    '(keydown.home)': 'first()',
+    '(keydown.end)': 'last()',
   },
   template: `
     <div class="board-dialog">
       <div class="board-dialog__bar">
+        <button
+          matIconButton
+          type="button"
+          (click)="first()"
+          [disabled]="!hasPrev()"
+          aria-label="First position"
+        >
+          <mat-icon>first_page</mat-icon>
+        </button>
         <button
           matIconButton
           type="button"
@@ -51,6 +62,15 @@ export interface BoardDialogData {
           aria-label="Next position"
         >
           <mat-icon>chevron_right</mat-icon>
+        </button>
+        <button
+          matIconButton
+          type="button"
+          (click)="last()"
+          [disabled]="!hasNext()"
+          aria-label="Last position"
+        >
+          <mat-icon>last_page</mat-icon>
         </button>
         <button matIconButton mat-dialog-close type="button" aria-label="Close">
           <mat-icon>close</mat-icon>
@@ -123,5 +143,13 @@ export class BoardDialog {
     if (this.hasNext()) {
       this.index.update((i) => i + 1);
     }
+  }
+
+  protected first(): void {
+    this.index.set(0);
+  }
+
+  protected last(): void {
+    this.index.set(this.data.tiles.length - 1);
   }
 }

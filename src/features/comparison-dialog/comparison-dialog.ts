@@ -31,10 +31,21 @@ export interface ComparisonDialogData {
   host: {
     '(keydown.arrowleft)': 'prev()',
     '(keydown.arrowright)': 'next()',
+    '(keydown.home)': 'first()',
+    '(keydown.end)': 'last()',
   },
   template: `
     <div class="cmp">
       <div class="cmp__bar">
+        <button
+          matIconButton
+          type="button"
+          (click)="first()"
+          [disabled]="!hasPrev()"
+          aria-label="First line"
+        >
+          <mat-icon>first_page</mat-icon>
+        </button>
         <button
           matIconButton
           type="button"
@@ -56,6 +67,15 @@ export interface ComparisonDialogData {
           aria-label="Next line"
         >
           <mat-icon>chevron_right</mat-icon>
+        </button>
+        <button
+          matIconButton
+          type="button"
+          (click)="last()"
+          [disabled]="!hasNext()"
+          aria-label="Last line"
+        >
+          <mat-icon>last_page</mat-icon>
         </button>
         <button matIconButton mat-dialog-close type="button" aria-label="Close">
           <mat-icon>close</mat-icon>
@@ -158,5 +178,13 @@ export class ComparisonDialog {
     if (this.hasNext()) {
       this.index.update((i) => i + 1);
     }
+  }
+
+  protected first(): void {
+    this.index.set(0);
+  }
+
+  protected last(): void {
+    this.index.set(this.data.items.length - 1);
   }
 }
