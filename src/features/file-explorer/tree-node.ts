@@ -10,10 +10,12 @@ import {
 } from '@angular/core';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
+import { MatDialog } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule, MatMenuTrigger } from '@angular/material/menu';
 import { WorkspaceStore } from '../../core/workspace-store';
 import { isFolder, NodeId, WorkspaceNode } from '../../core/workspace-models';
+import { ConfirmDialog, ConfirmDialogData } from '../confirm-dialog/confirm-dialog';
 
 /** One row in the workspace tree; recurses to render a folder's children. */
 @Component({
@@ -25,6 +27,7 @@ import { isFolder, NodeId, WorkspaceNode } from '../../core/workspace-models';
 })
 export class TreeNode {
   private readonly store = inject(WorkspaceStore);
+  private readonly dialog = inject(MatDialog);
 
   readonly nodeId = input.required<NodeId>();
 
@@ -88,8 +91,28 @@ export class TreeNode {
     this.store.createFolder(this.nodeId());
   }
 
-  protected remove(): void {
-    this.store.deleteNode(this.nodeId());
+  /** Confirms before deleting, since removal is permanent (and recursive for folders). */
+  protected confirmRemove(): void {
+    const node = this.node();
+    if (!node) {
+      return;
+    }
+    const folder = isFolder(node);
+    const data: ConfirmDialogData = {
+      title: folder ? 'Delete folder?' : 'Delete file?',
+      message: folder
+        ? `“${node.name}” and everything inside it will be permanently deleted.`
+        : `“${node.name}” will be permanently deleted.`,
+      confirmLabel: 'Delete',
+    };
+    this.dialog
+      .open(ConfirmDialog, { data, autoFocus: 'first-tabbable' })
+      .afterClosed()
+      .subscribe((confirmed) => {
+        if (confirmed) {
+          this.store.deleteNode(this.nodeId());
+        }
+      });
   }
 
   protected onContextMenu(event: MouseEvent): void {
