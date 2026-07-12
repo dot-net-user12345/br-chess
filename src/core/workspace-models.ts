@@ -9,6 +9,8 @@ export interface PgnEntry {
   readonly pgn: string;
   /** User-editable display label. Falls back to a positional default when unset. */
   readonly label?: string;
+  /** User-entered captions per board position, keyed by ply (0 = starting position). */
+  readonly captions?: Readonly<Record<number, string>>;
   /**
    * Cloud Storage download URLs for each rendered board position, in ply order
    * (index 0 is the starting position). Populated on save; absent for entries
