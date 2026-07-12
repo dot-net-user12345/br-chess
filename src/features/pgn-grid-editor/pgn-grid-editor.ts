@@ -10,12 +10,14 @@ import {
   viewChild,
 } from '@angular/core';
 import { CdkDragDrop, DragDropModule, moveItemInArray } from '@angular/cdk/drag-drop';
+import { firstValueFrom } from 'rxjs';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog } from '@angular/material/dialog';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule, MatMenuTrigger } from '@angular/material/menu';
+import { AuthService } from '../../core/auth-service';
 import { ChessService } from '../../core/chess-service';
 import { PgnParseResult } from '../../core/chess-models';
 import { WorkspaceStore } from '../../core/workspace-store';
@@ -23,6 +25,7 @@ import { NodeId, PgnEntry, PgnGridFileNode } from '../../core/workspace-models';
 import { comparisonIndex, divergentPlies } from '../../core/move-comparison';
 import { FocusOnInit } from '../../shared/focus-on-init';
 import { ConfirmDialog, ConfirmDialogData } from '../confirm-dialog/confirm-dialog';
+import { LoginDialog } from '../login-dialog/login-dialog';
 import { PgnContainer } from '../pgn-container/pgn-container';
 
 /** Validity of a single entry's PGN, used to badge its collapsed panel header. */
@@ -49,6 +52,7 @@ export class PgnGridEditor {
   private readonly store = inject(WorkspaceStore);
   private readonly chess = inject(ChessService);
   private readonly dialog = inject(MatDialog);
+  private readonly auth = inject(AuthService);
 
   readonly fileId = input.required<NodeId>();
 
@@ -287,7 +291,16 @@ export class PgnGridEditor {
     });
   }
 
-  protected save(): void {
+  protected async save(): Promise<void> {
+    // Saving persists to the cloud, so require a signed-in user first.
+    if (!this.auth.isSignedIn()) {
+      const user = await firstValueFrom(
+        this.dialog.open(LoginDialog, { autoFocus: 'dialog' }).afterClosed(),
+      );
+      if (!user) {
+        return;
+      }
+    }
     void this.store.saveFile(this.fileId());
   }
 

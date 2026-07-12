@@ -1,0 +1,98 @@
+<h2 mat-dialog-title>Sign in to save</h2>
+
+<mat-dialog-content>
+  @if (view() === 'main') {
+    <form class="login-dialog__email" [formGroup]="emailForm" (ngSubmit)="signInEmail()">
+      <mat-form-field appearance="outline">
+        <mat-label>Email</mat-label>
+        <input matInput type="email" formControlName="email" autocomplete="email" />
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Password</mat-label>
+        <input
+          matInput
+          type="password"
+          formControlName="password"
+          autocomplete="current-password"
+        />
+      </mat-form-field>
+      <div class="login-dialog__email-actions">
+        <button matButton="filled" type="submit" [disabled]="busy()">Sign in</button>
+        <button matButton type="button" [disabled]="busy()" (click)="registerEmail()">
+          Create account
+        </button>
+      </div>
+    </form>
+
+    <div class="login-dialog__divider"><span>or</span></div>
+
+    <div class="login-dialog__providers">
+      <button
+        matButton="outlined"
+        type="button"
+        [disabled]="busy()"
+        (click)="signInSocial('google')"
+      >
+        Continue with Google
+      </button>
+      <button
+        matButton="outlined"
+        type="button"
+        [disabled]="busy()"
+        (click)="signInSocial('facebook')"
+      >
+        Continue with Facebook
+      </button>
+      <button matButton="outlined" type="button" [disabled]="busy()" (click)="showPhone()">
+        Sign in with phone
+      </button>
+    </div>
+  } @else {
+    <form
+      class="login-dialog__phone"
+      (ngSubmit)="confirmation() ? verifyCode() : sendCode()"
+    >
+      <mat-form-field appearance="outline">
+        <mat-label>Phone number</mat-label>
+        <input
+          matInput
+          type="tel"
+          [formControl]="phoneControl"
+          [readonly]="!!confirmation()"
+          placeholder="+14155552671"
+          autocomplete="tel"
+        />
+        <mat-hint>Include the country code, e.g. +1</mat-hint>
+      </mat-form-field>
+
+      @if (confirmation()) {
+        <mat-form-field appearance="outline">
+          <mat-label>Verification code</mat-label>
+          <input
+            matInput
+            type="text"
+            inputmode="numeric"
+            [formControl]="codeControl"
+            autocomplete="one-time-code"
+          />
+        </mat-form-field>
+        <button matButton="filled" type="submit" [disabled]="busy()">Verify</button>
+      } @else {
+        <button matButton="filled" type="submit" [disabled]="busy()">Send code</button>
+      }
+    </form>
+
+    <button matButton type="button" [disabled]="busy()" (click)="back()">Back</button>
+
+    <!-- Anchors the invisible reCAPTCHA required for phone sign-in. -->
+    <div #recaptcha></div>
+  }
+
+  @if (error(); as message) {
+    <p class="login-dialog__error" role="alert">{{ message }}</p>
+  }
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button matButton type="button" [disabled]="busy()" [mat-dialog-close]="null">Cancel</button>
+</mat-dialog-actions>

@@ -30,4 +30,32 @@
   >
     <mat-icon fontSet="material-symbols-outlined">{{ dark ? 'light_mode' : 'dark_mode' }}</mat-icon>
   </button>
+
+  @if (auth.isSignedIn()) {
+    <button
+      matButton
+      type="button"
+      class="account"
+      [matMenuTriggerFor]="accountMenu"
+      [attr.aria-label]="'Signed in as ' + userLabel()"
+    >
+      <mat-icon fontSet="material-symbols-outlined">account_circle</mat-icon>
+      <span class="account__label">{{ userLabel() }}</span>
+    </button>
+    <mat-menu #accountMenu>
+      <div class="account__identity" mat-menu-item disabled>
+        <mat-icon fontSet="material-symbols-outlined">badge</mat-icon>
+        <span>{{ userLabel() }}</span>
+      </div>
+      <button mat-menu-item type="button" (click)="signOut()">
+        <mat-icon fontSet="material-symbols-outlined">logout</mat-icon>
+        <span>Sign out</span>
+      </button>
+    </mat-menu>
+  } @else {
+    <button matButton type="button" (click)="signIn()">
+      <mat-icon fontSet="material-symbols-outlined">login</mat-icon>
+      Sign in
+    </button>
+  }
 </mat-toolbar>

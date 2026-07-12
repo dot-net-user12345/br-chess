@@ -1,0 +1,44 @@
+.login-dialog {
+  &__email,
+  &__phone {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    min-width: 18rem;
+  }
+
+  &__email-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  &__providers {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  // "or" separator between the email form and the social/phone options.
+  &__divider {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin: 0.5rem 0 1rem;
+    color: var(--mat-sys-on-surface-variant);
+    font: var(--mat-sys-label-medium);
+
+    &::before,
+    &::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--mat-sys-outline-variant);
+    }
+  }
+
+  &__error {
+    margin: 1rem 0 0;
+    color: var(--mat-sys-error);
+  }
+}

@@ -25,3 +25,21 @@
 .spacer {
   flex: 1 1 auto;
 }
+
+.account {
+  flex: none;
+  max-width: 12rem;
+
+  &__label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+// On narrow screens collapse the account button to just its icon.
+@media (max-width: 30rem) {
+  .account__label {
+    display: none;
+  }
+}
