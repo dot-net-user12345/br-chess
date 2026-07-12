@@ -7,11 +7,3 @@ mat-nav-list {
   padding-top: 0;
 }
 
-/* Tone down the saturation of the active/selected item by mixing Material's
-   secondary-container token toward the surface color. */
-:host ::ng-deep .mat-mdc-list-item.mdc-list-item--activated {
-  background-color: light-dark(
-    color-mix(in srgb, var(--mat-sys-secondary-container) 20%, var(--mat-sys-surface)),
-    #2b3242
-  ) !important;
-}
