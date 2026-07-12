@@ -27,6 +27,15 @@ body {
   height: 100%;
 }
 
+/* Fullscreen board preview: strip the dialog's default padding so the board can
+   fill nearly the whole viewport. The panel is rendered in a CDK overlay outside
+   any component's view encapsulation, so this override must live globally. */
+.board-dialog-panel .mat-mdc-dialog-surface {
+  padding: 0;
+  overflow: hidden;
+  border-radius: var(--mat-sys-corner-large);
+}
+
 body {
   margin: 0;
   background: light-dark(#e8edf2, #23262d);

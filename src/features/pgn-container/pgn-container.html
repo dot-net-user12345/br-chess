@@ -39,12 +39,19 @@
       <ol class="pgn-container__grid" aria-label="Move-by-move board progression">
         @for (tile of tiles(); track $index) {
           <li class="pgn-container__tile">
-            <app-chess-board
-              [fen]="tile.fen"
-              [caption]="tile.caption"
-              [from]="tile.from"
-              [to]="tile.to"
-            />
+            <button
+              type="button"
+              class="pgn-container__tile-button"
+              (click)="openTile(tile)"
+              [attr.aria-label]="'View ' + tile.caption + ' fullscreen'"
+            >
+              <app-chess-board
+                [fen]="tile.fen"
+                [caption]="tile.caption"
+                [from]="tile.from"
+                [to]="tile.to"
+              />
+            </button>
             <span class="pgn-container__caption">{{ tile.caption }}</span>
           </li>
         }

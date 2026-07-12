@@ -11,11 +11,13 @@ import {
 import { FormControl, ReactiveFormsModule, ValidatorFn } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
+import { MatDialog } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { ChessService } from '../../core/chess-service';
 import { PgnParseResult } from '../../core/chess-models';
+import { BoardDialog } from '../board-dialog/board-dialog';
 import { ChessBoard } from '../chess-board/chess-board';
 
 interface BoardTile {
@@ -46,6 +48,7 @@ interface BoardTile {
 })
 export class PgnContainer implements OnInit {
   private readonly chess = inject(ChessService);
+  private readonly dialog = inject(MatDialog);
 
   /** Seeds the label once; the field is editable thereafter. */
   readonly label = input<string>('Game');
@@ -116,6 +119,18 @@ export class PgnContainer implements OnInit {
 
   protected removeContainer(): void {
     this.remove.emit();
+  }
+
+  /** Opens a fullscreen modal showing the clicked board preview at large size. */
+  protected openTile(tile: BoardTile): void {
+    this.dialog.open(BoardDialog, {
+      data: tile,
+      panelClass: 'board-dialog-panel',
+      ariaLabel: `Board preview: ${tile.caption}`,
+      maxWidth: '98vw',
+      maxHeight: '98vh',
+      autoFocus: 'dialog',
+    });
   }
 
   private captionFor(
