@@ -27,6 +27,13 @@
     padding: 0.5rem;
     overflow-y: auto;
     flex: 1 1 auto;
+
+    // Highlight the whole tree area as the "move to root" drop zone.
+    &--drop-target {
+      outline: 2px dashed var(--mat-sys-primary);
+      outline-offset: -4px;
+      border-radius: var(--mat-sys-corner-small);
+    }
   }
 
   &__empty {

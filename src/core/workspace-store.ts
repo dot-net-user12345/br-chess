@@ -44,6 +44,9 @@ export class WorkspaceStore {
   private readonly selectedId = signal<NodeId | null>(null);
   private readonly expandedIds = signal<ReadonlySet<NodeId>>(new Set());
 
+  /** Id of the node currently being dragged in the explorer, if any. */
+  readonly draggingId = signal<NodeId | null>(null);
+
   readonly status = signal<StatusMessage | null>(null);
   readonly configured = this.repo.isConfigured;
 
@@ -176,6 +179,70 @@ export class WorkspaceStore {
     for (const nodeId of ids) {
       void this.persistDelete(nodeId);
     }
+  }
+
+  startDrag(id: NodeId): void {
+    this.draggingId.set(id);
+  }
+
+  endDrag(): void {
+    this.draggingId.set(null);
+  }
+
+  /**
+   * Whether the node currently being dragged can be dropped under `targetId`
+   * (a folder id, or null for the root). False when nothing is being dragged,
+   * the target is where it already lives, or the drop would nest a folder inside
+   * itself or one of its descendants.
+   */
+  canDrop(targetId: NodeId | null): boolean {
+    const dragId = this.draggingId();
+    if (dragId === null) {
+      return false;
+    }
+    const node = this.nodes()[dragId];
+    if (!node || targetId === node.parentId) {
+      return false;
+    }
+    if (targetId !== null) {
+      const target = this.nodes()[targetId];
+      if (!target || !isFolder(target) || this.collectSubtree(dragId).includes(targetId)) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  /** Moves a node under a new parent folder, or to the root when `newParentId` is null. */
+  moveNode(id: NodeId, newParentId: NodeId | null): void {
+    const node = this.nodes()[id];
+    if (!node || !this.isValidMove(id, newParentId)) {
+      return;
+    }
+    const updated: WorkspaceNode = {
+      ...node,
+      name: this.uniqueName(newParentId, node.name),
+      parentId: newParentId,
+      updatedAt: this.now(),
+    };
+    this.put(updated);
+    this.expand(newParentId);
+    void this.persist(updated);
+  }
+
+  /** Structural validity of moving `id` under `newParentId`, independent of drag state. */
+  private isValidMove(id: NodeId, newParentId: NodeId | null): boolean {
+    const node = this.nodes()[id];
+    if (!node || newParentId === node.parentId) {
+      return false;
+    }
+    if (newParentId !== null) {
+      const target = this.nodes()[newParentId];
+      if (!target || !isFolder(target) || this.collectSubtree(id).includes(newParentId)) {
+        return false;
+      }
+    }
+    return true;
   }
 
   /** Replaces a pgn-grid file's content locally. Persist with {@link saveFile}. */

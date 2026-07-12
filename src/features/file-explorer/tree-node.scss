@@ -15,6 +15,12 @@
       background: var(--mat-sys-secondary-container);
       color: var(--mat-sys-on-secondary-container);
     }
+
+    &--drop-target {
+      outline: 2px solid var(--mat-sys-primary);
+      outline-offset: -2px;
+      background: color-mix(in srgb, var(--mat-sys-primary) 14%, transparent);
+    }
   }
 
   &__label {

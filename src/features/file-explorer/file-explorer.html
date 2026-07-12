@@ -23,7 +23,15 @@
   </div>
 
   @if (rootNodes().length > 0) {
-    <ul class="file-explorer__tree" role="tree" aria-label="Workspace files">
+    <ul
+      class="file-explorer__tree"
+      [class.file-explorer__tree--drop-target]="rootDropActive()"
+      role="tree"
+      aria-label="Workspace files"
+      (dragover)="onRootDragOver($event)"
+      (dragleave)="onRootDragLeave()"
+      (drop)="onRootDrop($event)"
+    >
       @for (node of rootNodes(); track node.id) {
         <li>
           <app-tree-node [nodeId]="node.id" />

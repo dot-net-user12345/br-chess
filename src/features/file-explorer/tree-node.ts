@@ -32,6 +32,9 @@ export class TreeNode {
   protected readonly editing = signal(false);
   protected readonly nameControl = new FormControl('', { nonNullable: true });
 
+  /** True while a valid drag is hovering this folder as a drop target. */
+  protected readonly dropActive = signal(false);
+
   protected activate(): void {
     if (this.isFolderNode()) {
       this.store.toggleExpanded(this.nodeId());
@@ -69,5 +72,65 @@ export class TreeNode {
 
   protected remove(): void {
     this.store.deleteNode(this.nodeId());
+  }
+
+  protected onDragStart(event: DragEvent): void {
+    this.store.startDrag(this.nodeId());
+    if (event.dataTransfer) {
+      event.dataTransfer.effectAllowed = 'move';
+      // A payload is required for the drag to be valid in some browsers.
+      event.dataTransfer.setData('text/plain', this.nodeId());
+    }
+  }
+
+  protected onDragEnd(): void {
+    this.store.endDrag();
+    this.dropActive.set(false);
+  }
+
+  protected onDragOver(event: DragEvent): void {
+    const target = this.dropTarget();
+    if (target === undefined || !this.store.canDrop(target)) {
+      return;
+    }
+    // preventDefault marks this element as a valid drop target.
+    event.preventDefault();
+    event.stopPropagation();
+    if (event.dataTransfer) {
+      event.dataTransfer.dropEffect = 'move';
+    }
+    this.dropActive.set(true);
+  }
+
+  protected onDragLeave(): void {
+    this.dropActive.set(false);
+  }
+
+  protected onDrop(event: DragEvent): void {
+    const target = this.dropTarget();
+    if (target === undefined) {
+      return;
+    }
+    event.preventDefault();
+    event.stopPropagation();
+    this.dropActive.set(false);
+    const dragId = this.store.draggingId();
+    if (dragId) {
+      this.store.moveNode(dragId, target);
+    }
+    this.store.endDrag();
+  }
+
+  /**
+   * The folder this row drops into: itself when it's a folder, otherwise its
+   * parent folder (or root) so dropping onto a file targets its container.
+   * `undefined` when the node is missing.
+   */
+  private dropTarget(): NodeId | null | undefined {
+    const node = this.node();
+    if (!node) {
+      return undefined;
+    }
+    return isFolder(node) ? node.id : node.parentId;
   }
 }
