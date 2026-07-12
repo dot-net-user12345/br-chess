@@ -34,10 +34,6 @@ export class Home {
   private dragStartX = 0;
   private dragStartWidth = 0;
 
-  constructor() {
-    void this.store.init();
-  }
-
   protected onResizeStart(event: PointerEvent): void {
     event.preventDefault();
     this.dragStartX = event.clientX;

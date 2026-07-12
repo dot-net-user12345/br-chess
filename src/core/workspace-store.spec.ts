@@ -1,7 +1,10 @@
 import { TestBed } from '@angular/core/testing';
+import { signal } from '@angular/core';
 
 import { WorkspaceStore } from './workspace-store';
 import { WorkspaceRepository } from './workspace-repository';
+import { AuthService } from './auth-service';
+import { BoardImageService } from './board-image-service';
 import { isFile, isFolder } from './workspace-models';
 
 describe('WorkspaceStore', () => {
@@ -14,10 +17,20 @@ describe('WorkspaceStore', () => {
           provide: WorkspaceRepository,
           useValue: {
             isConfigured: false,
-            loadAll: async () => [],
+            loadForUser: async () => [],
             saveNode: async () => {},
             deleteNode: async () => {},
           },
+        },
+        {
+          // Signed out: the store stays local, so no Firebase Auth is needed.
+          provide: AuthService,
+          useValue: { user: signal(null), isSignedIn: signal(false) },
+        },
+        {
+          // Board rendering hits Cloud Storage, which these tests don't exercise.
+          provide: BoardImageService,
+          useValue: { urlsForPositions: async () => [] },
         },
       ],
     });

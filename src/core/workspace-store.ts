@@ -1,4 +1,5 @@
-import { computed, inject, Injectable, signal } from '@angular/core';
+import { computed, effect, inject, Injectable, signal } from '@angular/core';
+import { AuthService } from './auth-service';
 import { BoardImageService } from './board-image-service';
 import { ChessService } from './chess-service';
 import { comparisonIndex, divergentPlies } from './move-comparison';
@@ -40,10 +41,32 @@ export class WorkspaceStore {
   private readonly repo = inject(WorkspaceRepository);
   private readonly chess = inject(ChessService);
   private readonly boardImages = inject(BoardImageService);
+  private readonly auth = inject(AuthService);
 
   private readonly nodes = signal<Record<NodeId, WorkspaceNode>>({});
   private readonly selectedId = signal<NodeId | null>(null);
   private readonly expandedIds = signal<ReadonlySet<NodeId>>(new Set());
+
+  /** The uid whose workspace is currently loaded; guards against re-loading. */
+  private loadedUid: string | null | undefined = undefined;
+
+  constructor() {
+    // The workspace follows the signed-in user: load their nodes when they sign
+    // in (or when a session is restored on startup) and clear them on sign-out,
+    // so one user's data never leaks into another's session.
+    effect(() => {
+      const uid = this.auth.user()?.uid ?? null;
+      if (uid === this.loadedUid) {
+        return;
+      }
+      this.loadedUid = uid;
+      if (uid) {
+        void this.loadForUser(uid);
+      } else {
+        this.clearWorkspace();
+      }
+    });
+  }
 
   /** Id of the node currently being dragged in the explorer, if any. */
   readonly draggingId = signal<NodeId | null>(null);
@@ -75,21 +98,38 @@ export class WorkspaceStore {
     return this.expandedIds().has(id);
   }
 
-  /** Loads persisted nodes when Firebase is configured; otherwise stays local. */
-  async init(): Promise<void> {
+  /**
+   * Loads the signed-in user's persisted nodes. Any local-only nodes created
+   * before signing in (ownerId still empty) are claimed by the user and synced,
+   * so scratch work isn't lost when they sign in.
+   */
+  private async loadForUser(uid: string): Promise<void> {
     if (!this.repo.isConfigured) {
       return;
     }
     try {
-      const loaded = await this.repo.loadAll();
+      const orphans = Object.values(this.nodes()).filter((node) => !node.ownerId);
+      const loaded = await this.repo.loadForUser(uid);
       const record: Record<NodeId, WorkspaceNode> = {};
       for (const node of loaded) {
         record[node.id] = node;
+      }
+      for (const orphan of orphans) {
+        const claimed = { ...orphan, ownerId: uid };
+        record[claimed.id] = claimed;
+        void this.persist(claimed);
       }
       this.nodes.set(record);
     } catch (err) {
       this.status.set({ type: 'error', text: this.describe(err, 'Could not load your workspace.') });
     }
+  }
+
+  /** Drops all in-memory workspace state; used when the user signs out. */
+  private clearWorkspace(): void {
+    this.nodes.set({});
+    this.selectedId.set(null);
+    this.expandedIds.set(new Set());
   }
 
   select(id: NodeId): void {
@@ -124,6 +164,7 @@ export class WorkspaceStore {
       kind: 'folder',
       name: this.uniqueName(parentId, 'New folder'),
       parentId,
+      ownerId: this.ownerId(),
       createdAt: now,
       updatedAt: now,
     };
@@ -142,6 +183,7 @@ export class WorkspaceStore {
       fileType,
       name: this.uniqueName(parentId, 'New Comparison'),
       parentId,
+      ownerId: this.ownerId(),
       createdAt: now,
       updatedAt: now,
       content: { entries: [{ id: this.id(), pgn: '' }] },
@@ -273,11 +315,17 @@ export class WorkspaceStore {
       });
       return;
     }
+    const uid = this.auth.user()?.uid;
+    if (!uid) {
+      this.status.set({ type: 'error', text: 'Sign in to save your work.' });
+      return;
+    }
     try {
       this.status.set({ type: 'info', text: `Rendering boards and saving “${node.name}”…` });
-      const rendered = await this.withRenderedBoards(node);
+      // Stamp ownership so a file created before signing in becomes the user's.
+      const rendered = { ...(await this.withRenderedBoards(node)), ownerId: uid };
       await this.repo.saveNode(rendered);
-      // Keep the local copy in sync with the persisted image URLs.
+      // Keep the local copy in sync with the persisted image URLs and owner.
       this.put(rendered);
       this.status.set({ type: 'success', text: `Saved “${rendered.name}”.` });
     } catch (err) {
@@ -362,15 +410,35 @@ export class WorkspaceStore {
     return `${base} ${index}`;
   }
 
+  /** Current user's uid, or '' when signed out (local-only nodes). */
+  private ownerId(): string {
+    return this.auth.user()?.uid ?? '';
+  }
+
   private async persist(node: WorkspaceNode): Promise<void> {
+    // Persistence requires a signed-in user; while signed out, changes stay
+    // local and are synced once the user signs in (their nodes get claimed).
+    const uid = this.auth.user()?.uid;
+    if (!uid) {
+      return;
+    }
+    // Ensure the document is written under the current user, satisfying the
+    // ownership rules even for a node created moments before signing in.
+    const owned = node.ownerId === uid ? node : { ...node, ownerId: uid };
+    if (owned !== node) {
+      this.put(owned);
+    }
     try {
-      await this.repo.saveNode(node);
+      await this.repo.saveNode(owned);
     } catch (err) {
       this.status.set({ type: 'error', text: this.describe(err, 'Could not sync a change.') });
     }
   }
 
   private async persistDelete(id: NodeId): Promise<void> {
+    if (!this.auth.user()) {
+      return;
+    }
     try {
       await this.repo.deleteNode(id);
     } catch (err) {

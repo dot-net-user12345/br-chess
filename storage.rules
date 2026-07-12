@@ -2,18 +2,30 @@ rules_version = '2';
 
 // Cloud Storage security rules for br-chess.
 //
-// Rendered board images are written by BoardImageService at `moves/{hash}.png`
-// (content-addressed by a hash of the position's FEN). The app currently has no
-// authentication, so this path is left open for development. Lock it down
-// before shipping — see the `request.auth` note.
+// Rendered board images are written by BoardImageService at `moves/{hash}.png`,
+// where {hash} is the 64-char SHA-256 of the position (content-addressed, so a
+// given position+move is uploaded at most once and reused across all users).
+// The images are shared, deduplicated assets, not per-user data, so access is
+// gated on being signed in rather than on ownership.
+//
+// The app signs in (email/password, phone, Google, or Facebook) before saving,
+// which is the only flow that reads via the SDK (an existence check) or writes.
+// Loading a saved file renders its stored tokenized download URLs directly,
+// which bypass these rules, so authenticated read here does not block viewing.
 service firebase.storage {
   match /b/{bucket}/o {
-    // Rendered board position images.
+    // Rendered board position images: `moves/{hash}.png`.
     match /moves/{image} {
-      // DEVELOPMENT ONLY: anyone can read/write board images.
-      // For production, gate on auth, e.g.:
-      //   allow read, write: if request.auth != null;
-      allow read, write: if true;
+      // Any signed-in user may read a shared render.
+      allow read: if request.auth != null;
+
+      // Writes must be signed in, a PNG under 5 MB, and land on a well-formed
+      // content-addressed path (64 hex chars + ".png"), keeping the namespace
+      // to what the app produces.
+      allow write: if request.auth != null
+        && request.resource.contentType == 'image/png'
+        && request.resource.size < 5 * 1024 * 1024
+        && image.matches('[a-f0-9]{64}\\.png');
     }
 
     // Deny everything outside the known path.

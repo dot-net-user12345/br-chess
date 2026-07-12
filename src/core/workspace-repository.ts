@@ -1,5 +1,14 @@
 import { inject, Injectable } from '@angular/core';
-import { collection, deleteDoc, doc, Firestore, getDocs, setDoc } from '@angular/fire/firestore';
+import {
+  collection,
+  deleteDoc,
+  doc,
+  Firestore,
+  getDocs,
+  query,
+  setDoc,
+  where,
+} from '@angular/fire/firestore';
 import { environment } from '../environment/environment';
 import { NodeId, WorkspaceNode } from './workspace-models';
 
@@ -21,11 +30,14 @@ export class WorkspaceRepository {
     return environment.firebase.apiKey !== 'YOUR_API_KEY';
   }
 
-  async loadAll(): Promise<WorkspaceNode[]> {
+  /** Loads only the nodes owned by `uid`; the rules forbid reading others'. */
+  async loadForUser(uid: string): Promise<WorkspaceNode[]> {
     if (!this.isConfigured) {
       return [];
     }
-    const snapshot = await getDocs(collection(this.firestore, NODES_COLLECTION));
+    const snapshot = await getDocs(
+      query(collection(this.firestore, NODES_COLLECTION), where('ownerId', '==', uid)),
+    );
     return snapshot.docs.map((docSnap) => ({ ...docSnap.data(), id: docSnap.id }) as WorkspaceNode);
   }
 

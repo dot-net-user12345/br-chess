@@ -1,0 +1,18 @@
+rules_version = '2';
+
+// Firestore security rules for br-chess (the named `chessified` database).
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Workspace nodes: folders and pgn-grid files, scoped to their owner.
+    match /nodes/{nodeId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null;
+      allow update: if request.auth != null;
+      allow delete: if request.auth != null;
+    }
+    // Deny everything outside the known collection.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

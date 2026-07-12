@@ -1,7 +1,10 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { signal } from '@angular/core';
 
 import { Home } from './home';
 import { WorkspaceRepository } from '../../core/workspace-repository';
+import { AuthService } from '../../core/auth-service';
+import { BoardImageService } from '../../core/board-image-service';
 
 describe('Home', () => {
   let component: Home;
@@ -13,7 +16,15 @@ describe('Home', () => {
       providers: [
         {
           provide: WorkspaceRepository,
-          useValue: { isConfigured: false, loadAll: async () => [], saveNode: async () => {}, deleteNode: async () => {} },
+          useValue: { isConfigured: false, loadForUser: async () => [], saveNode: async () => {}, deleteNode: async () => {} },
+        },
+        {
+          provide: AuthService,
+          useValue: { user: signal(null), isSignedIn: signal(false) },
+        },
+        {
+          provide: BoardImageService,
+          useValue: { urlsForPositions: async () => [] },
         },
       ],
     }).compileComponents();

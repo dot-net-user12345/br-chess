@@ -29,6 +29,12 @@ interface BaseNode {
   readonly name: string;
   /** Parent folder id, or null when the node lives at the workspace root. */
   readonly parentId: NodeId | null;
+  /**
+   * UID of the user who owns this node. Every node in a user's workspace carries
+   * their uid; Firestore rules only permit reading/writing one's own nodes. An
+   * empty string marks a local-only node created before signing in.
+   */
+  readonly ownerId: string;
   readonly createdAt: string;
   readonly updatedAt: string;
 }
