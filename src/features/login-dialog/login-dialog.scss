@@ -19,6 +19,62 @@
     gap: 0.5rem;
   }
 
+  // Facebook-branded button: their blue with the white "f" mark. The exact
+  // brand blue (#1877F2) fails AA against white text (4.23:1); this slightly
+  // deeper shade is visually the same and clears the 4.5:1 minimum (4.78:1).
+  &__facebook {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    // Label stays centered; the icon is taken out of flow (below) and pinned
+    // to the left so it lines up with the Google button's icon above it.
+    justify-content: center;
+    width: 100%;
+    height: 40px;
+    // Extra left padding shifts the centered label a little further right, off
+    // the pinned icon — matching the Google button's icon-left, label-right feel.
+    padding: 0 0.75rem 0 2.75rem;
+    border: none;
+    border-radius: 4px;
+    background: #166fe1;
+    color: #ffffff;
+    font: var(--mat-sys-label-large);
+    cursor: pointer;
+    transition: background-color 0.218s;
+
+    &:hover:not(:disabled) {
+      background: #1361cc;
+    }
+
+    &:active:not(:disabled) {
+      background: #1157b8;
+    }
+
+    &:focus-visible {
+      outline: 2px solid #166fe1;
+      outline-offset: 2px;
+    }
+
+    &:disabled {
+      opacity: 0.6;
+      cursor: default;
+    }
+  }
+
+  &__facebook-icon {
+    position: absolute;
+    left: 0.75rem;
+    top: 50%;
+    transform: translateY(-50%);
+  }
+
+  &__facebook-icon svg {
+    display: block;
+    // Match the Google button's 20px icon box so both icons align.
+    width: 20px;
+    height: 20px;
+  }
+
   // "or" separator between the email form and the social/phone options.
   &__divider {
     display: flex;

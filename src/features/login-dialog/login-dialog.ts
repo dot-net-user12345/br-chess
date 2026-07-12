@@ -14,6 +14,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { ConfirmationResult, RecaptchaVerifier, User } from '@angular/fire/auth';
 import { AuthService, SocialProvider } from '../../core/auth-service';
+import { GoogleLoginButton } from '../google-login-button/google-login-button';
 
 /** Which set of controls the dialog is showing. */
 type LoginView = 'main' | 'phone';
@@ -31,6 +32,7 @@ type LoginView = 'main' | 'phone';
     MatButtonModule,
     MatFormFieldModule,
     MatInputModule,
+    GoogleLoginButton,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './login-dialog.html',

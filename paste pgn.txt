@@ -2,13 +2,9 @@
 2. Bf4 Nf6
 3. e3 e6
 4. Nd2 c5
-5. c3 Nc6
-6. Ngf3 Bd6
-7. Bg3 O-O
-8. Bd3 b6
-9. e4 Be7
-10. e5 Nh5
-11. Ng5 Nxg3
-12. Bxh7+ Kh8
-13. Nxf7+ Rxf7
-14. hxg3
+5. c3 Bd6
+6. Bg3 O-O
+7. Ngf3 Qc7
+8. Rc1 Nbd7
+9. c4 b6
+10. b4
