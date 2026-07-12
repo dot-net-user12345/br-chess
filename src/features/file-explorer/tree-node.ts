@@ -63,6 +63,10 @@ export class TreeNode {
     this.editing.set(false);
   }
 
+  protected newFileInFolder(): void {
+    this.store.createFile(this.nodeId());
+  }
+
   protected remove(): void {
     this.store.deleteNode(this.nodeId());
   }
