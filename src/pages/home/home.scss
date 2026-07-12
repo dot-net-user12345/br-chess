@@ -1,13 +1,46 @@
 .workspace {
   display: grid;
-  grid-template-columns: minmax(14rem, 20rem) 1fr;
+  grid-template-columns: var(--explorer-width, 18rem) 1fr;
   height: 100%;
   min-height: 0;
 
+  // While dragging the handle, force the resize cursor everywhere and stop the
+  // pointer from selecting text as it sweeps across the page.
+  &--resizing {
+    cursor: col-resize;
+    user-select: none;
+  }
+
   &__explorer {
+    position: relative;
     min-height: 0;
     border-right: 1px solid var(--mat-sys-outline-variant);
     background: var(--mat-sys-surface-container-low);
+  }
+
+  &__resizer {
+    position: absolute;
+    top: 0;
+    right: -3px;
+    z-index: 1;
+    width: 6px;
+    height: 100%;
+    padding: 0;
+    border: none;
+    background: transparent;
+    cursor: col-resize;
+    touch-action: none;
+    transition: background 0.15s ease;
+
+    &:hover,
+    &:focus-visible {
+      background: color-mix(in srgb, var(--mat-sys-primary) 40%, transparent);
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--mat-sys-primary);
+      outline-offset: -2px;
+    }
   }
 
   &__main {
@@ -56,5 +89,10 @@
     border-right: none;
     border-bottom: 1px solid var(--mat-sys-outline-variant);
     max-height: 40vh;
+  }
+
+  // Stacked layout: the explorer is full-width on top, so edge-resizing no longer applies.
+  .workspace__resizer {
+    display: none;
   }
 }

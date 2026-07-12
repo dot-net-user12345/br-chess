@@ -30,17 +30,6 @@
       </button>
 
       <span class="tree-node__actions">
-        @if (isFolderNode()) {
-          <button
-            matIconButton
-            type="button"
-            class="tree-node__action"
-            (click)="newFileInFolder()"
-            [attr.aria-label]="'New PGN grid file in ' + node.name"
-          >
-            <mat-icon>note_add</mat-icon>
-          </button>
-        }
         <button
           matIconButton
           type="button"
