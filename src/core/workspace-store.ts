@@ -255,6 +255,11 @@ export class WorkspaceStore {
     this.put({ ...node, content, updatedAt: this.now() });
   }
 
+  /** Dismisses the current status message. */
+  clearStatus(): void {
+    this.status.set(null);
+  }
+
   /** Explicitly persists a file document to Firestore. */
   async saveFile(id: NodeId): Promise<void> {
     const node = this.nodes()[id];

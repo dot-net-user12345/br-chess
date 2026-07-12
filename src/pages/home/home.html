@@ -22,18 +22,6 @@
   </aside>
 
   <div class="workspace__main">
-    @if (status(); as status) {
-      <p
-        class="workspace__status"
-        [class.workspace__status--error]="status.type === 'error'"
-        [class.workspace__status--success]="status.type === 'success'"
-        role="status"
-        aria-live="polite"
-      >
-        {{ status.text }}
-      </p>
-    }
-
     @if (selectedFile(); as file) {
       <app-pgn-grid-editor [fileId]="file.id" />
     } @else {
@@ -46,4 +34,6 @@
       </div>
     }
   </div>
+
+  <app-save-status-dialog />
 </section>

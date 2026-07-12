@@ -3,6 +3,7 @@ import { WorkspaceStore } from '../../core/workspace-store';
 import { PgnGridFileNode } from '../../core/workspace-models';
 import { FileExplorer } from '../../features/file-explorer/file-explorer';
 import { PgnGridEditor } from '../../features/pgn-grid-editor/pgn-grid-editor';
+import { SaveStatusDialog } from '../../features/save-status-dialog/save-status-dialog';
 
 /** File-explorer width bounds (px) and keyboard resize step. */
 const MIN_EXPLORER_WIDTH = 180;
@@ -11,15 +12,13 @@ const KEYBOARD_STEP = 16;
 
 @Component({
   selector: 'app-home',
-  imports: [FileExplorer, PgnGridEditor],
+  imports: [FileExplorer, PgnGridEditor, SaveStatusDialog],
   templateUrl: './home.html',
   styleUrl: './home.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class Home {
   private readonly store = inject(WorkspaceStore);
-
-  protected readonly status = this.store.status;
 
   protected readonly selectedFile = computed<PgnGridFileNode | null>(() => {
     const node = this.store.selectedNode();
