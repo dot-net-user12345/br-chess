@@ -31,7 +31,7 @@ export class ChessService {
 
     const start = new Chess();
     const positions: GamePosition[] = [
-      { ply: 0, moveNumber: 0, color: null, san: null, fen: start.fen() },
+      { ply: 0, moveNumber: 0, color: null, san: null, from: null, to: null, fen: start.fen() },
     ];
     history.forEach((move, index) => {
       positions.push({
@@ -39,6 +39,8 @@ export class ChessService {
         moveNumber: Math.floor(index / 2) + 1,
         color: move.color === 'w' ? 'white' : 'black',
         san: move.san,
+        from: move.from,
+        to: move.to,
         fen: move.after,
       });
     });

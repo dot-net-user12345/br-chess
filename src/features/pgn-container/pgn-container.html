@@ -39,7 +39,12 @@
       <ol class="pgn-container__grid" aria-label="Move-by-move board progression">
         @for (tile of tiles(); track $index) {
           <li class="pgn-container__tile">
-            <app-chess-board [fen]="tile.fen" [caption]="tile.caption" />
+            <app-chess-board
+              [fen]="tile.fen"
+              [caption]="tile.caption"
+              [from]="tile.from"
+              [to]="tile.to"
+            />
             <span class="pgn-container__caption">{{ tile.caption }}</span>
           </li>
         }

@@ -14,6 +14,10 @@ export interface GamePosition {
   readonly color: 'white' | 'black' | null;
   /** SAN of the move that produced this position, or null for the start. */
   readonly san: string | null;
+  /** Origin square of the move (e.g. `e2`), or null for the start. */
+  readonly from: string | null;
+  /** Destination square of the move (e.g. `e4`), or null for the start. */
+  readonly to: string | null;
   /** Full FEN of the position. */
   readonly fen: string;
 }

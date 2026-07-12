@@ -233,9 +233,7 @@ export class WorkspaceStore {
             ...(entry.label !== undefined ? { label: entry.label } : {}),
           };
         }
-        const boardImageUrls = await this.boardImages.urlsForFens(
-          parsed.positions.map((position) => position.fen),
-        );
+        const boardImageUrls = await this.boardImages.urlsForPositions(parsed.positions);
         return { ...entry, boardImageUrls };
       }),
     );

@@ -21,6 +21,8 @@ import { ChessBoard } from '../chess-board/chess-board';
 interface BoardTile {
   readonly fen: string;
   readonly caption: string;
+  readonly from: string | null;
+  readonly to: string | null;
 }
 
 /**
@@ -86,6 +88,8 @@ export class PgnContainer implements OnInit {
     return parsed.positions.map((position) => ({
       fen: position.fen,
       caption: this.captionFor(position.ply, position.moveNumber, position.color, position.san),
+      from: position.from,
+      to: position.to,
     }));
   });
 

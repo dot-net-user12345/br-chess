@@ -1,7 +1,15 @@
 import { inject, Injectable } from '@angular/core';
 import { getDownloadURL, ref, Storage, StorageError, uploadBytes } from '@angular/fire/storage';
 import { ChessService } from './chess-service';
-import { DARK_SQUARE, LIGHT_SQUARE, pieceAssetPath, SQUARE_SIZE } from './board-assets';
+import {
+  DARK_SQUARE,
+  LIGHT_SQUARE,
+  moveArrowGeometry,
+  MOVE_ARROW_COLOR,
+  pieceAssetPath,
+  SQUARE_SIZE,
+} from './board-assets';
+import { GamePosition } from './chess-models';
 
 const BOARD_SIZE = SQUARE_SIZE * 8;
 
@@ -12,53 +20,56 @@ function isNotFound(err: unknown): boolean {
 /**
  * Renders chess positions to PNG images and persists them to Cloud Storage.
  *
- * Images are content-addressed by a hash of their FEN (`moves/{hash}.png`), so
- * a given position is rendered and uploaded at most once and then reused across
- * every entry, file, and save. Rendering happens in the browser on a canvas
- * using the same bundled piece SVGs the live board uses.
+ * Each image shows the board plus a colored arrow from the move's origin to its
+ * destination square. Images are content-addressed by a hash of the position's
+ * FEN and move (`moves/{hash}.png`), so a given position+move is rendered and
+ * uploaded at most once and then reused across every entry, file, and save.
+ * Rendering happens in the browser on a canvas using the same bundled piece
+ * SVGs the live board uses. Cloud Storage holds only these images.
  */
 @Injectable({ providedIn: 'root' })
 export class BoardImageService {
   private readonly storage = inject(Storage);
   private readonly chess = inject(ChessService);
 
-  /** In-flight/resolved download URL per FEN, so concurrent asks dedupe. */
-  private readonly urlByFen = new Map<string, Promise<string>>();
+  /** In-flight/resolved download URL per position key, so concurrent asks dedupe. */
+  private readonly urlByKey = new Map<string, Promise<string>>();
   /** Cached decoded piece images, keyed by asset path. */
   private readonly imageByPath = new Map<string, Promise<HTMLImageElement>>();
 
-  /** Resolves a Storage download URL for every FEN, in order. */
-  urlsForFens(fens: readonly string[]): Promise<string[]> {
-    return Promise.all(fens.map((fen) => this.urlForFen(fen)));
+  /** Resolves a Storage download URL for every position, in order. */
+  urlsForPositions(positions: readonly GamePosition[]): Promise<string[]> {
+    return Promise.all(positions.map((position) => this.urlForPosition(position)));
   }
 
-  private urlForFen(fen: string): Promise<string> {
-    const existing = this.urlByFen.get(fen);
+  private urlForPosition(position: GamePosition): Promise<string> {
+    const key = `${position.fen}|${position.from ?? ''}${position.to ?? ''}`;
+    const existing = this.urlByKey.get(key);
     if (existing) {
       return existing;
     }
-    const pending = this.resolveUrl(fen);
-    this.urlByFen.set(fen, pending);
+    const pending = this.resolveUrl(position, key);
+    this.urlByKey.set(key, pending);
     return pending;
   }
 
-  private async resolveUrl(fen: string): Promise<string> {
-    const fileRef = ref(this.storage, `moves/${await this.hash(fen)}.png`);
+  private async resolveUrl(position: GamePosition, key: string): Promise<string> {
+    const fileRef = ref(this.storage, `moves/${await this.hash(key)}.png`);
     try {
-      // Reuse an already-uploaded render (content-addressed, so it's this FEN).
+      // Reuse an already-uploaded render (content-addressed, so it's this position+move).
       return await getDownloadURL(fileRef);
     } catch (err) {
       if (!isNotFound(err)) {
         throw err;
       }
     }
-    const blob = await this.render(fen);
+    const blob = await this.render(position);
     await uploadBytes(fileRef, blob, { contentType: 'image/png' });
     return getDownloadURL(fileRef);
   }
 
-  private async render(fen: string): Promise<Blob> {
-    const rows = this.chess.fenToSquares(fen);
+  private async render(position: GamePosition): Promise<Blob> {
+    const rows = this.chess.fenToSquares(position.fen);
     const canvas = document.createElement('canvas');
     canvas.width = BOARD_SIZE;
     canvas.height = BOARD_SIZE;
@@ -78,12 +89,42 @@ export class BoardImageService {
         }
       }
     }
+    if (position.from && position.to) {
+      this.drawArrow(ctx, position.from, position.to);
+    }
     return new Promise<Blob>((resolve, reject) => {
       canvas.toBlob(
         (blob) => (blob ? resolve(blob) : reject(new Error('Board image encoding failed.'))),
         'image/png',
       );
     });
+  }
+
+  /** Draws a colored arrow with a triangular head from the `from` to the `to` square. */
+  private drawArrow(ctx: CanvasRenderingContext2D, from: string, to: string): void {
+    // Geometry is in board units (1 unit = 1 square); scale up to pixels.
+    const arrow = moveArrowGeometry(from, to);
+    const s = SQUARE_SIZE;
+
+    ctx.save();
+    ctx.strokeStyle = MOVE_ARROW_COLOR;
+    ctx.fillStyle = MOVE_ARROW_COLOR;
+    ctx.lineWidth = arrow.strokeWidth * s;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+
+    ctx.beginPath();
+    ctx.moveTo(arrow.shaftFrom.x * s, arrow.shaftFrom.y * s);
+    ctx.lineTo(arrow.shaftTo.x * s, arrow.shaftTo.y * s);
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.moveTo(arrow.head[0].x * s, arrow.head[0].y * s);
+    ctx.lineTo(arrow.head[1].x * s, arrow.head[1].y * s);
+    ctx.lineTo(arrow.head[2].x * s, arrow.head[2].y * s);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
   }
 
   private pieceImage(path: string): Promise<HTMLImageElement> {

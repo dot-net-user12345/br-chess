@@ -2,13 +2,20 @@ import { ChangeDetectionStrategy, Component, computed, inject, input } from '@an
 import { NgOptimizedImage } from '@angular/common';
 import { ChessService } from '../../core/chess-service';
 import { PieceCode } from '../../core/chess-models';
-import { pieceAssetPath } from '../../core/board-assets';
+import { moveArrowGeometry, MOVE_ARROW_COLOR, pieceAssetPath } from '../../core/board-assets';
 
 interface RenderedSquare {
   readonly light: boolean;
   readonly piece: PieceCode | null;
   readonly asset: string | null;
   readonly label: string;
+}
+
+interface RenderedArrow {
+  readonly shaftFrom: { readonly x: number; readonly y: number };
+  readonly shaftTo: { readonly x: number; readonly y: number };
+  readonly headPoints: string;
+  readonly strokeWidth: number;
 }
 
 const PIECE_NAMES: Record<string, string> = {
@@ -20,7 +27,10 @@ const PIECE_NAMES: Record<string, string> = {
   p: 'pawn',
 };
 
-/** Renders a single chess position (from a FEN) as an 8x8 grid of piece images. */
+/**
+ * Renders a single chess position (from a FEN) as an 8x8 grid of piece images,
+ * with an optional move arrow from the `from` square to the `to` square.
+ */
 @Component({
   selector: 'app-chess-board',
   imports: [NgOptimizedImage],
@@ -39,6 +49,20 @@ const PIECE_NAMES: Record<string, string> = {
         }
       </span>
     }
+    @if (arrow(); as arrow) {
+      <svg class="chess-board__arrow" viewBox="0 0 8 8" aria-hidden="true">
+        <line
+          [attr.x1]="arrow.shaftFrom.x"
+          [attr.y1]="arrow.shaftFrom.y"
+          [attr.x2]="arrow.shaftTo.x"
+          [attr.y2]="arrow.shaftTo.y"
+          [attr.stroke]="arrowColor"
+          [attr.stroke-width]="arrow.strokeWidth"
+          stroke-linecap="round"
+        />
+        <polygon [attr.points]="arrow.headPoints" [attr.fill]="arrowColor" />
+      </svg>
+    }
   `,
   styleUrl: './chess-board.scss',
 })
@@ -47,8 +71,29 @@ export class ChessBoard {
 
   readonly fen = input.required<string>();
   readonly caption = input<string>('');
+  /** Move origin square (e.g. `e2`); pair with `to` to draw the move arrow. */
+  readonly from = input<string | null>(null);
+  /** Move destination square (e.g. `e4`); pair with `from` to draw the move arrow. */
+  readonly to = input<string | null>(null);
+
+  protected readonly arrowColor = MOVE_ARROW_COLOR;
 
   protected readonly ariaLabel = computed(() => this.caption() || 'Chess position');
+
+  protected readonly arrow = computed<RenderedArrow | null>(() => {
+    const from = this.from();
+    const to = this.to();
+    if (!from || !to) {
+      return null;
+    }
+    const geometry = moveArrowGeometry(from, to);
+    return {
+      shaftFrom: geometry.shaftFrom,
+      shaftTo: geometry.shaftTo,
+      headPoints: geometry.head.map((point) => `${point.x},${point.y}`).join(' '),
+      strokeWidth: geometry.strokeWidth,
+    };
+  });
 
   protected readonly squares = computed<RenderedSquare[]>(() => {
     const rows = this.chess.fenToSquares(this.fen());
