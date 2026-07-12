@@ -49,6 +49,10 @@
     color: var(--mat-sys-on-surface-variant);
   }
 
+  &__add {
+    align-self: flex-start;
+  }
+
   &__entries {
     display: flex;
     flex-direction: column;

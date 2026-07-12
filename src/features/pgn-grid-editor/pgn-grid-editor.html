@@ -28,6 +28,16 @@
       </button>
     </header>
 
+    <button
+      class="pgn-grid-editor__add"
+      matButton="outlined"
+      type="button"
+      (click)="addEntry()"
+    >
+      <mat-icon>add</mat-icon>
+      Add PGN
+    </button>
+
     <mat-accordion
       class="pgn-grid-editor__entries"
       multi
@@ -176,11 +186,6 @@
         </button>
       }
     </mat-menu>
-
-    <button matButton="outlined" type="button" (click)="addEntry()">
-      <mat-icon>add</mat-icon>
-      Add PGN
-    </button>
 
     @if (comparisonRows().length > 0) {
       <mat-expansion-panel
