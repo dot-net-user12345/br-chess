@@ -48,13 +48,10 @@ export class PgnContainer implements OnInit {
   private readonly chess = inject(ChessService);
   private readonly dialog = inject(MatDialog);
 
-  /** Seeds the label once; the field is editable thereafter. */
-  readonly label = input<string>('Game');
   /** Seeds the editor once, e.g. when opening a saved file. */
   readonly initialPgn = input<string>('');
 
   readonly contentChange = output<{ pgn: string; result: PgnParseResult }>();
-  readonly labelChange = output<string>();
 
   private readonly pgnValidator: ValidatorFn = (control) => {
     const value = (control.value ?? '').trim();
@@ -69,8 +66,6 @@ export class PgnContainer implements OnInit {
     nonNullable: true,
     validators: [this.pgnValidator],
   });
-
-  protected readonly labelControl = new FormControl('', { nonNullable: true });
 
   private readonly value = signal('');
 
@@ -94,17 +89,12 @@ export class PgnContainer implements OnInit {
       this.value.set(value);
       this.contentChange.emit({ pgn: value, result: this.chess.parsePgn(value) });
     });
-    this.labelControl.valueChanges.subscribe((value) => {
-      this.labelChange.emit(value);
-    });
   }
 
   ngOnInit(): void {
     const seed = this.initialPgn();
     this.control.setValue(seed, { emitEvent: false });
     this.value.set(seed);
-
-    this.labelControl.setValue(this.label(), { emitEvent: false });
   }
 
   /** Opens a fullscreen modal at the clicked preview, navigable through the whole game. */

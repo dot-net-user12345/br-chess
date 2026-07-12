@@ -48,6 +48,20 @@
             <mat-icon>drag_indicator</mat-icon>
           </button>
 
+          <!-- The title input is a sibling of the header (not nested in its
+               role="button"), overlaid on the header's title zone so it stays
+               AXE-clean while remaining editable even when collapsed. -->
+          <input
+            #labelInput
+            class="entry-panel__title-input"
+            type="text"
+            [value]="entry.label || ''"
+            [attr.placeholder]="'Line ' + (i + 1)"
+            [attr.aria-label]="'Line ' + (i + 1) + ' title'"
+            (change)="onLabelChange(entry.id, labelInput.value)"
+            (keydown.enter)="labelInput.blur()"
+          />
+
           <mat-expansion-panel
             class="entry-panel__panel"
             hideToggle
@@ -63,7 +77,6 @@
                 >
                   expand_more
                 </mat-icon>
-                <span class="entry-panel__name">{{ labelFor(entry, i) }}</span>
               </mat-panel-title>
               <mat-panel-description class="entry-panel__meta">
                 @switch (statusOf(entry)) {
@@ -87,10 +100,8 @@
             </mat-expansion-panel-header>
 
             <app-pgn-container
-              [label]="entry.label || 'Line ' + (i + 1)"
               [initialPgn]="entry.pgn"
               (contentChange)="onEntryChange(entry.id, $event)"
-              (labelChange)="onLabelChange(entry.id, $event)"
             />
           </mat-expansion-panel>
 

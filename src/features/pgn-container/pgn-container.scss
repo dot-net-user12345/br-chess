@@ -1,41 +1,4 @@
 .pgn-container {
-  &__header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-  }
-
-  &__title {
-    flex: 1;
-    min-width: 0;
-  }
-
-  &__label-input {
-    width: 100%;
-    box-sizing: border-box;
-    font: inherit;
-    color: inherit;
-    background: transparent;
-    border: none;
-    border-radius: 4px;
-    padding: 0.125rem 0.25rem;
-    margin: -0.125rem -0.25rem;
-
-    &:hover {
-      background: var(--mat-sys-surface-container-highest);
-    }
-
-    &:focus {
-      outline: 2px solid var(--mat-sys-primary);
-      outline-offset: 0;
-      background: var(--mat-sys-surface-container-highest);
-    }
-
-    &::placeholder {
-      color: var(--mat-sys-on-surface-variant);
-    }
-  }
-
   &__field {
     width: 100%;
   }

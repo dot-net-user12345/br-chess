@@ -114,10 +114,37 @@
     }
   }
 
-  &__name {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+  // Editable title overlaid on the header's title zone. Offsets clear the drag
+  // handle + chevron on the left and the status badge + remove button on the
+  // right so it never sits over another control.
+  &__title-input {
+    position: absolute;
+    top: 0;
+    left: 4.75rem;
+    right: 8rem;
+    height: 48px;
+    z-index: 2;
+    box-sizing: border-box;
+    padding: 0 0.5rem;
+    font: var(--mat-sys-body-large);
+    color: var(--mat-sys-on-surface);
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: var(--mat-sys-corner-extra-small);
+
+    &:hover {
+      border-color: var(--mat-sys-outline-variant);
+    }
+
+    &:focus {
+      outline: none;
+      border-color: var(--mat-sys-primary);
+      background: var(--mat-sys-surface-container-highest);
+    }
+
+    &::placeholder {
+      color: var(--mat-sys-on-surface-variant);
+    }
   }
 
   &__meta {
