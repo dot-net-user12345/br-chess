@@ -53,6 +53,7 @@ const PIECE_NAMES: Record<string, string> = {
         class="square"
         [class.light]="square.light"
         [class.dark]="!square.light"
+        [class.square--destination]="$index === destinationIndex()"
         aria-hidden="true"
       >
         @if (square.asset) {
@@ -94,6 +95,24 @@ export class ChessBoard {
   protected readonly arrowColor = computed(() =>
     this.highlighted() ? DIVERGENT_MOVE_COLOR : MOVE_ARROW_COLOR,
   );
+
+  /**
+   * Grid index of the move's destination square, but only when highlighted — so
+   * a differing move's landing square gets an inner glow. Null otherwise.
+   */
+  protected readonly destinationIndex = computed<number | null>(() => {
+    const to = this.to();
+    if (!to || !this.highlighted()) {
+      return null;
+    }
+    const file = to.charCodeAt(0) - 'a'.charCodeAt(0);
+    const rank = Number(to[1]);
+    if (file < 0 || file > 7 || !Number.isInteger(rank) || rank < 1 || rank > 8) {
+      return null;
+    }
+    // Grid is rank 8 first (top), file a first (left), matching fenToSquares.
+    return (8 - rank) * 8 + file;
+  });
 
   protected readonly ariaLabel = computed(() => {
     const base = this.caption() || 'Chess position';

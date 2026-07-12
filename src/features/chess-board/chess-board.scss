@@ -42,6 +42,13 @@
     background: #b58863;
   }
 
+  // A differing move's destination square: inner glow in the arrow color.
+  &--destination {
+    box-shadow:
+      inset 0 0 0 0.18rem var(--board-highlight-color),
+      inset 0 0 0.6rem var(--board-highlight-color);
+  }
+
   img {
     width: 100%;
     height: 100%;
