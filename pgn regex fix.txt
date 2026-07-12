@@ -1,0 +1,2 @@
+Find (regex): \r?\n(?!\d+\.)
+Replace: a single space  
