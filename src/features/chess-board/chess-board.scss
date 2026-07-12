@@ -1,7 +1,10 @@
 :host {
   position: relative;
   display: grid;
-  grid-template-columns: repeat(8, 1fr);
+  // Fixed 8x8 tracks. minmax(0, 1fr) keeps every square an equal fraction of the
+  // board regardless of its contents, so a piece can never make its rank taller.
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+  grid-template-rows: repeat(8, minmax(0, 1fr));
   aspect-ratio: 1;
   width: 100%;
   border: 1px solid var(--mat-sys-outline-variant);
