@@ -39,6 +39,12 @@ testem.log
 /typings
 __screenshots__/
 
+# AI agent tooling (regenerable from skills-lock.json; not app source)
+.agents/
+.claude/skills/
+skills-lock.json
+.claude/settings.local.json
+
 # System files
 .DS_Store
 Thumbs.db
