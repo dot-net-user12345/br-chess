@@ -37,12 +37,12 @@
 
     @if (result().valid) {
       <ol class="pgn-container__grid" aria-label="Move-by-move board progression">
-        @for (tile of tiles(); track $index) {
+        @for (tile of tiles(); track $index; let i = $index) {
           <li class="pgn-container__tile">
             <button
               type="button"
               class="pgn-container__tile-button"
-              (click)="openTile(tile)"
+              (click)="openTile(i)"
               [attr.aria-label]="'View ' + tile.caption + ' fullscreen'"
             >
               <app-chess-board

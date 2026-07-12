@@ -121,12 +121,12 @@ export class PgnContainer implements OnInit {
     this.remove.emit();
   }
 
-  /** Opens a fullscreen modal showing the clicked board preview at large size. */
-  protected openTile(tile: BoardTile): void {
+  /** Opens a fullscreen modal at the clicked preview, navigable through the whole game. */
+  protected openTile(index: number): void {
     this.dialog.open(BoardDialog, {
-      data: tile,
+      data: { tiles: this.tiles(), index },
       panelClass: 'board-dialog-panel',
-      ariaLabel: `Board preview: ${tile.caption}`,
+      ariaLabel: 'Board preview',
       maxWidth: '98vw',
       maxHeight: '98vh',
       autoFocus: 'dialog',
