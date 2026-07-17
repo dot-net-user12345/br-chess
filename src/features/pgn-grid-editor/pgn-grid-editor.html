@@ -17,6 +17,16 @@
           {{ summary().valid }} of {{ summary().total }} valid
         </p>
       </div>
+      <mat-button-toggle-group
+        class="pgn-grid-editor__orientation"
+        [value]="orientation()"
+        (change)="setOrientation($event.value)"
+        aria-label="Board perspective"
+        hideSingleSelectionIndicator
+      >
+        <mat-button-toggle value="white">White</mat-button-toggle>
+        <mat-button-toggle value="black">Black</mat-button-toggle>
+      </mat-button-toggle-group>
       <button
         matButton="filled"
         type="button"
@@ -127,6 +137,7 @@
               [initialPgn]="entry.pgn"
               [highlightedPlies]="divergentPliesByIndex()[i]"
               [captions]="entry.captions ?? {}"
+              [orientation]="orientation()"
               (contentChange)="onEntryChange(entry.id, $event)"
               (captionsChange)="onCaptionsChange(entry.id, $event)"
             />
@@ -224,6 +235,7 @@
                           [to]="board.to"
                           [highlighted]="true"
                           [highlightColor]="row.color"
+                          [orientation]="orientation()"
                         />
                         <span class="comparison__caption">{{ board.caption }}</span>
                       </span>

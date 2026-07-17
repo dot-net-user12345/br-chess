@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@a
 import { MatButtonModule } from '@angular/material/button';
 import { MAT_DIALOG_DATA, MatDialogModule } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
+import { BoardOrientation } from '../../core/chess-models';
 import { ChessBoard } from '../chess-board/chess-board';
 
 /** One differing-move board from a PGN line. */
@@ -23,6 +24,8 @@ export interface ComparisonDialogItem {
 export interface ComparisonDialogData {
   readonly items: readonly ComparisonDialogItem[];
   readonly index: number;
+  /** Side to view every board from; defaults to white when absent. */
+  readonly orientation?: BoardOrientation;
 }
 
 /** Shows one line's differing moves side by side, navigable through every line. */
@@ -94,6 +97,7 @@ export interface ComparisonDialogData {
               [to]="board.to"
               [highlighted]="true"
               [highlightColor]="current().color"
+              [orientation]="orientation()"
             />
             <p class="cmp__move">{{ board.caption }}</p>
           </figure>
@@ -167,6 +171,7 @@ export class ComparisonDialog {
   protected readonly data = inject<ComparisonDialogData>(MAT_DIALOG_DATA);
 
   protected readonly index = signal(this.data.index);
+  protected readonly orientation = signal<BoardOrientation>(this.data.orientation ?? 'white');
   protected readonly current = computed(() => this.data.items[this.index()]);
   protected readonly hasPrev = computed(() => this.index() > 0);
   protected readonly hasNext = computed(() => this.index() < this.data.items.length - 1);

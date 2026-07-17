@@ -31,6 +31,7 @@
                 [from]="tile.from"
                 [to]="tile.to"
                 [highlighted]="highlightedPlies().has(tile.ply)"
+                [orientation]="orientation()"
               />
             </button>
             <span class="pgn-container__caption">{{ tile.caption }}</span>

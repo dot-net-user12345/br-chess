@@ -16,7 +16,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { ChessService } from '../../core/chess-service';
-import { PgnParseResult } from '../../core/chess-models';
+import { BoardOrientation, PgnParseResult } from '../../core/chess-models';
 import { BoardDialog } from '../board-dialog/board-dialog';
 import { ChessBoard } from '../chess-board/chess-board';
 
@@ -57,6 +57,8 @@ export class PgnContainer implements OnInit {
   readonly highlightedPlies = input<ReadonlySet<number>>(new Set());
   /** User-entered captions per board position, keyed by ply. */
   readonly captions = input<Readonly<Record<number, string>>>({});
+  /** Side to view every board from; `black` rotates each board 180°. */
+  readonly orientation = input<BoardOrientation>('white');
 
   readonly contentChange = output<{ pgn: string; result: PgnParseResult }>();
   /** Emits the full updated caption map when the user saves a caption. */
@@ -119,6 +121,7 @@ export class PgnContainer implements OnInit {
         tiles,
         index,
         captions: this.captions(),
+        orientation: this.orientation(),
         onCaptionChange: (captions: Record<number, string>) => this.captionsChange.emit(captions),
       },
       panelClass: 'board-dialog-panel',

@@ -1,12 +1,14 @@
 import { ChangeDetectionStrategy, Component, computed, inject, input } from '@angular/core';
 import { NgOptimizedImage } from '@angular/common';
 import { ChessService } from '../../core/chess-service';
-import { PieceCode } from '../../core/chess-models';
+import { BoardOrientation, PieceCode } from '../../core/chess-models';
 import {
   DIVERGENT_MOVE_COLOR,
+  flipPoint,
   moveArrowGeometry,
   MOVE_ARROW_COLOR,
   pieceAssetPath,
+  Point,
 } from '../../core/board-assets';
 
 interface RenderedSquare {
@@ -91,6 +93,8 @@ export class ChessBoard {
   readonly highlighted = input<boolean>(false);
   /** Overrides the highlight color; defaults to the divergent purple. */
   readonly highlightColor = input<string | null>(null);
+  /** Side to view the board from; `black` rotates the whole board 180°. */
+  readonly orientation = input<BoardOrientation>('white');
 
   /** Resolved highlight color: the override when set, else the divergent purple. */
   protected readonly highlightHue = computed(() => this.highlightColor() ?? DIVERGENT_MOVE_COLOR);
@@ -113,8 +117,10 @@ export class ChessBoard {
     if (file < 0 || file > 7 || !Number.isInteger(rank) || rank < 1 || rank > 8) {
       return null;
     }
-    // Grid is rank 8 first (top), file a first (left), matching fenToSquares.
-    return (8 - rank) * 8 + file;
+    // White grid is rank 8 first (top), file a first (left), matching fenToSquares.
+    const whiteIndex = (8 - rank) * 8 + file;
+    // Black is that grid rotated 180°, so its index is mirrored across the board.
+    return this.orientation() === 'black' ? 63 - whiteIndex : whiteIndex;
   });
 
   protected readonly ariaLabel = computed(() => {
@@ -129,10 +135,15 @@ export class ChessBoard {
       return null;
     }
     const geometry = moveArrowGeometry(from, to);
+    // From black's side the board is rotated 180°, so mirror every arrow point.
+    const orient = (point: Point) =>
+      this.orientation() === 'black' ? flipPoint(point) : point;
+    const shaftFrom = orient(geometry.shaftFrom);
+    const shaftTo = orient(geometry.shaftTo);
     return {
-      shaftFrom: geometry.shaftFrom,
-      shaftTo: geometry.shaftTo,
-      headPoints: geometry.head.map((point) => `${point.x},${point.y}`).join(' '),
+      shaftFrom,
+      shaftTo,
+      headPoints: geometry.head.map(orient).map((point) => `${point.x},${point.y}`).join(' '),
       strokeWidth: geometry.strokeWidth,
     };
   });
@@ -150,7 +161,9 @@ export class ChessBoard {
         });
       });
     });
-    return result;
+    // Black views the board rotated 180°: reversing the rank-8-first, file-a-first
+    // grid yields rank-1-first, file-h-first, and each square keeps its own color.
+    return this.orientation() === 'black' ? result.reverse() : result;
   });
 
   private describe(piece: PieceCode): string {

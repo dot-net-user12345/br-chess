@@ -15,11 +15,12 @@ import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog } from '@angular/material/dialog';
 import { MatExpansionModule } from '@angular/material/expansion';
+import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule, MatMenuTrigger } from '@angular/material/menu';
 import { AuthService } from '../../core/auth-service';
 import { ChessService } from '../../core/chess-service';
-import { GamePosition, PgnParseResult } from '../../core/chess-models';
+import { BoardOrientation, GamePosition, PgnParseResult } from '../../core/chess-models';
 import { WorkspaceStore } from '../../core/workspace-store';
 import { NodeId, PgnEntry, PgnGridFileNode } from '../../core/workspace-models';
 import { COMPARISON_PALETTE } from '../../core/board-assets';
@@ -50,6 +51,7 @@ interface ComparisonRow extends ComparisonDialogItem {
     ReactiveFormsModule,
     DragDropModule,
     MatButtonModule,
+    MatButtonToggleModule,
     MatExpansionModule,
     MatIconModule,
     MatMenuModule,
@@ -76,6 +78,11 @@ export class PgnGridEditor {
 
   protected readonly entries = computed<readonly PgnEntry[]>(
     () => this.file()?.content.entries ?? [],
+  );
+
+  /** Side every board in this file is viewed from; white unless set to black. */
+  protected readonly orientation = computed<BoardOrientation>(
+    () => this.file()?.content.orientation ?? 'white',
   );
 
   /** Each entry's parsed positions, in list order; drives status and comparisons. */
@@ -196,6 +203,18 @@ export class PgnGridEditor {
         entry.id === entryId ? { ...entry, label } : entry,
       ),
     );
+  }
+
+  /** Switches the whole file between the white and black board perspectives. */
+  protected setOrientation(orientation: BoardOrientation): void {
+    if (orientation === this.orientation()) {
+      return;
+    }
+    this.store.updatePgnGridContent(this.fileId(), {
+      ...this.file()?.content,
+      entries: this.entries(),
+      orientation,
+    });
   }
 
   protected addEntry(): void {
@@ -345,7 +364,7 @@ export class PgnGridEditor {
   /** Opens the fullscreen comparison, starting at the clicked differing move. */
   protected openComparison(row: ComparisonRow): void {
     this.dialog.open(ComparisonDialog, {
-      data: { items: this.comparisonRows(), index: row.flatIndex },
+      data: { items: this.comparisonRows(), index: row.flatIndex, orientation: this.orientation() },
       panelClass: 'comparison-dialog-panel',
       ariaLabel: 'Move comparison',
       maxWidth: '98vw',
@@ -385,6 +404,7 @@ export class PgnGridEditor {
   }
 
   private writeEntries(entries: PgnEntry[]): void {
-    this.store.updatePgnGridContent(this.fileId(), { entries });
+    // Carry the file's orientation forward so an entry edit never resets it.
+    this.store.updatePgnGridContent(this.fileId(), { ...this.file()?.content, entries });
   }
 }

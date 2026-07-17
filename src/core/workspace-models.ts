@@ -1,3 +1,5 @@
+import { BoardOrientation } from './chess-models';
+
 export type NodeId = string;
 
 /** The set of file types the workspace supports. `comparison` is added next. */
@@ -22,6 +24,11 @@ export interface PgnEntry {
 /** Content of a `pgn-grid` file: one or more PGNs, each rendered as a board grid. */
 export interface PgnGridContent {
   readonly entries: readonly PgnEntry[];
+  /**
+   * Side every board in this file is viewed from. Absent means `white` (the
+   * default), so files saved before this option existed keep their orientation.
+   */
+  readonly orientation?: BoardOrientation;
 }
 
 interface BaseNode {

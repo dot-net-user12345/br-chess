@@ -1,6 +1,9 @@
 /** A single square's occupant, using FEN piece letters (upper = white, lower = black). */
 export type PieceCode = 'K' | 'Q' | 'R' | 'B' | 'N' | 'P' | 'k' | 'q' | 'r' | 'b' | 'n' | 'p';
 
+/** Which side the board is viewed from. `black` rotates the board 180°. */
+export type BoardOrientation = 'white' | 'black';
+
 /** An 8x8 board, rank 8 (top) first, file a (left) first. `null` is an empty square. */
 export type BoardSquares = ReadonlyArray<ReadonlyArray<PieceCode | null>>;
 

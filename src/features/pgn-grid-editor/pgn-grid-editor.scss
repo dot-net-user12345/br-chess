@@ -49,6 +49,11 @@
     color: var(--mat-sys-on-surface-variant);
   }
 
+  // Push the perspective toggle and Save button together to the header's end.
+  &__orientation {
+    margin-left: auto;
+  }
+
   &__add {
     align-self: flex-start;
   }

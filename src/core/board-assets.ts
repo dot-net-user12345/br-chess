@@ -78,6 +78,15 @@ export function squareCenter(square: string): Point {
 }
 
 /**
+ * Mirrors a point across the board's center — the 180° rotation that turns a
+ * white-perspective coordinate into its black-perspective one. Board units, so
+ * the board spans 0–8 on each axis. Idempotent inverse of itself.
+ */
+export function flipPoint(point: Point): Point {
+  return { x: 8 - point.x, y: 8 - point.y };
+}
+
+/**
  * Arrow geometry from one square to another, in board units. Shared by the live
  * SVG board and the canvas image renderer so both draw an identical arrow; each
  * caller scales the units to its own pixel/viewBox size.

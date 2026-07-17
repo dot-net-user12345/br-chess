@@ -4,12 +4,13 @@ import { ChessService } from './chess-service';
 import {
   DARK_SQUARE,
   DIVERGENT_MOVE_COLOR,
+  flipPoint,
   LIGHT_SQUARE,
   moveArrowGeometry,
   MOVE_ARROW_COLOR,
   pieceAssetPath,
 } from './board-assets';
-import { GamePosition } from './chess-models';
+import { BoardOrientation, GamePosition } from './chess-models';
 
 /**
  * Pixel size of one square in the exported PNG (independent of the on-screen
@@ -51,27 +52,41 @@ export class BoardImageService {
   urlsForPositions(
     positions: readonly GamePosition[],
     highlightedPlies: ReadonlySet<number> = new Set(),
+    orientation: BoardOrientation = 'white',
   ): Promise<string[]> {
     return Promise.all(
-      positions.map((position) => this.urlForPosition(position, highlightedPlies.has(position.ply))),
+      positions.map((position) =>
+        this.urlForPosition(position, highlightedPlies.has(position.ply), orientation),
+      ),
     );
   }
 
-  private urlForPosition(position: GamePosition, highlighted: boolean): Promise<string> {
+  private urlForPosition(
+    position: GamePosition,
+    highlighted: boolean,
+    orientation: BoardOrientation,
+  ): Promise<string> {
     const key =
       `${RENDER_SQUARE}|${position.fen}|${position.from ?? ''}${position.to ?? ''}` +
       // Only appended when highlighted, so normal renders keep their existing keys.
-      (highlighted ? '|divergent' : '');
+      (highlighted ? '|divergent' : '') +
+      // Only appended for black, so white renders keep their existing keys.
+      (orientation === 'black' ? '|black' : '');
     const existing = this.urlByKey.get(key);
     if (existing) {
       return existing;
     }
-    const pending = this.resolveUrl(position, key, highlighted);
+    const pending = this.resolveUrl(position, key, highlighted, orientation);
     this.urlByKey.set(key, pending);
     return pending;
   }
 
-  private async resolveUrl(position: GamePosition, key: string, highlighted: boolean): Promise<string> {
+  private async resolveUrl(
+    position: GamePosition,
+    key: string,
+    highlighted: boolean,
+    orientation: BoardOrientation,
+  ): Promise<string> {
     const fileRef = ref(this.storage, `moves/${await this.hash(key)}.png`);
     try {
       // Reuse an already-uploaded render (content-addressed, so it's this position+move).
@@ -81,13 +96,18 @@ export class BoardImageService {
         throw err;
       }
     }
-    const blob = await this.render(position, highlighted);
+    const blob = await this.render(position, highlighted, orientation);
     await uploadBytes(fileRef, blob, { contentType: 'image/png' });
     return getDownloadURL(fileRef);
   }
 
-  private async render(position: GamePosition, highlighted: boolean): Promise<Blob> {
+  private async render(
+    position: GamePosition,
+    highlighted: boolean,
+    orientation: BoardOrientation,
+  ): Promise<Blob> {
     const rows = this.chess.fenToSquares(position.fen);
+    const black = orientation === 'black';
     const canvas = document.createElement('canvas');
     canvas.width = BOARD_SIZE;
     canvas.height = BOARD_SIZE;
@@ -101,14 +121,15 @@ export class BoardImageService {
         const y = rank * RENDER_SQUARE;
         ctx.fillStyle = (rank + file) % 2 === 0 ? LIGHT_SQUARE : DARK_SQUARE;
         ctx.fillRect(x, y, RENDER_SQUARE, RENDER_SQUARE);
-        const piece = rows[rank]?.[file] ?? null;
+        // Black views the board rotated 180°, so read the mirrored source cell.
+        const piece = black ? (rows[7 - rank]?.[7 - file] ?? null) : (rows[rank]?.[file] ?? null);
         if (piece) {
           ctx.drawImage(await this.pieceImage(pieceAssetPath(piece)), x, y, RENDER_SQUARE, RENDER_SQUARE);
         }
       }
     }
     if (position.from && position.to) {
-      this.drawArrow(ctx, position.from, position.to, highlighted ? DIVERGENT_MOVE_COLOR : MOVE_ARROW_COLOR);
+      this.drawArrow(ctx, position.from, position.to, highlighted ? DIVERGENT_MOVE_COLOR : MOVE_ARROW_COLOR, black);
     }
     if (highlighted) {
       this.drawHighlightBorder(ctx);
@@ -122,10 +143,21 @@ export class BoardImageService {
   }
 
   /** Draws a colored arrow with a triangular head from the `from` to the `to` square. */
-  private drawArrow(ctx: CanvasRenderingContext2D, from: string, to: string, color: string): void {
+  private drawArrow(
+    ctx: CanvasRenderingContext2D,
+    from: string,
+    to: string,
+    color: string,
+    black: boolean,
+  ): void {
     // Geometry is in board units (1 unit = 1 square); scale up to pixels.
     const arrow = moveArrowGeometry(from, to);
     const s = RENDER_SQUARE;
+    // From black's side the board is rotated 180°, so mirror every arrow point.
+    const at = (point: { x: number; y: number }) => (black ? flipPoint(point) : point);
+    const shaftFrom = at(arrow.shaftFrom);
+    const shaftTo = at(arrow.shaftTo);
+    const head = arrow.head.map(at);
 
     ctx.save();
     ctx.strokeStyle = color;
@@ -135,14 +167,14 @@ export class BoardImageService {
     ctx.lineJoin = 'round';
 
     ctx.beginPath();
-    ctx.moveTo(arrow.shaftFrom.x * s, arrow.shaftFrom.y * s);
-    ctx.lineTo(arrow.shaftTo.x * s, arrow.shaftTo.y * s);
+    ctx.moveTo(shaftFrom.x * s, shaftFrom.y * s);
+    ctx.lineTo(shaftTo.x * s, shaftTo.y * s);
     ctx.stroke();
 
     ctx.beginPath();
-    ctx.moveTo(arrow.head[0].x * s, arrow.head[0].y * s);
-    ctx.lineTo(arrow.head[1].x * s, arrow.head[1].y * s);
-    ctx.lineTo(arrow.head[2].x * s, arrow.head[2].y * s);
+    ctx.moveTo(head[0].x * s, head[0].y * s);
+    ctx.lineTo(head[1].x * s, head[1].y * s);
+    ctx.lineTo(head[2].x * s, head[2].y * s);
     ctx.closePath();
     ctx.fill();
     ctx.restore();

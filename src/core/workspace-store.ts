@@ -345,6 +345,7 @@ export class WorkspaceStore {
     }
     // Parse every entry up front so each can be compared against its neighbor.
     const source = node.content.entries;
+    const orientation = node.content.orientation ?? 'white';
     const parsed = source.map((entry) => this.chess.parsePgn(entry.pgn));
     const entries = await Promise.all(
       source.map(async (entry, index): Promise<PgnEntry> => {
@@ -362,11 +363,16 @@ export class WorkspaceStore {
         const highlighted = reference?.valid
           ? divergentPlies(result.positions, reference.positions)
           : new Set<number>();
-        const boardImageUrls = await this.boardImages.urlsForPositions(result.positions, highlighted);
+        const boardImageUrls = await this.boardImages.urlsForPositions(
+          result.positions,
+          highlighted,
+          orientation,
+        );
         return { ...entry, boardImageUrls };
       }),
     );
-    return { ...node, content: { entries } };
+    // Preserve the file's orientation alongside the freshly rendered entries.
+    return { ...node, content: { ...node.content, entries } };
   }
 
   private put(node: WorkspaceNode): void {

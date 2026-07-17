@@ -5,6 +5,7 @@ import { MAT_DIALOG_DATA, MatDialogModule } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
+import { BoardOrientation } from '../../core/chess-models';
 import { ChessBoard } from '../chess-board/chess-board';
 
 /** One board position the dialog can display. */
@@ -27,6 +28,8 @@ export interface BoardDialogData {
   readonly captions: Readonly<Record<number, string>>;
   /** Called with the full updated caption map whenever the user saves one. */
   readonly onCaptionChange: (captions: Record<number, string>) => void;
+  /** Side to view every board from; defaults to white when absent. */
+  readonly orientation?: BoardOrientation;
 }
 
 /** A board position shown large in a modal, navigable through the whole game. */
@@ -101,6 +104,7 @@ export interface BoardDialogData {
             [from]="current().from"
             [to]="current().to"
             [highlighted]="current().highlighted ?? false"
+            [orientation]="orientation()"
           />
         </div>
         <div class="board-dialog__caption">
@@ -226,6 +230,7 @@ export class BoardDialog {
   private readonly data = inject<BoardDialogData>(MAT_DIALOG_DATA);
 
   protected readonly index = signal(this.data.index);
+  protected readonly orientation = signal<BoardOrientation>(this.data.orientation ?? 'white');
   protected readonly current = computed(() => this.data.tiles[this.index()]);
   protected readonly hasPrev = computed(() => this.index() > 0);
   protected readonly hasNext = computed(() => this.index() < this.data.tiles.length - 1);
