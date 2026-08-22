@@ -31,6 +31,8 @@ yarn-error.log
 
 # Miscellaneous
 /.angular/cache
+# Generated at build time from the git commit count (scripts/generate-version.mjs)
+/src/app/version.ts
 .sass-cache/
 /connect.lock
 /coverage

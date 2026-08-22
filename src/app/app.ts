@@ -5,6 +5,7 @@ import { MatSidenavModule } from '@angular/material/sidenav';
 import { Header } from '../layout/header/header';
 import { SideNav } from '../layout/side-nav/side-nav';
 import { ThemeService } from '../core/theme-service';
+import { APP_VERSION } from './version';
 
 @Component({
   selector: 'app-root',
@@ -16,6 +17,9 @@ import { ThemeService } from '../core/theme-service';
 export class App {
   protected readonly themeService = inject(ThemeService);
   protected readonly sideNavOpen = signal(false);
+
+  /** App version, shown in the corner. Equals this project's git commit count. */
+  protected readonly version = APP_VERSION;
 
   protected toggleSideNav(): void {
     this.sideNavOpen.update((open) => !open);

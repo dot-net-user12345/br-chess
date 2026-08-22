@@ -3,9 +3,14 @@
   "version": "0.0.0",
   "scripts": {
     "ng": "ng",
+    "generate:version": "node scripts/generate-version.mjs",
+    "prestart": "node scripts/generate-version.mjs",
     "start": "ng serve",
+    "prebuild": "node scripts/generate-version.mjs",
     "build": "ng build",
+    "prewatch": "node scripts/generate-version.mjs",
     "watch": "ng build --watch --configuration development",
+    "pretest": "node scripts/generate-version.mjs",
     "test": "ng test"
   },
   "private": true,
