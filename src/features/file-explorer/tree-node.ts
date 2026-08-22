@@ -83,12 +83,18 @@ export class TreeNode {
     this.editing.set(false);
   }
 
-  protected newFileInFolder(): void {
-    this.store.createFile(this.nodeId());
+  protected newFile(): void {
+    const parent = this.containerFolder();
+    if (parent !== undefined) {
+      this.store.createFile(parent);
+    }
   }
 
-  protected newFolderInFolder(): void {
-    this.store.createFolder(this.nodeId());
+  protected newFolder(): void {
+    const parent = this.containerFolder();
+    if (parent !== undefined) {
+      this.store.createFolder(parent);
+    }
   }
 
   /** Confirms before deleting, since removal is permanent (and recursive for folders). */
@@ -116,9 +122,6 @@ export class TreeNode {
   }
 
   protected onContextMenu(event: MouseEvent): void {
-    if (!this.isFolderNode()) {
-      return;
-    }
     event.preventDefault();
     const trigger = this.contextMenu();
     const el = this.contextTrigger()?.nativeElement;
@@ -146,7 +149,7 @@ export class TreeNode {
   }
 
   protected onDragOver(event: DragEvent): void {
-    const target = this.dropTarget();
+    const target = this.containerFolder();
     if (target === undefined || !this.store.canDrop(target)) {
       return;
     }
@@ -164,7 +167,7 @@ export class TreeNode {
   }
 
   protected onDrop(event: DragEvent): void {
-    const target = this.dropTarget();
+    const target = this.containerFolder();
     if (target === undefined) {
       return;
     }
@@ -179,11 +182,12 @@ export class TreeNode {
   }
 
   /**
-   * The folder this row drops into: itself when it's a folder, otherwise its
-   * parent folder (or root) so dropping onto a file targets its container.
-   * `undefined` when the node is missing.
+   * The folder this row acts within: itself when it's a folder, otherwise its
+   * parent folder (or root). Used both as the drop target and as the parent for
+   * new siblings, so right-clicking a file creates alongside it. `undefined`
+   * when the node is missing.
    */
-  private dropTarget(): NodeId | null | undefined {
+  private containerFolder(): NodeId | null | undefined {
     const node = this.node();
     if (!node) {
       return undefined;

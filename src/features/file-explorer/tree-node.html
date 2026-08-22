@@ -61,27 +61,26 @@
     }
   </div>
 
-  @if (isFolderNode()) {
-    <div
-      #contextTrigger
-      class="tree-node__context-trigger"
-      [matMenuTriggerFor]="folderMenu"
-    ></div>
-    <mat-menu #folderMenu>
-      <button mat-menu-item type="button" (click)="newFileInFolder()">
-        <mat-icon>note_add</mat-icon>
-        <span>New file</span>
-      </button>
-      <button mat-menu-item type="button" (click)="newFolderInFolder()">
-        <mat-icon>create_new_folder</mat-icon>
-        <span>New folder</span>
-      </button>
-      <button mat-menu-item type="button" (click)="startRename()">
-        <mat-icon>edit</mat-icon>
-        <span>Rename</span>
-      </button>
-    </mat-menu>
-  }
+  <!-- Cursor-anchored trigger for the right-click menu, on both files and folders. -->
+  <div
+    #contextTrigger
+    class="tree-node__context-trigger"
+    [matMenuTriggerFor]="nodeMenu"
+  ></div>
+  <mat-menu #nodeMenu>
+    <button mat-menu-item type="button" (click)="newFile()">
+      <mat-icon>note_add</mat-icon>
+      <span>New file</span>
+    </button>
+    <button mat-menu-item type="button" (click)="newFolder()">
+      <mat-icon>create_new_folder</mat-icon>
+      <span>New folder</span>
+    </button>
+    <button mat-menu-item type="button" (click)="startRename()">
+      <mat-icon>edit</mat-icon>
+      <span>Rename</span>
+    </button>
+  </mat-menu>
 
   @if (isFolderNode() && expanded()) {
     <ul class="tree-node__children" role="group">
