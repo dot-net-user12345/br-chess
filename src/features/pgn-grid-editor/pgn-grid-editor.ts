@@ -21,7 +21,7 @@ import { MatMenuModule, MatMenuTrigger } from '@angular/material/menu';
 import { AuthService } from '../../core/auth-service';
 import { ChessService } from '../../core/chess-service';
 import { BoardOrientation, GamePosition, PgnParseResult } from '../../core/chess-models';
-import { WorkspaceStore } from '../../core/workspace-store';
+import { DuplicatePgnEntry, WorkspaceStore } from '../../core/workspace-store';
 import { NodeId, PgnEntry, PgnGridFileNode } from '../../core/workspace-models';
 import { COMPARISON_PALETTE } from '../../core/board-assets';
 import { comparisonIndex, divergentPlies } from '../../core/move-comparison';
@@ -391,6 +391,12 @@ export class PgnGridEditor {
   }
 
   protected async save(): Promise<void> {
+    // Warn if any line's PGN already lives elsewhere, letting the user back out
+    // before creating a duplicate.
+    const duplicates = this.store.duplicatePgnEntries(this.fileId());
+    if (duplicates.length > 0 && !(await this.confirmDuplicates(duplicates))) {
+      return;
+    }
     // Saving persists to the cloud, so require a signed-in user first.
     if (!this.auth.isSignedIn()) {
       const user = await firstValueFrom(
@@ -401,6 +407,41 @@ export class PgnGridEditor {
       }
     }
     void this.store.saveFile(this.fileId());
+  }
+
+  /**
+   * Tells the user which lines already exist elsewhere and asks whether to save
+   * anyway. Resolves true to proceed; false (or a dismissed dialog) to abort.
+   */
+  private async confirmDuplicates(duplicates: readonly DuplicatePgnEntry[]): Promise<boolean> {
+    const entries = this.entries();
+    const sentences = duplicates.map((dup) => {
+      const index = entries.findIndex((entry) => entry.id === dup.entryId);
+      const label = this.labelFor(entries[index], index);
+      const places = dup.existingIn.map((name) => `“${name}”`);
+      if (dup.duplicatedInFile) {
+        places.push('another line in this file');
+      }
+      return `“${label}” already exists in ${this.joinWithAnd(places)}.`;
+    });
+    const data: ConfirmDialogData = {
+      title: duplicates.length === 1 ? 'Duplicate PGN found' : 'Duplicate PGNs found',
+      message: `${sentences.join(' ')} Save anyway?`,
+      confirmLabel: 'Save anyway',
+      cancelLabel: 'Cancel',
+    };
+    const confirmed = await firstValueFrom(
+      this.dialog.open(ConfirmDialog, { data, autoFocus: 'first-tabbable' }).afterClosed(),
+    );
+    return confirmed === true;
+  }
+
+  /** Joins phrases into a readable list: "a", "a and b", "a, b and c". */
+  private joinWithAnd(parts: readonly string[]): string {
+    if (parts.length <= 1) {
+      return parts[0] ?? '';
+    }
+    return `${parts.slice(0, -1).join(', ')} and ${parts[parts.length - 1]}`;
   }
 
   private writeEntries(entries: PgnEntry[]): void {

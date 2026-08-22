@@ -20,6 +20,16 @@ export interface StatusMessage {
   readonly text: string;
 }
 
+/** A pgn-grid entry whose PGN already appears elsewhere in the workspace. */
+export interface DuplicatePgnEntry {
+  /** Id of the entry (in the file being checked) that collides. */
+  readonly entryId: string;
+  /** Names of the other files that already contain this PGN. */
+  readonly existingIn: readonly string[];
+  /** Whether another line in the same file has the same PGN. */
+  readonly duplicatedInFile: boolean;
+}
+
 function sortNodes(nodes: WorkspaceNode[]): WorkspaceNode[] {
   return [...nodes].sort((a, b) => {
     // Folders before files, then alphabetical by name.
@@ -295,6 +305,73 @@ export class WorkspaceStore {
       return;
     }
     this.put({ ...node, content, updatedAt: this.now() });
+  }
+
+  /**
+   * For the given pgn-grid file, finds each entry whose PGN already appears
+   * elsewhere in the workspace — in a different pgn-grid file, or in another line
+   * of the same file. Empty PGNs are ignored, and matching is by move sequence so
+   * cosmetic formatting differences (spacing, move-number style) still collide.
+   * Returns one result per colliding entry.
+   */
+  duplicatePgnEntries(fileId: NodeId): DuplicatePgnEntry[] {
+    const file = this.nodes()[fileId];
+    if (!file || !isFile(file) || file.fileType !== 'pgn-grid') {
+      return [];
+    }
+    // Names of other files containing each PGN, and how many times each PGN
+    // appears within this file, so both cross-file and in-file dupes surface.
+    const otherFiles = new Map<string, Set<string>>();
+    const inFileCounts = new Map<string, number>();
+    for (const node of Object.values(this.nodes())) {
+      if (!isFile(node) || node.fileType !== 'pgn-grid') {
+        continue;
+      }
+      for (const entry of node.content.entries) {
+        const key = this.pgnKey(entry.pgn);
+        if (key.length === 0) {
+          continue;
+        }
+        if (node.id === fileId) {
+          inFileCounts.set(key, (inFileCounts.get(key) ?? 0) + 1);
+        } else {
+          (otherFiles.get(key) ?? otherFiles.set(key, new Set()).get(key)!).add(node.name);
+        }
+      }
+    }
+    const duplicates: DuplicatePgnEntry[] = [];
+    for (const entry of file.content.entries) {
+      const key = this.pgnKey(entry.pgn);
+      if (key.length === 0) {
+        continue;
+      }
+      const existingIn = [...(otherFiles.get(key) ?? [])];
+      const duplicatedInFile = (inFileCounts.get(key) ?? 0) > 1;
+      if (existingIn.length > 0 || duplicatedInFile) {
+        duplicates.push({ entryId: entry.id, existingIn, duplicatedInFile });
+      }
+    }
+    return duplicates;
+  }
+
+  /**
+   * Canonical key for duplicate detection: the move sequence when the PGN parses,
+   * so cosmetic differences (spacing, move-number formatting) still collide;
+   * otherwise the whitespace-normalized text. An empty PGN yields ''.
+   */
+  private pgnKey(pgn: string): string {
+    const trimmed = pgn.trim();
+    if (trimmed.length === 0) {
+      return '';
+    }
+    const result = this.chess.parsePgn(pgn);
+    if (!result.valid) {
+      return trimmed.replace(/\s+/g, ' ');
+    }
+    return result.positions
+      .map((position) => position.san)
+      .filter((san): san is string => san !== null)
+      .join(' ');
   }
 
   /** Dismisses the current status message. */
