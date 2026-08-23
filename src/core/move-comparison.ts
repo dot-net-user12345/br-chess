@@ -16,6 +16,25 @@ export function comparisonIndex(index: number, total: number): number {
 }
 
 /**
+ * The first ply (1-based half-move) at which two lines play a different move,
+ * comparing by SAN at each ply. A move one line reaches but the other does not
+ * (because it is shorter) counts as a deviation. Returns null when the lines are
+ * identical. Symmetric in its arguments, unlike {@link divergentPlies}.
+ */
+export function firstDeviationPly(
+  a: readonly GamePosition[],
+  b: readonly GamePosition[],
+): number | null {
+  const maxPly = Math.max(a.length, b.length) - 1;
+  for (let ply = 1; ply <= maxPly; ply++) {
+    if ((a[ply]?.san ?? null) !== (b[ply]?.san ?? null)) {
+      return ply;
+    }
+  }
+  return null;
+}
+
+/**
  * Plies (1-based half-move numbers) of the first `limit` moves in `line` whose
  * SAN differs from `reference` at the same ply — i.e. where the two lines play a
  * different move for the same numbered move. A move `reference` doesn't reach

@@ -248,5 +248,55 @@
         </div>
       </mat-expansion-panel>
     }
+
+    @if (fileComparisonRows().length > 0) {
+      <mat-expansion-panel
+        class="comparison"
+        [expanded]="fileDifferencesExpanded()"
+        (expandedChange)="fileDifferencesExpanded.set($event)"
+      >
+        <mat-expansion-panel-header>
+          <mat-panel-title>Deviations from other files - where this file first branches from each sibling</mat-panel-title>
+        </mat-expansion-panel-header>
+
+        <div class="comparison__body">
+          <p class="comparison__hint">
+            Each row compares this file's first line with another file's first line in the same
+            folder. Select it to view the deviation fullscreen.
+          </p>
+
+          <ol class="comparison__rows">
+            @for (row of fileComparisonRows(); track row.flatIndex) {
+              <li>
+                <button
+                  type="button"
+                  class="comparison__row"
+                  (click)="openFileComparison(row)"
+                  [attr.aria-label]="'View where this file deviates from ' + row.label + ' fullscreen'"
+                >
+                  <span class="comparison__label">{{ row.label }}</span>
+                  <span class="comparison__cells">
+                    @for (board of row.boards; track $index) {
+                      <span class="comparison__cell">
+                        <app-chess-board
+                          [fen]="board.fen"
+                          [caption]="board.caption"
+                          [from]="board.from"
+                          [to]="board.to"
+                          [highlighted]="true"
+                          [highlightColor]="row.color"
+                          [orientation]="orientation()"
+                        />
+                        <span class="comparison__caption">{{ board.caption }}</span>
+                      </span>
+                    }
+                  </span>
+                </button>
+              </li>
+            }
+          </ol>
+        </div>
+      </mat-expansion-panel>
+    }
   </div>
 }

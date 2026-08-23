@@ -24,7 +24,7 @@ import { BoardOrientation, GamePosition, PgnParseResult } from '../../core/chess
 import { DuplicatePgnEntry, WorkspaceStore } from '../../core/workspace-store';
 import { NodeId, PgnEntry, PgnGridFileNode } from '../../core/workspace-models';
 import { COMPARISON_PALETTE } from '../../core/board-assets';
-import { comparisonIndex, divergentPlies } from '../../core/move-comparison';
+import { comparisonIndex, divergentPlies, firstDeviationPly } from '../../core/move-comparison';
 import { FocusOnInit } from '../../shared/focus-on-init';
 import { ChessBoard } from '../chess-board/chess-board';
 import {
@@ -137,6 +137,66 @@ export class PgnGridEditor {
 
   /** Whether the differences panel is expanded; closed by default. */
   protected readonly differencesExpanded = signal(false);
+
+  /** Whether the cross-file deviations panel is expanded; closed by default. */
+  protected readonly fileDifferencesExpanded = signal(false);
+
+  /** This file's first line that parses, or null when it has none. */
+  private readonly myFirstLine = computed<readonly GamePosition[] | null>(() => {
+    const parsed = this.parsedEntries().find((result) => result.valid);
+    return parsed?.valid ? parsed.positions : null;
+  });
+
+  /** pgn-grid files directly beside this one in its folder, excluding itself. */
+  private readonly siblingFiles = computed<PgnGridFileNode[]>(() => {
+    const current = this.file();
+    if (!current) {
+      return [];
+    }
+    return this.store
+      .childrenOf(current.parentId)
+      .filter(
+        (node): node is PgnGridFileNode =>
+          node.kind === 'file' && node.fileType === 'pgn-grid' && node.id !== current.id,
+      );
+  });
+
+  /**
+   * One row per sibling file: the first move where this file's first line
+   * branches from that sibling's first line, showing both files' boards at that
+   * move. Siblings with no parsable first line, or that never deviate, are omitted.
+   */
+  protected readonly fileComparisonRows = computed<ComparisonRow[]>(() => {
+    const mine = this.myFirstLine();
+    if (!mine) {
+      return [];
+    }
+    const myName = this.file()?.name ?? 'This file';
+    const rows: ComparisonRow[] = [];
+    let flatIndex = 0;
+    for (const sibling of this.siblingFiles()) {
+      const theirs = sibling.content.entries
+        .map((entry) => this.chess.parsePgn(entry.pgn))
+        .find((result) => result.valid);
+      if (!theirs?.valid) {
+        continue;
+      }
+      const ply = firstDeviationPly(mine, theirs.positions);
+      if (ply === null) {
+        continue;
+      }
+      const boards = [
+        this.labeledBoardAt(mine, ply, myName),
+        this.labeledBoardAt(theirs.positions, ply, sibling.name),
+      ].filter((board): board is ComparisonBoard => board !== null);
+      if (boards.length === 0) {
+        continue;
+      }
+      const color = COMPARISON_PALETTE[flatIndex % COMPARISON_PALETTE.length];
+      rows.push({ flatIndex: flatIndex++, label: sibling.name, color, boards });
+    }
+    return rows;
+  });
 
   /** Editable file title. Kept in sync with the selected file's name. */
   protected readonly titleControl = new FormControl('', { nonNullable: true });
@@ -373,12 +433,38 @@ export class PgnGridEditor {
     });
   }
 
+  /** Opens the fullscreen comparison for a cross-file deviation row. */
+  protected openFileComparison(row: ComparisonRow): void {
+    this.dialog.open(ComparisonDialog, {
+      data: {
+        items: this.fileComparisonRows(),
+        index: row.flatIndex,
+        orientation: this.orientation(),
+      },
+      panelClass: 'comparison-dialog-panel',
+      ariaLabel: 'File deviation comparison',
+      maxWidth: '98vw',
+      maxHeight: '98vh',
+      autoFocus: 'dialog',
+    });
+  }
+
   private boardAt(positions: readonly GamePosition[], ply: number): ComparisonBoard | null {
     const position = positions[ply];
     if (!position) {
       return null;
     }
     return { fen: position.fen, caption: this.caption(position), from: position.from, to: position.to };
+  }
+
+  /** Like {@link boardAt}, but prefixes the caption with the owning file's name. */
+  private labeledBoardAt(
+    positions: readonly GamePosition[],
+    ply: number,
+    fileName: string,
+  ): ComparisonBoard | null {
+    const board = this.boardAt(positions, ply);
+    return board ? { ...board, caption: `${fileName}: ${board.caption}` } : null;
   }
 
   private caption(position: GamePosition): string {
