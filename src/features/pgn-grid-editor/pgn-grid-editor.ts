@@ -21,7 +21,7 @@ import { MatMenuModule, MatMenuTrigger } from '@angular/material/menu';
 import { AuthService } from '../../core/auth-service';
 import { ChessService } from '../../core/chess-service';
 import { BoardOrientation, GamePosition, PgnParseResult } from '../../core/chess-models';
-import { DuplicatePgnEntry, WorkspaceStore } from '../../core/workspace-store';
+import { DuplicateLinePair, WorkspaceStore } from '../../core/workspace-store';
 import { NodeId, PgnEntry, PgnGridFileNode } from '../../core/workspace-models';
 import { COMPARISON_PALETTE } from '../../core/board-assets';
 import { comparisonIndex, divergentPlies, firstDeviationPly } from '../../core/move-comparison';
@@ -477,9 +477,9 @@ export class PgnGridEditor {
   }
 
   protected async save(): Promise<void> {
-    // Warn if any line's PGN already lives elsewhere, letting the user back out
+    // Warn if any line duplicates one elsewhere, letting the user back out
     // before creating a duplicate.
-    const duplicates = this.store.duplicatePgnEntries(this.fileId());
+    const duplicates = this.store.duplicateLinePairs(this.fileId());
     if (duplicates.length > 0 && !(await this.confirmDuplicates(duplicates))) {
       return;
     }
@@ -496,22 +496,17 @@ export class PgnGridEditor {
   }
 
   /**
-   * Tells the user which lines already exist elsewhere and asks whether to save
-   * anyway. Resolves true to proceed; false (or a dismissed dialog) to abort.
+   * Names each pair of identical lines and asks whether to save anyway. Resolves
+   * true to proceed; false (or a dismissed dialog) to abort.
    */
-  private async confirmDuplicates(duplicates: readonly DuplicatePgnEntry[]): Promise<boolean> {
-    const entries = this.entries();
-    const sentences = duplicates.map((dup) => {
-      const index = entries.findIndex((entry) => entry.id === dup.entryId);
-      const label = this.labelFor(entries[index], index);
-      const places = dup.existingIn.map((name) => `“${name}”`);
-      if (dup.duplicatedInFile) {
-        places.push('another line in this file');
-      }
-      return `“${label}” already exists in ${this.joinWithAnd(places)}.`;
-    });
+  private async confirmDuplicates(pairs: readonly DuplicateLinePair[]): Promise<boolean> {
+    const sentences = pairs.map(
+      ({ line, match }) =>
+        `“${line.label}” from “${line.fileName}” is the same as ` +
+        `“${match.label}” from “${match.fileName}”.`,
+    );
     const data: ConfirmDialogData = {
-      title: duplicates.length === 1 ? 'Duplicate PGN found' : 'Duplicate PGNs found',
+      title: pairs.length === 1 ? 'Duplicate line found' : 'Duplicate lines found',
       message: `${sentences.join(' ')} Save anyway?`,
       confirmLabel: 'Save anyway',
       cancelLabel: 'Cancel',
@@ -520,14 +515,6 @@ export class PgnGridEditor {
       this.dialog.open(ConfirmDialog, { data, autoFocus: 'first-tabbable' }).afterClosed(),
     );
     return confirmed === true;
-  }
-
-  /** Joins phrases into a readable list: "a", "a and b", "a, b and c". */
-  private joinWithAnd(parts: readonly string[]): string {
-    if (parts.length <= 1) {
-      return parts[0] ?? '';
-    }
-    return `${parts.slice(0, -1).join(', ')} and ${parts[parts.length - 1]}`;
   }
 
   private writeEntries(entries: PgnEntry[]): void {

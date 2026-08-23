@@ -12,6 +12,7 @@ import {
   NodeId,
   PgnEntry,
   PgnGridContent,
+  PgnGridFileNode,
   WorkspaceNode,
 } from './workspace-models';
 
@@ -20,14 +21,21 @@ export interface StatusMessage {
   readonly text: string;
 }
 
-/** A pgn-grid entry whose PGN already appears elsewhere in the workspace. */
-export interface DuplicatePgnEntry {
-  /** Id of the entry (in the file being checked) that collides. */
-  readonly entryId: string;
-  /** Names of the other files that already contain this PGN. */
-  readonly existingIn: readonly string[];
-  /** Whether another line in the same file has the same PGN. */
-  readonly duplicatedInFile: boolean;
+/** One line, identified for a duplicate-line message. */
+export interface DuplicateLineRef {
+  readonly fileName: string;
+  /** 1-based position of the line within its file. */
+  readonly lineNumber: number;
+  /** Display label: the line's custom label, or `Line N` when unset. */
+  readonly label: string;
+}
+
+/** Two lines, in the file being saved and elsewhere, that share the same PGN. */
+export interface DuplicateLinePair {
+  /** The line in the file being saved. */
+  readonly line: DuplicateLineRef;
+  /** The identical line — in another file, or another line of the same file. */
+  readonly match: DuplicateLineRef;
 }
 
 function sortNodes(nodes: WorkspaceNode[]): WorkspaceNode[] {
@@ -308,50 +316,57 @@ export class WorkspaceStore {
   }
 
   /**
-   * For the given pgn-grid file, finds each entry whose PGN already appears
-   * elsewhere in the workspace — in a different pgn-grid file, or in another line
-   * of the same file. Empty PGNs are ignored, and matching is by move sequence so
-   * cosmetic formatting differences (spacing, move-number style) still collide.
-   * Returns one result per colliding entry.
+   * For the given pgn-grid file, finds every pair of identical lines involving
+   * one of its lines — the matching line being in a different pgn-grid file or
+   * another line of the same file. Empty PGNs are ignored, and matching is by
+   * move sequence so cosmetic formatting differences (spacing, move-number style)
+   * still collide. Each unordered pair is returned once.
    */
-  duplicatePgnEntries(fileId: NodeId): DuplicatePgnEntry[] {
+  duplicateLinePairs(fileId: NodeId): DuplicateLinePair[] {
     const file = this.nodes()[fileId];
     if (!file || !isFile(file) || file.fileType !== 'pgn-grid') {
       return [];
     }
-    // Names of other files containing each PGN, and how many times each PGN
-    // appears within this file, so both cross-file and in-file dupes surface.
-    const otherFiles = new Map<string, Set<string>>();
-    const inFileCounts = new Map<string, number>();
-    for (const node of Object.values(this.nodes())) {
-      if (!isFile(node) || node.fileType !== 'pgn-grid') {
-        continue;
-      }
-      for (const entry of node.content.entries) {
-        const key = this.pgnKey(entry.pgn);
-        if (key.length === 0) {
-          continue;
-        }
-        if (node.id === fileId) {
-          inFileCounts.set(key, (inFileCounts.get(key) ?? 0) + 1);
-        } else {
-          (otherFiles.get(key) ?? otherFiles.set(key, new Set()).get(key)!).add(node.name);
-        }
-      }
-    }
-    const duplicates: DuplicatePgnEntry[] = [];
-    for (const entry of file.content.entries) {
+    // Precompute each pgn-grid file's per-line comparison keys once.
+    const keyedFiles = Object.values(this.nodes())
+      .filter((node): node is PgnGridFileNode => isFile(node) && node.fileType === 'pgn-grid')
+      .map((node) => ({ node, keys: node.content.entries.map((entry) => this.pgnKey(entry.pgn)) }));
+
+    const pairs: DuplicateLinePair[] = [];
+    const seenInFilePairs = new Set<string>();
+    file.content.entries.forEach((entry, index) => {
       const key = this.pgnKey(entry.pgn);
       if (key.length === 0) {
-        continue;
+        return;
       }
-      const existingIn = [...(otherFiles.get(key) ?? [])];
-      const duplicatedInFile = (inFileCounts.get(key) ?? 0) > 1;
-      if (existingIn.length > 0 || duplicatedInFile) {
-        duplicates.push({ entryId: entry.id, existingIn, duplicatedInFile });
+      const line = this.lineRef(file, entry, index);
+      for (const { node, keys } of keyedFiles) {
+        keys.forEach((otherKey, otherIndex) => {
+          if (otherKey !== key || (node.id === fileId && otherIndex === index)) {
+            return;
+          }
+          // A same-file match is mirrored (n↔m); record each such pair only once.
+          if (node.id === fileId) {
+            const pairKey = `${Math.min(index, otherIndex)}-${Math.max(index, otherIndex)}`;
+            if (seenInFilePairs.has(pairKey)) {
+              return;
+            }
+            seenInFilePairs.add(pairKey);
+          }
+          pairs.push({ line, match: this.lineRef(node, node.content.entries[otherIndex], otherIndex) });
+        });
       }
-    }
-    return duplicates;
+    });
+    return pairs;
+  }
+
+  /** Builds a {@link DuplicateLineRef} for a line at `index` within `file`. */
+  private lineRef(file: PgnGridFileNode, entry: PgnEntry, index: number): DuplicateLineRef {
+    return {
+      fileName: file.name,
+      lineNumber: index + 1,
+      label: entry.label?.trim() || `Line ${index + 1}`,
+    };
   }
 
   /**
