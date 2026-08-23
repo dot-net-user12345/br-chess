@@ -22,6 +22,7 @@
               type="button"
               class="pgn-container__tile-button"
               (click)="openTile(i)"
+              (contextmenu)="onTileContextMenu($event, tile.fen)"
               [matTooltip]="captions()[tile.ply]"
               [attr.aria-label]="'View ' + tile.caption + ' fullscreen'"
             >
@@ -39,5 +40,18 @@
         }
       </ol>
     }
+
+    <!-- Zero-size, cursor-anchored element the tile right-click menu opens from. -->
+    <div
+      #contextTrigger
+      class="pgn-container__context-trigger"
+      [matMenuTriggerFor]="tileMenu"
+    ></div>
+    <mat-menu #tileMenu>
+      <button mat-menu-item type="button" (click)="copyMenuFen()">
+        <mat-icon>content_copy</mat-icon>
+        <span>Copy FEN</span>
+      </button>
+    </mat-menu>
   </mat-card-content>
 </mat-card>

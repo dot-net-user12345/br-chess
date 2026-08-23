@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { Clipboard } from '@angular/cdk/clipboard';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MAT_DIALOG_DATA, MatDialogModule } from '@angular/material/dialog';
@@ -91,6 +92,10 @@ export interface BoardDialogData {
           aria-label="Last position"
         >
           <mat-icon>last_page</mat-icon>
+        </button>
+        <button matButton type="button" (click)="copyFen()" [attr.aria-label]="copied() ? 'FEN copied' : 'Copy FEN'">
+          <mat-icon>{{ copied() ? 'check' : 'content_copy' }}</mat-icon>
+          {{ copied() ? 'Copied' : 'Copy FEN' }}
         </button>
         <button matIconButton mat-dialog-close type="button" aria-label="Close">
           <mat-icon>close</mat-icon>
@@ -228,6 +233,11 @@ export interface BoardDialogData {
 })
 export class BoardDialog {
   private readonly data = inject<BoardDialogData>(MAT_DIALOG_DATA);
+  private readonly clipboard = inject(Clipboard);
+
+  /** Briefly true after a successful copy, to confirm it on the button. */
+  protected readonly copied = signal(false);
+  private copiedTimer: ReturnType<typeof setTimeout> | null = null;
 
   protected readonly index = signal(this.data.index);
   protected readonly orientation = signal<BoardOrientation>(this.data.orientation ?? 'white');
@@ -270,6 +280,18 @@ export class BoardDialog {
 
   protected last(): void {
     this.goTo(this.data.tiles.length - 1);
+  }
+
+  /** Copies the current board's FEN, confirming with a transient button state. */
+  protected copyFen(): void {
+    if (!this.clipboard.copy(this.current().fen)) {
+      return;
+    }
+    this.copied.set(true);
+    if (this.copiedTimer) {
+      clearTimeout(this.copiedTimer);
+    }
+    this.copiedTimer = setTimeout(() => this.copied.set(false), 1500);
   }
 
   protected startEdit(): void {
