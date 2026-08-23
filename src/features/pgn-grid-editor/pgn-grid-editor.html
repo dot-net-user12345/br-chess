@@ -200,6 +200,74 @@
       }
     </mat-menu>
 
+    <mat-expansion-panel
+      class="images"
+      [expanded]="imagesExpanded()"
+      (expandedChange)="imagesExpanded.set($event)"
+    >
+      <mat-expansion-panel-header>
+        <mat-panel-title>Images</mat-panel-title>
+        <mat-panel-description>
+          {{ uploadedImages().length }}
+          {{ uploadedImages().length === 1 ? 'image' : 'images' }}
+        </mat-panel-description>
+      </mat-expansion-panel-header>
+
+      <div class="images__body">
+        <input
+          #imageInput
+          type="file"
+          accept="image/*"
+          multiple
+          hidden
+          (change)="onImagesSelected($event)"
+        />
+        <button
+          matButton="outlined"
+          type="button"
+          class="images__upload"
+          [disabled]="uploading()"
+          (click)="imageInput.click()"
+        >
+          <mat-icon>upload</mat-icon>
+          {{ uploading() ? 'Uploading…' : 'Upload image' }}
+        </button>
+
+        @if (imageError(); as error) {
+          <p class="images__error" role="alert">{{ error }}</p>
+        }
+
+        @if (uploadedImages().length > 0) {
+          <ul class="images__grid">
+            @for (image of uploadedImages(); track image.id) {
+              <li class="images__item">
+                <a
+                  class="images__thumb"
+                  [href]="image.url"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  [attr.aria-label]="'View ' + image.name + ' full size'"
+                >
+                  <img [src]="image.url" [alt]="image.name" loading="lazy" />
+                </a>
+                <button
+                  matIconButton
+                  type="button"
+                  class="images__remove"
+                  [attr.aria-label]="'Delete ' + image.name"
+                  (click)="confirmRemoveImage(image)"
+                >
+                  <mat-icon>delete_outline</mat-icon>
+                </button>
+              </li>
+            }
+          </ul>
+        } @else {
+          <p class="images__empty">No images yet. Upload one to attach it to this file.</p>
+        }
+      </div>
+    </mat-expansion-panel>
+
     @if (comparisonRows().length > 0) {
       <mat-expansion-panel
         class="comparison"

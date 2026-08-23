@@ -21,6 +21,17 @@ export interface PgnEntry {
   readonly boardImageUrls?: readonly string[];
 }
 
+/** A user-uploaded image attached to a pgn-grid file. */
+export interface UploadedImage {
+  readonly id: string;
+  /** Cloud Storage download URL used to display the image. */
+  readonly url: string;
+  /** Storage path (`uploads/{uid}/{id}`), kept so the object can be deleted. */
+  readonly path: string;
+  /** Original file name, shown as a caption and used as alt text. */
+  readonly name: string;
+}
+
 /** Content of a `pgn-grid` file: one or more PGNs, each rendered as a board grid. */
 export interface PgnGridContent {
   readonly entries: readonly PgnEntry[];
@@ -29,6 +40,8 @@ export interface PgnGridContent {
    * default), so files saved before this option existed keep their orientation.
    */
   readonly orientation?: BoardOrientation;
+  /** Images the user has attached to this file. Absent when none were added. */
+  readonly images?: readonly UploadedImage[];
 }
 
 interface BaseNode {

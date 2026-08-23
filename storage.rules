@@ -28,6 +28,20 @@ service firebase.storage {
         && image.matches('[a-f0-9]{64}\\.png');
     }
 
+    // User-attached images: `uploads/{uid}/{imageId}`, private to their owner.
+    match /uploads/{uid}/{imageId} {
+      // Only the owner may read or delete their own images.
+      allow read: if request.auth != null && request.auth.uid == uid;
+
+      // Owner writes: a create/update must be an image under 10 MB; a delete
+      // (no incoming resource) is allowed for the owner.
+      allow write: if request.auth != null
+        && request.auth.uid == uid
+        && (request.resource == null
+          || (request.resource.contentType.matches('image/.*')
+            && request.resource.size < 10 * 1024 * 1024));
+    }
+
     // Deny everything outside the known path.
     match /{allPaths=**} {
       allow read, write: if false;

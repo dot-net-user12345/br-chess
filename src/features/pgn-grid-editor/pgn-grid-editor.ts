@@ -21,8 +21,9 @@ import { MatMenuModule, MatMenuTrigger } from '@angular/material/menu';
 import { AuthService } from '../../core/auth-service';
 import { ChessService } from '../../core/chess-service';
 import { BoardOrientation, GamePosition, PgnParseResult } from '../../core/chess-models';
+import { ImageUploadService } from '../../core/image-upload-service';
 import { DuplicateLinePair, WorkspaceStore } from '../../core/workspace-store';
-import { NodeId, PgnEntry, PgnGridFileNode } from '../../core/workspace-models';
+import { NodeId, PgnEntry, PgnGridFileNode, UploadedImage } from '../../core/workspace-models';
 import { COMPARISON_PALETTE } from '../../core/board-assets';
 import { comparisonIndex, divergentPlies, firstDeviationPly } from '../../core/move-comparison';
 import { FocusOnInit } from '../../shared/focus-on-init';
@@ -68,6 +69,7 @@ export class PgnGridEditor {
   private readonly chess = inject(ChessService);
   private readonly dialog = inject(MatDialog);
   private readonly auth = inject(AuthService);
+  private readonly imageUpload = inject(ImageUploadService);
 
   readonly fileId = input.required<NodeId>();
 
@@ -84,6 +86,20 @@ export class PgnGridEditor {
   protected readonly orientation = computed<BoardOrientation>(
     () => this.file()?.content.orientation ?? 'white',
   );
+
+  /** Images the user has attached to this file, in the order they were added. */
+  protected readonly uploadedImages = computed<readonly UploadedImage[]>(
+    () => this.file()?.content.images ?? [],
+  );
+
+  /** Whether the images panel is expanded; closed by default. */
+  protected readonly imagesExpanded = signal(false);
+
+  /** True while one or more selected images are being uploaded. */
+  protected readonly uploading = signal(false);
+
+  /** Last image-upload error to surface in the panel, or null when clear. */
+  protected readonly imageError = signal<string | null>(null);
 
   /** Each entry's parsed positions, in list order; drives status and comparisons. */
   private readonly parsedEntries = computed(() =>
@@ -484,15 +500,89 @@ export class PgnGridEditor {
       return;
     }
     // Saving persists to the cloud, so require a signed-in user first.
-    if (!this.auth.isSignedIn()) {
-      const user = await firstValueFrom(
-        this.dialog.open(LoginDialog, { autoFocus: 'dialog' }).afterClosed(),
-      );
-      if (!user) {
-        return;
-      }
+    if (!(await this.ensureSignedIn())) {
+      return;
     }
     void this.store.saveFile(this.fileId());
+  }
+
+  /** Ensures a signed-in user, prompting the login dialog when needed. */
+  private async ensureSignedIn(): Promise<boolean> {
+    if (this.auth.isSignedIn()) {
+      return true;
+    }
+    const user = await firstValueFrom(
+      this.dialog.open(LoginDialog, { autoFocus: 'dialog' }).afterClosed(),
+    );
+    return !!user;
+  }
+
+  /** Uploads the chosen image files to Storage and attaches them to this file. */
+  protected async onImagesSelected(event: Event): Promise<void> {
+    const input = event.target as HTMLInputElement;
+    const files = Array.from(input.files ?? []).filter((file) => file.type.startsWith('image/'));
+    // Reset so selecting the same file again still fires a change event.
+    input.value = '';
+    if (files.length === 0) {
+      return;
+    }
+    if (!this.store.configured) {
+      this.imageError.set('Firebase is not configured, so images can’t be uploaded.');
+      return;
+    }
+    if (!(await this.ensureSignedIn())) {
+      return;
+    }
+    const uid = this.auth.user()?.uid;
+    if (!uid) {
+      return;
+    }
+    this.imageError.set(null);
+    this.uploading.set(true);
+    try {
+      const uploaded: UploadedImage[] = [];
+      for (const file of files) {
+        const { url, path } = await this.imageUpload.upload(file, uid);
+        uploaded.push({ id: crypto.randomUUID(), url, path, name: file.name });
+      }
+      this.writeImages([...this.uploadedImages(), ...uploaded]);
+    } catch (err) {
+      this.imageError.set(err instanceof Error ? err.message : 'Uploading the image failed.');
+    } finally {
+      this.uploading.set(false);
+    }
+  }
+
+  /** Confirms before detaching an image, since the stored file is also removed. */
+  protected confirmRemoveImage(image: UploadedImage): void {
+    const data: ConfirmDialogData = {
+      title: 'Delete image?',
+      message: `“${image.name}” will be removed from this file.`,
+      confirmLabel: 'Delete',
+    };
+    this.dialog
+      .open(ConfirmDialog, { data, autoFocus: 'first-tabbable' })
+      .afterClosed()
+      .subscribe((confirmed) => {
+        if (confirmed) {
+          this.removeImage(image);
+        }
+      });
+  }
+
+  private removeImage(image: UploadedImage): void {
+    this.writeImages(this.uploadedImages().filter((img) => img.id !== image.id));
+    // Best-effort cleanup of the stored object; ignore failures (e.g. already gone).
+    void this.imageUpload.delete(image.path).catch(() => undefined);
+  }
+
+  private writeImages(images: readonly UploadedImage[]): void {
+    // Carry entries and orientation forward so attaching an image edits nothing else.
+    this.store.updatePgnGridContent(this.fileId(), {
+      ...this.file()?.content,
+      entries: this.entries(),
+      images,
+    });
   }
 
   /**
