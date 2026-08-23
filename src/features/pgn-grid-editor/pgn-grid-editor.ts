@@ -16,7 +16,9 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatDialog } from '@angular/material/dialog';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
+import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
+import { MatInputModule } from '@angular/material/input';
 import { MatMenuModule, MatMenuTrigger } from '@angular/material/menu';
 import { AuthService } from '../../core/auth-service';
 import { ChessService } from '../../core/chess-service';
@@ -54,7 +56,9 @@ interface ComparisonRow extends ComparisonDialogItem {
     MatButtonModule,
     MatButtonToggleModule,
     MatExpansionModule,
+    MatFormFieldModule,
     MatIconModule,
+    MatInputModule,
     MatMenuModule,
     FocusOnInit,
     ChessBoard,
@@ -217,6 +221,12 @@ export class PgnGridEditor {
   /** Editable file title. Kept in sync with the selected file's name. */
   protected readonly titleControl = new FormControl('', { nonNullable: true });
 
+  /** Free-text notes for this file. Kept in sync with its content. */
+  protected readonly notesControl = new FormControl('', { nonNullable: true });
+
+  /** Whether the notes panel is expanded; closed by default. */
+  protected readonly notesExpanded = signal(false);
+
   /** Ids of entries whose panels the user has collapsed; all open by default. */
   private readonly collapsedIds = signal<ReadonlySet<string>>(new Set());
 
@@ -238,6 +248,24 @@ export class PgnGridEditor {
       if (name !== this.titleControl.value) {
         this.titleControl.setValue(name, { emitEvent: false });
       }
+    });
+    // Seed notes when a different file is selected, without clobbering a live edit
+    // (the value we just wrote back matches, so setValue is skipped).
+    effect(() => {
+      const notes = this.file()?.content.notes ?? '';
+      if (notes !== this.notesControl.value) {
+        this.notesControl.setValue(notes, { emitEvent: false });
+      }
+    });
+    this.notesControl.valueChanges.subscribe((notes) => this.writeNotes(notes));
+  }
+
+  private writeNotes(notes: string): void {
+    // Carry entries and the rest of the content forward so notes edit nothing else.
+    this.store.updatePgnGridContent(this.fileId(), {
+      ...this.file()?.content,
+      entries: this.entries(),
+      notes,
     });
   }
 

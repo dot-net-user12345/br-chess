@@ -42,6 +42,8 @@ export interface PgnGridContent {
   readonly orientation?: BoardOrientation;
   /** Images the user has attached to this file. Absent when none were added. */
   readonly images?: readonly UploadedImage[];
+  /** Free-text notes for this file. Absent when the user hasn't written any. */
+  readonly notes?: string;
 }
 
 interface BaseNode {

@@ -201,6 +201,26 @@
     </mat-menu>
 
     <mat-expansion-panel
+      class="notes"
+      [expanded]="notesExpanded()"
+      (expandedChange)="notesExpanded.set($event)"
+    >
+      <mat-expansion-panel-header>
+        <mat-panel-title>Notes</mat-panel-title>
+      </mat-expansion-panel-header>
+
+      <mat-form-field appearance="outline" class="notes__field">
+        <mat-label>Notes</mat-label>
+        <textarea
+          matInput
+          [formControl]="notesControl"
+          rows="6"
+          placeholder="Write notes about this file…"
+        ></textarea>
+      </mat-form-field>
+    </mat-expansion-panel>
+
+    <mat-expansion-panel
       class="images"
       [expanded]="imagesExpanded()"
       (expandedChange)="imagesExpanded.set($event)"

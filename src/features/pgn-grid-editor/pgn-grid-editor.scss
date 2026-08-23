@@ -208,6 +208,13 @@
   }
 }
 
+// Free-text notes, hosted in a Material expansion panel.
+.notes {
+  &__field {
+    width: 100%;
+  }
+}
+
 // User-attached images, hosted in a Material expansion panel.
 .images {
   &__body {
