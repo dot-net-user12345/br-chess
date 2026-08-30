@@ -1,29 +1,30 @@
 <div class="line-search">
-  <mat-form-field class="line-search__field" appearance="outline" subscriptSizing="dynamic">
-    <mat-label>Find a move</mat-label>
-    <input
-      matInput
-      type="text"
-      autocomplete="off"
-      placeholder="7. Na6"
-      [formControl]="control"
-      (keydown.escape)="clear()"
-    />
-    @if (active()) {
-      <button
-        matIconButton
-        matSuffix
-        type="button"
-        class="line-search__clear"
-        (click)="clear()"
-        aria-label="Clear move search"
-      >
-        <mat-icon>close</mat-icon>
-      </button>
-    } @else {
-      <mat-icon matSuffix class="line-search__icon">search</mat-icon>
-    }
-  </mat-form-field>
+  <div class="line-search__header">
+    <mat-form-field class="line-search__field" appearance="outline" subscriptSizing="dynamic">
+      <mat-label>Find a move</mat-label>
+      <input
+        matInput
+        type="text"
+        autocomplete="off"
+        placeholder="7. Na6"
+        [formControl]="control"
+        (keydown.escape)="clear()"
+      />
+      @if (active()) {
+        <button
+          matIconButton
+          matSuffix
+          type="button"
+          (click)="clear()"
+          aria-label="Clear move search"
+        >
+          <mat-icon>close</mat-icon>
+        </button>
+      } @else {
+        <mat-icon matSuffix class="line-search__icon">search</mat-icon>
+      }
+    </mat-form-field>
+  </div>
 
   @if (active()) {
     <div class="line-search__results">
