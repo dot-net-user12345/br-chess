@@ -1,12 +1,12 @@
 <div class="line-search">
   <div class="line-search__header">
     <mat-form-field class="line-search__field" appearance="outline" subscriptSizing="dynamic">
-      <mat-label>Find a move</mat-label>
+      <mat-label>Find moves</mat-label>
       <input
         matInput
         type="text"
         autocomplete="off"
-        placeholder="7. Na6"
+        placeholder="7. Na6 or 1. e4 e5 2. Nf3"
         [formControl]="control"
         (keydown.escape)="clear()"
       />
@@ -31,7 +31,8 @@
       <!-- One live region for both states, so it survives across keystrokes. -->
       <p class="line-search__summary" aria-live="polite">
         @if (incomplete()) {
-          Type a move, such as <b>7. Na6</b>, <b>7… Na6</b> for Black only, or just <b>Bf4</b>.
+          Type a move or paste a PGN — <b>7. Na6</b>, <b>7… Na6</b> for Black only, <b>Bf4</b>, or
+          <b>1. e4 e5 2. Nf3</b>.
         } @else if (matches().length === 0) {
           No lines play {{ queryLabel() }}.
         } @else if (matches().length === 1) {

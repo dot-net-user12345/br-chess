@@ -1,60 +1,83 @@
 import { describe, expect, it } from 'vitest';
 import { ChessService } from './chess-service';
-import { findMatchingPosition, formatMove, parsePlyQuery } from './line-search';
+import { findMatchingSpan, formatSpan, parseMoveQuery } from './line-search';
 
 const chess = new ChessService();
 const positions = (pgn: string) => chess.parsePgn(pgn).positions;
 
-/** The move a query finds in `pgn`, in the app's notation, or null when none. */
+/** Where a query matches in `pgn`, in the app's notation, or null when it doesn't. */
 function find(query: string, pgn: string): string | null {
-  const parsed = parsePlyQuery(query);
+  const parsed = parseMoveQuery(query);
   if (!parsed) {
     return null;
   }
-  const position = findMatchingPosition(positions(pgn), parsed);
-  return position ? formatMove(position) : null;
+  const span = findMatchingSpan(positions(pgn), parsed);
+  return span ? formatSpan(span) : null;
 }
 
 const RUY_LOPEZ = '1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 4. Ba4 Nf6 5. O-O Be7';
 const LONDON = '1. d4 d5 2. Bf4 Nf6 3. e3 e6 4. Nf3 Bd6 5. Bg3 O-O';
 
-describe('parsePlyQuery', () => {
+describe('parseMoveQuery', () => {
   it('reads a move number and a move', () => {
-    const query = parsePlyQuery('2. Bf4');
+    const query = parseMoveQuery('2. Bf4');
     expect(query?.moveNumber).toBe(2);
+    expect(query?.moves.length).toBe(1);
     expect(query?.label).toBe('2. Bf4');
   });
 
   it('treats a plain dot as a separator, matching either side', () => {
-    expect(parsePlyQuery('2. Bf4')?.color).toBeNull();
+    expect(parseMoveQuery('2. Bf4')?.color).toBeNull();
   });
 
   it('narrows to Black for an ellipsis, written either way', () => {
-    expect(parsePlyQuery('7... Na6')?.color).toBe('black');
-    expect(parsePlyQuery('7… Na6')?.color).toBe('black');
-    expect(parsePlyQuery('7… Na6')?.label).toBe('7… Na6');
+    expect(parseMoveQuery('7... Na6')?.color).toBe('black');
+    expect(parseMoveQuery('7… Na6')?.color).toBe('black');
+    expect(parseMoveQuery('7… Na6')?.label).toBe('7… Na6');
   });
 
   it('accepts a move on its own, matching any move number', () => {
-    const query = parsePlyQuery('Bf4');
+    const query = parseMoveQuery('Bf4');
     expect(query?.moveNumber).toBeNull();
     expect(query?.label).toBe('Bf4');
   });
 
+  it('reads a run of moves, anchored by its leading number', () => {
+    const query = parseMoveQuery('1. e4 e5 2. Nf3');
+    expect(query?.moveNumber).toBe(1);
+    expect(query?.moves.length).toBe(3);
+    expect(query?.label).toBe('1. e4 e5 2. Nf3');
+  });
+
+  it('numbers a run that opens on a Black move', () => {
+    expect(parseMoveQuery('2... Nc6 3. Bb5')?.label).toBe('2… Nc6 3. Bb5');
+  });
+
   it('tolerates missing and repeated spacing', () => {
-    expect(parsePlyQuery('7.Na6')?.moveNumber).toBe(7);
-    expect(parsePlyQuery('  7   Na6 ')?.moveNumber).toBe(7);
+    expect(parseMoveQuery('7.Na6')?.moveNumber).toBe(7);
+    expect(parseMoveQuery('  7   Na6 ')?.moveNumber).toBe(7);
+    expect(parseMoveQuery('1.e4 e5 2.Nf3')?.moves.length).toBe(3);
+  });
+
+  it('strips headers, comments, variations, glyphs and the result', () => {
+    const pgn =
+      '[Event "Casual"]\n[White "Me"]\n\n1. e4 {best by test} e5 $1 2. Nf3 (2. f4 exf4) Nc6 1-0';
+    expect(parseMoveQuery(pgn)?.label).toBe('1. e4 e5 2. Nf3 Nc6');
   });
 
   it('rejects text that does not name a move yet', () => {
-    expect(parsePlyQuery('')).toBeNull();
-    expect(parsePlyQuery('7')).toBeNull();
-    expect(parsePlyQuery('7.')).toBeNull();
-    expect(parsePlyQuery('zz9')).toBeNull();
+    expect(parseMoveQuery('')).toBeNull();
+    expect(parseMoveQuery('7')).toBeNull();
+    expect(parseMoveQuery('7.')).toBeNull();
+    expect(parseMoveQuery('zz9')).toBeNull();
+  });
+
+  it('rejects a run containing something that is not a move', () => {
+    expect(parseMoveQuery('1. e4 e5 2. Nf3 zzz')).toBeNull();
   });
 });
 
-describe('findMatchingPosition', () => {
+describe('findMatchingSpan', () => {
   it('finds a move played at the given move number', () => {
     expect(find('2. Bf4', LONDON)).toBe('2. Bf4');
     expect(find('3. Bb5', RUY_LOPEZ)).toBe('3. Bb5');
@@ -102,5 +125,44 @@ describe('findMatchingPosition', () => {
 
   it('finds nothing in a line that never plays the move', () => {
     expect(find('7. Na6', LONDON)).toBeNull();
+  });
+});
+
+describe('findMatchingSpan across a run of moves', () => {
+  it('matches a partial PGN and reports the span it covers', () => {
+    expect(find('1. e4 e5 2. Nf3', RUY_LOPEZ)).toBe('1. e4 – 2. Nf3');
+  });
+
+  it('matches a whole pasted PGN against the line it came from', () => {
+    expect(find(RUY_LOPEZ, RUY_LOPEZ)).toBe('1. e4 – 5… Be7');
+  });
+
+  it('requires the moves to be played back to back', () => {
+    // The line plays e4, e5 and Bb5, but not with Bb5 immediately after e5.
+    expect(find('1. e4 e5 2. Bb5', RUY_LOPEZ)).toBeNull();
+  });
+
+  it('requires the run to start where the leading number says', () => {
+    expect(find('2. e4 e5 Nf3', RUY_LOPEZ)).toBeNull();
+  });
+
+  it('matches a run anywhere in the line when no number anchors it', () => {
+    expect(find('Nf3 Nc6 Bb5', RUY_LOPEZ)).toBe('2. Nf3 – 3. Bb5');
+  });
+
+  it('anchors a run to Black when the query uses an ellipsis', () => {
+    expect(find('2… Nc6 3. Bb5', RUY_LOPEZ)).toBe('2… Nc6 – 3. Bb5');
+    expect(find('2. Nc6 3. Bb5', LONDON)).toBeNull();
+  });
+
+  it('does not match a run that runs off the end of a line', () => {
+    expect(find('5. O-O Be7 6. Re1', RUY_LOPEZ)).toBeNull();
+  });
+
+  it('tells apart lines that share an opening but diverge', () => {
+    const italian = '1. e4 e5 2. Nf3 Nc6 3. Bc4 Bc5';
+    expect(find('1. e4 e5 2. Nf3 Nc6', italian)).toBe('1. e4 – 2… Nc6');
+    expect(find('3. Bb5', italian)).toBeNull();
+    expect(find('3. Bc4', italian)).toBe('3. Bc4');
   });
 });

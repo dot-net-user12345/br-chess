@@ -13,9 +13,12 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { ChessService } from '../../core/chess-service';
 import { GamePosition } from '../../core/chess-models';
-import { findMatchingPosition, formatMove, parsePlyQuery } from '../../core/line-search';
+import { findMatchingSpan, formatSpan, parseMoveQuery } from '../../core/line-search';
 import { NodeId } from '../../core/workspace-models';
 import { WorkspaceStore } from '../../core/workspace-store';
+
+/** Beyond this many queried moves the summary counts them instead of listing them. */
+const SUMMARY_MOVE_LIMIT = 4;
 
 /** One line of one file, parsed once so queries only have to scan it. */
 interface IndexedLine {
@@ -34,7 +37,7 @@ export interface LineMatch {
   readonly filePath: string;
   readonly lineNumber: number;
   readonly label: string;
-  /** The matched move in the app's notation, e.g. `7… Na6`. */
+  /** Where it matched, e.g. `7… Na6`, or `1. e4 – 2. Nf3` across several moves. */
   readonly moveText: string;
 }
 
@@ -69,13 +72,24 @@ export class LineSearch {
   /** True once the user has typed something, whether or not it names a move. */
   protected readonly active = computed(() => this.query().trim().length > 0);
 
-  private readonly parsedQuery = computed(() => parsePlyQuery(this.query()));
+  private readonly parsedQuery = computed(() => parseMoveQuery(this.query()));
 
   /** True while the text so far doesn't name a move yet, e.g. a bare `7.`. */
   protected readonly incomplete = computed(() => this.active() && this.parsedQuery() === null);
 
-  /** The query echoed back in the app's move notation, for the result summary. */
-  protected readonly queryLabel = computed(() => this.parsedQuery()?.label ?? '');
+  /**
+   * How the summary names what was searched for: the moves themselves, or just
+   * how many of them once a pasted PGN is too long to read back in the panel.
+   */
+  protected readonly queryLabel = computed(() => {
+    const query = this.parsedQuery();
+    if (!query) {
+      return '';
+    }
+    return query.moves.length > SUMMARY_MOVE_LIMIT
+      ? `these ${query.moves.length} moves`
+      : query.label;
+  });
 
   /**
    * Every line in the workspace, parsed. Only recomputed when a file changes —
@@ -99,14 +113,14 @@ export class LineSearch {
     }
     const matches: LineMatch[] = [];
     for (const line of this.index()) {
-      const position = findMatchingPosition(line.positions, query);
-      if (position) {
+      const span = findMatchingSpan(line.positions, query);
+      if (span) {
         matches.push({
           fileId: line.fileId,
           filePath: this.store.pathOf(line.fileId),
           lineNumber: line.lineNumber,
           label: line.label,
-          moveText: formatMove(position),
+          moveText: formatSpan(span),
         });
       }
     }
