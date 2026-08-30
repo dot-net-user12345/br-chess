@@ -6,6 +6,7 @@ import { MAT_DIALOG_DATA, MatDialogModule } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
+import { ChessService } from '../../core/chess-service';
 import { BoardOrientation } from '../../core/chess-models';
 import { ChessBoard } from '../chess-board/chess-board';
 
@@ -15,6 +16,8 @@ export interface BoardDialogTile {
   readonly ply: number;
   readonly fen: string;
   readonly caption: string;
+  /** The move that reached this board, or null at the starting position. */
+  readonly san: string | null;
   readonly from: string | null;
   readonly to: string | null;
   /** Whether this move diverges from the compared line (drawn in the accent color). */
@@ -93,9 +96,24 @@ export interface BoardDialogData {
         >
           <mat-icon>last_page</mat-icon>
         </button>
-        <button matButton type="button" (click)="copyFen()" [attr.aria-label]="copied() ? 'FEN copied' : 'Copy FEN'">
-          <mat-icon>{{ copied() ? 'check' : 'content_copy' }}</mat-icon>
-          {{ copied() ? 'Copied' : 'Copy FEN' }}
+        <button
+          matButton
+          type="button"
+          (click)="copyFen()"
+          [attr.aria-label]="copied() === 'fen' ? 'FEN copied' : 'Copy FEN'"
+        >
+          <mat-icon>{{ copied() === 'fen' ? 'check' : 'content_copy' }}</mat-icon>
+          {{ copied() === 'fen' ? 'Copied' : 'Copy FEN' }}
+        </button>
+        <button
+          matButton
+          type="button"
+          (click)="copyPgn()"
+          [disabled]="pgnToHere().length === 0"
+          [attr.aria-label]="copied() === 'pgn' ? 'PGN copied' : 'Copy PGN up to this move'"
+        >
+          <mat-icon>{{ copied() === 'pgn' ? 'check' : 'content_copy' }}</mat-icon>
+          {{ copied() === 'pgn' ? 'Copied' : 'Copy PGN' }}
         </button>
         <button matIconButton mat-dialog-close type="button" aria-label="Close">
           <mat-icon>close</mat-icon>
@@ -169,6 +187,9 @@ export interface BoardDialogData {
       margin: 0;
       font: var(--mat-sys-title-medium);
       color: var(--mat-sys-on-surface);
+      /* Let the caption be the part that gives way when the bar runs out of
+         room, rather than pushing the copy buttons off the surface. */
+      min-width: 0;
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
@@ -234,9 +255,10 @@ export interface BoardDialogData {
 export class BoardDialog {
   private readonly data = inject<BoardDialogData>(MAT_DIALOG_DATA);
   private readonly clipboard = inject(Clipboard);
+  private readonly chess = inject(ChessService);
 
-  /** Briefly true after a successful copy, to confirm it on the button. */
-  protected readonly copied = signal(false);
+  /** What was just copied, to confirm it on that button; cleared after a moment. */
+  protected readonly copied = signal<'fen' | 'pgn' | null>(null);
   private copiedTimer: ReturnType<typeof setTimeout> | null = null;
 
   protected readonly index = signal(this.data.index);
@@ -244,6 +266,19 @@ export class BoardDialog {
   protected readonly current = computed(() => this.data.tiles[this.index()]);
   protected readonly hasPrev = computed(() => this.index() > 0);
   protected readonly hasNext = computed(() => this.index() < this.data.tiles.length - 1);
+
+  /**
+   * The game so far as PGN move text — every move up to and including the board
+   * on screen. Empty at the starting position, where nothing has been played.
+   */
+  protected readonly pgnToHere = computed(() =>
+    this.chess.toMoveText(
+      this.data.tiles
+        .slice(0, this.index() + 1)
+        .map((tile) => tile.san)
+        .filter((san): san is string => san !== null),
+    ),
+  );
 
   /** Working copy of the caption map, mutated as the user saves captions. */
   private readonly captions = signal<Record<number, string>>({ ...this.data.captions });
@@ -282,16 +317,26 @@ export class BoardDialog {
     this.goTo(this.data.tiles.length - 1);
   }
 
-  /** Copies the current board's FEN, confirming with a transient button state. */
+  /** Copies the current board's FEN. */
   protected copyFen(): void {
-    if (!this.clipboard.copy(this.current().fen)) {
+    this.copy('fen', this.current().fen);
+  }
+
+  /** Copies the moves played up to the current board, as PGN move text. */
+  protected copyPgn(): void {
+    this.copy('pgn', this.pgnToHere());
+  }
+
+  /** Copies `text`, confirming it with a transient state on that button. */
+  private copy(kind: 'fen' | 'pgn', text: string): void {
+    if (text.length === 0 || !this.clipboard.copy(text)) {
       return;
     }
-    this.copied.set(true);
+    this.copied.set(kind);
     if (this.copiedTimer) {
       clearTimeout(this.copiedTimer);
     }
-    this.copiedTimer = setTimeout(() => this.copied.set(false), 1500);
+    this.copiedTimer = setTimeout(() => this.copied.set(null), 1500);
   }
 
   protected startEdit(): void {

@@ -49,6 +49,23 @@ export class ChessService {
   }
 
   /**
+   * Renders a run of moves from the start of a game back into PGN move text,
+   * e.g. `1. e4 e5 2. Nf3`. The result parses back through {@link parsePgn}, so
+   * it can be pasted straight into a PGN field. No moves yields ''.
+   */
+  toMoveText(sans: readonly string[]): string {
+    const parts: string[] = [];
+    sans.forEach((san, index) => {
+      // White's move opens each numbered pair.
+      if (index % 2 === 0) {
+        parts.push(`${index / 2 + 1}.`);
+      }
+      parts.push(san);
+    });
+    return parts.join(' ');
+  }
+
+  /**
    * Converts the board portion of a FEN string into an 8x8 grid, rank 8 first
    * and file a first, so it can be laid out directly in a template.
    */

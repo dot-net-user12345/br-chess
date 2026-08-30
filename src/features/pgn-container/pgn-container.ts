@@ -28,6 +28,8 @@ interface BoardTile {
   readonly ply: number;
   readonly fen: string;
   readonly caption: string;
+  /** The move that reached this board; null at the starting position. */
+  readonly san: string | null;
   readonly from: string | null;
   readonly to: string | null;
 }
@@ -104,6 +106,7 @@ export class PgnContainer implements OnInit {
       ply: position.ply,
       fen: position.fen,
       caption: this.captionFor(position.ply, position.moveNumber, position.color, position.san),
+      san: position.san,
       from: position.from,
       to: position.to,
     }));

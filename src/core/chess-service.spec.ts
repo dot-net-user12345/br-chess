@@ -39,6 +39,28 @@ describe('ChessService', () => {
     expect(result.error).toContain('Enter a PGN');
   });
 
+  it('renders moves back into numbered PGN move text', () => {
+    expect(service.toMoveText(['e4', 'e5', 'Nf3'])).toBe('1. e4 e5 2. Nf3');
+    expect(service.toMoveText(['e4'])).toBe('1. e4');
+    expect(service.toMoveText([])).toBe('');
+  });
+
+  it('renders move text that parses back to the same moves', () => {
+    const source = '1. e4 e5 2. Nf3 Nc6 3. Bb5 a6';
+    // The moves up to White's third, as the board dialog's copy-PGN builds them.
+    const sans = service
+      .parsePgn(source)
+      .positions.slice(1, 6)
+      .map((position) => position.san as string);
+
+    const moveText = service.toMoveText(sans);
+
+    expect(moveText).toBe('1. e4 e5 2. Nf3 Nc6 3. Bb5');
+    const reparsed = service.parsePgn(moveText);
+    expect(reparsed.valid).toBe(true);
+    expect(reparsed.positions.slice(1).map((position) => position.san)).toEqual(sans);
+  });
+
   it('converts a FEN into an 8x8 grid with pieces in the right corners', () => {
     const start = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
     const board = service.fenToSquares(start);
