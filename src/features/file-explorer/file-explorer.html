@@ -22,25 +22,34 @@
     </button>
   </div>
 
-  @if (rootNodes().length > 0) {
-    <ul
-      class="file-explorer__tree"
-      [class.file-explorer__tree--drop-target]="rootDropActive()"
-      role="tree"
-      aria-label="Workspace files"
-      (dragover)="onRootDragOver($event)"
-      (dragleave)="onRootDragLeave()"
-      (drop)="onRootDrop($event)"
-    >
-      @for (node of rootNodes(); track node.id) {
-        <li>
-          <app-tree-node [nodeId]="node.id" />
-        </li>
-      }
-    </ul>
-  } @else {
-    <p class="file-explorer__empty">
-      No files yet. Use the buttons above to create a folder or a PGN grid file.
-    </p>
+  <app-line-search
+    class="file-explorer__search"
+    [class.file-explorer__search--expanded]="searching()"
+    (searching)="searching.set($event)"
+  />
+
+  <!-- The search results take the tree's place while a search is running. -->
+  @if (!searching()) {
+    @if (rootNodes().length > 0) {
+      <ul
+        class="file-explorer__tree"
+        [class.file-explorer__tree--drop-target]="rootDropActive()"
+        role="tree"
+        aria-label="Workspace files"
+        (dragover)="onRootDragOver($event)"
+        (dragleave)="onRootDragLeave()"
+        (drop)="onRootDrop($event)"
+      >
+        @for (node of rootNodes(); track node.id) {
+          <li>
+            <app-tree-node [nodeId]="node.id" />
+          </li>
+        }
+      </ul>
+    } @else {
+      <p class="file-explorer__empty">
+        No files yet. Use the buttons above to create a folder or a PGN grid file.
+      </p>
+    }
   }
 </div>

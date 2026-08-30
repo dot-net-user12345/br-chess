@@ -1,0 +1,65 @@
+<div class="line-search">
+  <mat-form-field class="line-search__field" appearance="outline" subscriptSizing="dynamic">
+    <mat-label>Find a move</mat-label>
+    <input
+      matInput
+      type="text"
+      autocomplete="off"
+      placeholder="7. Na6"
+      [formControl]="control"
+      (keydown.escape)="clear()"
+    />
+    @if (active()) {
+      <button
+        matIconButton
+        matSuffix
+        type="button"
+        class="line-search__clear"
+        (click)="clear()"
+        aria-label="Clear move search"
+      >
+        <mat-icon>close</mat-icon>
+      </button>
+    } @else {
+      <mat-icon matSuffix class="line-search__icon">search</mat-icon>
+    }
+  </mat-form-field>
+
+  @if (active()) {
+    <div class="line-search__results">
+      <!-- One live region for both states, so it survives across keystrokes. -->
+      <p class="line-search__summary" aria-live="polite">
+        @if (incomplete()) {
+          Type a move, such as <b>7. Na6</b>, <b>7… Na6</b> for Black only, or just <b>Bf4</b>.
+        } @else if (matches().length === 0) {
+          No lines play {{ queryLabel() }}.
+        } @else if (matches().length === 1) {
+          1 line plays {{ queryLabel() }}
+        } @else {
+          {{ matches().length }} lines play {{ queryLabel() }}
+        }
+      </p>
+
+      @if (matches().length > 0) {
+        <ol class="line-search__list">
+          @for (match of matches(); track match.fileId + ':' + match.lineNumber) {
+            <li>
+              <button
+                class="line-search__result"
+                type="button"
+                (click)="open(match)"
+                [attr.aria-label]="describe(match)"
+              >
+                <span class="line-search__result-top">
+                  <span class="line-search__line">{{ match.label }}</span>
+                  <span class="line-search__move">{{ match.moveText }}</span>
+                </span>
+                <span class="line-search__path">{{ match.filePath }}</span>
+              </button>
+            </li>
+          }
+        </ol>
+      }
+    </div>
+  }
+</div>

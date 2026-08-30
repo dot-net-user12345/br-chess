@@ -3,12 +3,13 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { WorkspaceStore } from '../../core/workspace-store';
+import { LineSearch } from '../line-search/line-search';
 import { TreeNode } from './tree-node';
 
-/** Sidebar file explorer: a toolbar plus the recursive workspace tree. */
+/** Sidebar file explorer: a toolbar, the move search, and the workspace tree. */
 @Component({
   selector: 'app-file-explorer',
-  imports: [MatButtonModule, MatIconModule, MatTooltipModule, TreeNode],
+  imports: [MatButtonModule, MatIconModule, MatTooltipModule, LineSearch, TreeNode],
   templateUrl: './file-explorer.html',
   styleUrl: './file-explorer.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -20,6 +21,9 @@ export class FileExplorer {
 
   /** True while a valid drag is hovering the blank tree area (drop = move to root). */
   protected readonly rootDropActive = signal(false);
+
+  /** True while move-search results are showing, which take the tree's place. */
+  protected readonly searching = signal(false);
 
   protected newFolder(): void {
     this.store.createFolder(this.store.targetParentId());

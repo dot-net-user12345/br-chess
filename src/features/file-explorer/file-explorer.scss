@@ -21,6 +21,19 @@
     flex: 1 1 auto;
   }
 
+  // Sized to its field until a search is running, when it takes over the space
+  // the tree would have used so its results can scroll.
+  &__search {
+    display: flex;
+    flex-direction: column;
+    flex: 0 0 auto;
+    min-height: 0;
+
+    &--expanded {
+      flex: 1 1 auto;
+    }
+  }
+
   &__tree {
     list-style: none;
     margin: 0;

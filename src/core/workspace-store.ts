@@ -38,6 +38,9 @@ export interface DuplicateLinePair {
   readonly match: DuplicateLineRef;
 }
 
+/** Safety stop when walking a node's ancestors, guarding against a parent cycle. */
+const MAX_TREE_DEPTH = 100;
+
 function sortNodes(nodes: WorkspaceNode[]): WorkspaceNode[] {
   return [...nodes].sort((a, b) => {
     // Folders before files, then alphabetical by name.
@@ -99,6 +102,13 @@ export class WorkspaceStore {
 
   readonly rootNodes = computed(() => this.childrenOf(null));
 
+  /** Every pgn-grid file in the workspace, in no particular order. */
+  readonly pgnGridFiles = computed<PgnGridFileNode[]>(() =>
+    Object.values(this.nodes()).filter(
+      (node): node is PgnGridFileNode => isFile(node) && node.fileType === 'pgn-grid',
+    ),
+  );
+
   /** Reactive list of a folder's direct children, sorted for display. */
   childrenOf(parentId: NodeId | null): WorkspaceNode[] {
     return sortNodes(Object.values(this.nodes()).filter((node) => node.parentId === parentId));
@@ -106,6 +116,41 @@ export class WorkspaceStore {
 
   node(id: NodeId): WorkspaceNode | null {
     return this.nodes()[id] ?? null;
+  }
+
+  /**
+   * Where a node sits in the tree, as the names from the root down to and
+   * including it — e.g. `Openings / White / London System`. Empty when the node
+   * is gone.
+   */
+  pathOf(id: NodeId): string {
+    const record = this.nodes();
+    const names: string[] = [];
+    let current: WorkspaceNode | undefined = record[id];
+    // Bounded in case a malformed parent chain ever loops back on itself.
+    for (let depth = 0; current && depth < MAX_TREE_DEPTH; depth++) {
+      names.unshift(current.name);
+      current = current.parentId ? record[current.parentId] : undefined;
+    }
+    return names.join(' / ');
+  }
+
+  /** Selects a node and expands every folder above it, so the tree shows it. */
+  reveal(id: NodeId): void {
+    const record = this.nodes();
+    if (!record[id]) {
+      return;
+    }
+    const ancestors: NodeId[] = [];
+    let parentId = record[id].parentId;
+    for (let depth = 0; parentId !== null && depth < MAX_TREE_DEPTH; depth++) {
+      ancestors.push(parentId);
+      parentId = record[parentId]?.parentId ?? null;
+    }
+    if (ancestors.length > 0) {
+      this.expandedIds.update((set) => new Set([...set, ...ancestors]));
+    }
+    this.select(id);
   }
 
   isSelected(id: NodeId): boolean {
@@ -328,9 +373,10 @@ export class WorkspaceStore {
       return [];
     }
     // Precompute each pgn-grid file's per-line comparison keys once.
-    const keyedFiles = Object.values(this.nodes())
-      .filter((node): node is PgnGridFileNode => isFile(node) && node.fileType === 'pgn-grid')
-      .map((node) => ({ node, keys: node.content.entries.map((entry) => this.pgnKey(entry.pgn)) }));
+    const keyedFiles = this.pgnGridFiles().map((node) => ({
+      node,
+      keys: node.content.entries.map((entry) => this.pgnKey(entry.pgn)),
+    }));
 
     const pairs: DuplicateLinePair[] = [];
     const seenInFilePairs = new Set<string>();

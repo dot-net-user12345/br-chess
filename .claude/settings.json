@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(npx prettier src/core/workspace-store.ts | Out-File -Encoding utf8 $env:TEMP\\\\ws.ts; git diff --no-index --ignore-cr-at-eol -U1 -- src/core/workspace-store.ts $env:TEMP\\\\ws.ts 2>&1 | Select-Object -First 60)"
+    ]
+  }
+}
