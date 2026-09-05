@@ -489,12 +489,15 @@ export class WorkspaceStore {
       source.map(async (entry, index): Promise<PgnEntry> => {
         const result = parsed[index];
         if (!result.valid) {
-          // Drop any stale board URLs; keep id, pgn, label, and captions.
+          // Drop any stale board URLs; keep everything the user authored.
           return {
             id: entry.id,
             pgn: entry.pgn,
             ...(entry.label !== undefined ? { label: entry.label } : {}),
             ...(entry.captions !== undefined ? { captions: entry.captions } : {}),
+            ...(entry.middleGamePlan !== undefined
+              ? { middleGamePlan: entry.middleGamePlan }
+              : {}),
           };
         }
         const reference = parsed[comparisonIndex(index, parsed.length)];

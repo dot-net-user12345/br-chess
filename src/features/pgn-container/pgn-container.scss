@@ -43,6 +43,12 @@
     text-align: center;
   }
 
+  // Separate the optional plan panel from the board grid above it.
+  &__plan {
+    display: block;
+    margin-top: 1rem;
+  }
+
   // Zero-size, cursor-anchored element the right-click menu opens from.
   &__context-trigger {
     position: fixed;

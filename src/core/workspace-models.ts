@@ -5,6 +5,18 @@ export type NodeId = string;
 /** The set of file types the workspace supports. `comparison` is added next. */
 export type FileType = 'pgn-grid';
 
+/**
+ * Optional per-line study material: what to aim for once the opening is over.
+ * Both parts are omitted rather than left empty, so a line without a plan
+ * carries no `middleGamePlan` field at all.
+ */
+export interface MiddleGamePlan {
+  /** Free-text notes describing the plan. */
+  readonly notes?: string;
+  /** Reference images the user attached to the plan, in the order added. */
+  readonly images?: readonly UploadedImage[];
+}
+
 /** One PGN entry inside a pgn-grid file. */
 export interface PgnEntry {
   readonly id: string;
@@ -19,6 +31,8 @@ export interface PgnEntry {
    * whose PGN is empty or invalid.
    */
   readonly boardImageUrls?: readonly string[];
+  /** Notes and images for this line's middle game. Absent until the user adds one. */
+  readonly middleGamePlan?: MiddleGamePlan;
 }
 
 /** A user-uploaded image attached to a pgn-grid file. */

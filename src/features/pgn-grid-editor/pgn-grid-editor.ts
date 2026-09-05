@@ -20,15 +20,20 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatMenuModule, MatMenuTrigger } from '@angular/material/menu';
-import { AuthService } from '../../core/auth-service';
 import { ChessService } from '../../core/chess-service';
 import { BoardOrientation, GamePosition, PgnParseResult } from '../../core/chess-models';
-import { ImageUploadService } from '../../core/image-upload-service';
 import { DuplicateLinePair, WorkspaceStore } from '../../core/workspace-store';
-import { NodeId, PgnEntry, PgnGridFileNode, UploadedImage } from '../../core/workspace-models';
+import {
+  MiddleGamePlan,
+  NodeId,
+  PgnEntry,
+  PgnGridFileNode,
+  UploadedImage,
+} from '../../core/workspace-models';
 import { COMPARISON_PALETTE } from '../../core/board-assets';
 import { comparisonIndex, divergentPlies, firstDeviationPly } from '../../core/move-comparison';
 import { FocusOnInit } from '../../shared/focus-on-init';
+import { ImageAttachments, takeImageFiles } from '../../shared/image-attachments';
 import { ChessBoard } from '../chess-board/chess-board';
 import {
   ComparisonBoard,
@@ -36,7 +41,6 @@ import {
   ComparisonDialogItem,
 } from '../comparison-dialog/comparison-dialog';
 import { ConfirmDialog, ConfirmDialogData } from '../confirm-dialog/confirm-dialog';
-import { LoginDialog } from '../login-dialog/login-dialog';
 import { PgnContainer } from '../pgn-container/pgn-container';
 
 /** Validity of a single entry's PGN, used to badge its collapsed panel header. */
@@ -72,8 +76,7 @@ export class PgnGridEditor {
   private readonly store = inject(WorkspaceStore);
   private readonly chess = inject(ChessService);
   private readonly dialog = inject(MatDialog);
-  private readonly auth = inject(AuthService);
-  private readonly imageUpload = inject(ImageUploadService);
+  private readonly attachments = inject(ImageAttachments);
 
   readonly fileId = input.required<NodeId>();
 
@@ -298,6 +301,23 @@ export class PgnGridEditor {
       this.entries().map((entry) =>
         entry.id === entryId ? { ...entry, captions } : entry,
       ),
+    );
+  }
+
+  /**
+   * Replaces one line's middle game plan. An empty plan drops the field entirely,
+   * so lines without one stay as they were before the feature existed.
+   */
+  protected onPlanChange(entryId: string, plan: MiddleGamePlan): void {
+    const empty = plan.notes === undefined && plan.images === undefined;
+    this.writeEntries(
+      this.entries().map((entry) => {
+        if (entry.id !== entryId) {
+          return entry;
+        }
+        const { middleGamePlan: _dropped, ...rest } = entry;
+        return empty ? rest : { ...rest, middleGamePlan: plan };
+      }),
     );
   }
 
@@ -528,52 +548,25 @@ export class PgnGridEditor {
       return;
     }
     // Saving persists to the cloud, so require a signed-in user first.
-    if (!(await this.ensureSignedIn())) {
+    if (!(await this.attachments.ensureSignedIn())) {
       return;
     }
     void this.store.saveFile(this.fileId());
   }
 
-  /** Ensures a signed-in user, prompting the login dialog when needed. */
-  private async ensureSignedIn(): Promise<boolean> {
-    if (this.auth.isSignedIn()) {
-      return true;
-    }
-    const user = await firstValueFrom(
-      this.dialog.open(LoginDialog, { autoFocus: 'dialog' }).afterClosed(),
-    );
-    return !!user;
-  }
-
   /** Uploads the chosen image files to Storage and attaches them to this file. */
   protected async onImagesSelected(event: Event): Promise<void> {
-    const input = event.target as HTMLInputElement;
-    const files = Array.from(input.files ?? []).filter((file) => file.type.startsWith('image/'));
-    // Reset so selecting the same file again still fires a change event.
-    input.value = '';
+    const files = takeImageFiles(event);
     if (files.length === 0) {
-      return;
-    }
-    if (!this.store.configured) {
-      this.imageError.set('Firebase is not configured, so images can’t be uploaded.');
-      return;
-    }
-    if (!(await this.ensureSignedIn())) {
-      return;
-    }
-    const uid = this.auth.user()?.uid;
-    if (!uid) {
       return;
     }
     this.imageError.set(null);
     this.uploading.set(true);
     try {
-      const uploaded: UploadedImage[] = [];
-      for (const file of files) {
-        const { url, path } = await this.imageUpload.upload(file, uid);
-        uploaded.push({ id: crypto.randomUUID(), url, path, name: file.name });
+      const uploaded = await this.attachments.upload(files);
+      if (uploaded) {
+        this.writeImages([...this.uploadedImages(), ...uploaded]);
       }
-      this.writeImages([...this.uploadedImages(), ...uploaded]);
     } catch (err) {
       this.imageError.set(err instanceof Error ? err.message : 'Uploading the image failed.');
     } finally {
@@ -582,26 +575,12 @@ export class PgnGridEditor {
   }
 
   /** Confirms before detaching an image, since the stored file is also removed. */
-  protected confirmRemoveImage(image: UploadedImage): void {
-    const data: ConfirmDialogData = {
-      title: 'Delete image?',
-      message: `“${image.name}” will be removed from this file.`,
-      confirmLabel: 'Delete',
-    };
-    this.dialog
-      .open(ConfirmDialog, { data, autoFocus: 'first-tabbable' })
-      .afterClosed()
-      .subscribe((confirmed) => {
-        if (confirmed) {
-          this.removeImage(image);
-        }
-      });
-  }
-
-  private removeImage(image: UploadedImage): void {
+  protected async confirmRemoveImage(image: UploadedImage): Promise<void> {
+    if (!(await this.attachments.confirmRemove(image, 'this file'))) {
+      return;
+    }
     this.writeImages(this.uploadedImages().filter((img) => img.id !== image.id));
-    // Best-effort cleanup of the stored object; ignore failures (e.g. already gone).
-    void this.imageUpload.delete(image.path).catch(() => undefined);
+    this.attachments.detach(image);
   }
 
   private writeImages(images: readonly UploadedImage[]): void {

@@ -1,0 +1,76 @@
+<mat-expansion-panel
+  class="middle-game-plan"
+  [expanded]="expanded()"
+  (expandedChange)="expanded.set($event)"
+>
+  <mat-expansion-panel-header>
+    <mat-panel-title>Middle Game Plan</mat-panel-title>
+    <mat-panel-description>{{ summary() }}</mat-panel-description>
+  </mat-expansion-panel-header>
+
+  <div class="middle-game-plan__body">
+    <mat-form-field appearance="outline" class="middle-game-plan__field">
+      <mat-label>Plan notes</mat-label>
+      <textarea
+        matInput
+        [formControl]="notesControl"
+        rows="5"
+        placeholder="Pawn breaks, piece routes, typical endgames…"
+      ></textarea>
+    </mat-form-field>
+
+    <input
+      #imageInput
+      type="file"
+      accept="image/*"
+      multiple
+      hidden
+      (change)="onImagesSelected($event)"
+    />
+    <button
+      matButton="outlined"
+      type="button"
+      class="middle-game-plan__upload"
+      [disabled]="uploading()"
+      (click)="imageInput.click()"
+    >
+      <mat-icon>upload</mat-icon>
+      {{ uploading() ? 'Uploading…' : 'Upload image' }}
+    </button>
+
+    @if (error(); as message) {
+      <p class="middle-game-plan__error" role="alert">{{ message }}</p>
+    }
+
+    @if (images().length > 0) {
+      <ul class="middle-game-plan__grid">
+        @for (image of images(); track image.id) {
+          <li class="middle-game-plan__item">
+            <a
+              class="middle-game-plan__thumb"
+              [href]="image.url"
+              target="_blank"
+              rel="noopener noreferrer"
+              [attr.aria-label]="'View ' + image.name + ' full size'"
+            >
+              <img [src]="image.url" [alt]="image.name" loading="lazy" />
+            </a>
+            <button
+              matIconButton
+              type="button"
+              class="middle-game-plan__remove"
+              [attr.aria-label]="'Delete ' + image.name + ' from the middle game plan'"
+              (click)="confirmRemoveImage(image)"
+            >
+              <mat-icon>delete_outline</mat-icon>
+            </button>
+          </li>
+        }
+      </ul>
+    } @else {
+      <p class="middle-game-plan__empty">
+        No images yet. Upload one to illustrate this line's middle game plan.
+      </p>
+    }
+  </div>
+</mat-expansion-panel>

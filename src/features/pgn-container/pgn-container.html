@@ -41,6 +41,12 @@
       </ol>
     }
 
+    <app-middle-game-plan
+      class="pgn-container__plan"
+      [plan]="middleGamePlan()"
+      (planChange)="middleGamePlanChange.emit($event)"
+    />
+
     <!-- Zero-size, cursor-anchored element the tile right-click menu opens from. -->
     <div
       #contextTrigger

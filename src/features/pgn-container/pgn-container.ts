@@ -21,8 +21,10 @@ import { MatMenuModule, MatMenuTrigger } from '@angular/material/menu';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { ChessService } from '../../core/chess-service';
 import { BoardOrientation, PgnParseResult } from '../../core/chess-models';
+import { MiddleGamePlan } from '../../core/workspace-models';
 import { BoardDialog } from '../board-dialog/board-dialog';
 import { ChessBoard } from '../chess-board/chess-board';
+import { MiddleGamePlanPanel } from '../middle-game-plan/middle-game-plan';
 
 interface BoardTile {
   readonly ply: number;
@@ -49,6 +51,7 @@ interface BoardTile {
     MatMenuModule,
     MatTooltipModule,
     ChessBoard,
+    MiddleGamePlanPanel,
   ],
   templateUrl: './pgn-container.html',
   styleUrl: './pgn-container.scss',
@@ -67,10 +70,14 @@ export class PgnContainer implements OnInit {
   readonly captions = input<Readonly<Record<number, string>>>({});
   /** Side to view every board from; `black` rotates each board 180°. */
   readonly orientation = input<BoardOrientation>('white');
+  /** This line's optional middle game plan; empty when it has none. */
+  readonly middleGamePlan = input<MiddleGamePlan>({});
 
   readonly contentChange = output<{ pgn: string; result: PgnParseResult }>();
   /** Emits the full updated caption map when the user saves a caption. */
   readonly captionsChange = output<Record<number, string>>();
+  /** Emits the whole plan whenever its notes or images change. */
+  readonly middleGamePlanChange = output<MiddleGamePlan>();
 
   private readonly pgnValidator: ValidatorFn = (control) => {
     const value = (control.value ?? '').trim();
