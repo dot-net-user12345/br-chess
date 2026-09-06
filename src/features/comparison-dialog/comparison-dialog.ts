@@ -16,6 +16,8 @@ export interface ComparisonBoard {
 /** A single PGN line's differing moves, shown together. */
 export interface ComparisonDialogItem {
   readonly label: string;
+  /** Title of the line this one was compared against, when there is one. */
+  readonly referenceLabel?: string;
   /** Highlight color for this line's boards (arrow, outline, destination glow). */
   readonly color: string;
   readonly boards: readonly ComparisonBoard[];
@@ -60,9 +62,7 @@ export interface ComparisonDialogData {
         >
           <mat-icon>chevron_left</mat-icon>
         </button>
-        <h2 class="cmp__title">
-          {{ current().label }} · {{ index() + 1 }} of {{ data.items.length }}
-        </h2>
+        <h2 class="cmp__title">{{ title() }} · {{ index() + 1 }} of {{ data.items.length }}</h2>
         <span class="cmp__spacer"></span>
         <button
           matIconButton
@@ -173,6 +173,12 @@ export class ComparisonDialog {
   protected readonly index = signal(this.data.index);
   protected readonly orientation = signal<BoardOrientation>(this.data.orientation ?? 'white');
   protected readonly current = computed(() => this.data.items[this.index()]);
+
+  /** Heading for the current item: both line titles when it was compared against one. */
+  protected readonly title = computed(() => {
+    const item = this.current();
+    return item.referenceLabel ? `${item.label} vs ${item.referenceLabel}` : item.label;
+  });
   protected readonly hasPrev = computed(() => this.index() > 0);
   protected readonly hasNext = computed(() => this.index() < this.data.items.length - 1);
 

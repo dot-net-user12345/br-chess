@@ -1,0 +1,17 @@
+[debug] [2026-09-06T05:10:07.456Z] ----------------------------------------------------------------------
+[debug] [2026-09-06T05:10:07.458Z] Command:       C:\Program Files\nodejs\node.exe C:\Users\bjrat\AppData\Roaming\npm\node_modules\firebase-tools\lib\bin\firebase.js deploy
+[debug] [2026-09-06T05:10:07.459Z] CLI Version:   15.23.0
+[debug] [2026-09-06T05:10:07.459Z] Platform:      win32
+[debug] [2026-09-06T05:10:07.459Z] Node Version:  v22.18.0
+[debug] [2026-09-06T05:10:07.459Z] Detected Agent: unknown
+[debug] [2026-09-06T05:10:07.459Z] Time:          Sat Sep 05 2026 22:10:07 GMT-0700 (Pacific Daylight Time)
+[debug] [2026-09-06T05:10:07.459Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-09-06T05:10:09.515Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-09-06T05:10:09.515Z] > authorizing via signed-in user (bjrathbone1@gmail.com)
+[debug] [2026-09-06T05:10:09.515Z] [iam] checking project br-chess for permissions ["datastore.indexes.create","datastore.indexes.delete","datastore.indexes.list","datastore.indexes.update","firebase.projects.get","firebaserules.releases.create","firebaserules.releases.update","firebaserules.rulesets.create"]
+[debug] [2026-09-06T05:10:09.528Z] Checked if tokens are valid: false, expires at: 1788627140760
+[debug] [2026-09-06T05:10:09.528Z] Checked if tokens are valid: false, expires at: 1788627140760
+[debug] [2026-09-06T05:10:09.529Z] > refreshing access token with scopes: []
+[debug] [2026-09-06T05:10:09.530Z] >>> [apiv2][query] POST https://www.googleapis.com/oauth2/v3/token [none]
+[debug] [2026-09-06T05:10:09.530Z] >>> [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]

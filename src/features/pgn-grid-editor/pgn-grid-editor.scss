@@ -337,8 +337,19 @@
   }
 
   &__label {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.25rem 0.5rem;
+    text-align: left;
     font: var(--mat-sys-label-large);
     color: var(--mat-sys-on-surface);
+  }
+
+  // The line a row branches from, named beside the diverging line itself.
+  &__reference {
+    font: var(--mat-sys-body-small);
+    color: var(--mat-sys-on-surface-variant);
   }
 
   &__cells {

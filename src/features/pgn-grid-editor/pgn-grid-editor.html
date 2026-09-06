@@ -302,7 +302,8 @@
 
         <div class="comparison__body">
           <p class="comparison__hint">
-            Each line shows that PGN's differing moves. Select it to view them fullscreen.
+            Each row names the line and the one it branches from, then shows that line's differing
+            moves. Select it to view them fullscreen.
           </p>
 
           <ol class="comparison__rows">
@@ -312,9 +313,14 @@
                   type="button"
                   class="comparison__row"
                   (click)="openComparison(row)"
-                  [attr.aria-label]="'View differing moves in ' + row.label + ' fullscreen'"
+                  [attr.aria-label]="
+                    'View differing moves fullscreen: ' + row.label + ' vs ' + row.referenceLabel
+                  "
                 >
-                  <span class="comparison__label">{{ row.label }}</span>
+                  <span class="comparison__label">
+                    {{ row.label }}
+                    <span class="comparison__reference">vs {{ row.referenceLabel }}</span>
+                  </span>
                   <span class="comparison__cells">
                     @for (board of row.boards; track $index) {
                       <span class="comparison__cell">
