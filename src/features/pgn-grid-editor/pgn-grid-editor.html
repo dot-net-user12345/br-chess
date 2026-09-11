@@ -38,15 +38,19 @@
       </button>
     </header>
 
-    <button
-      class="pgn-grid-editor__add"
-      matButton="outlined"
-      type="button"
-      (click)="addEntry()"
-    >
-      <mat-icon>add</mat-icon>
-      Add PGN
-    </button>
+    <div class="pgn-grid-editor__actions">
+      <button matButton="outlined" type="button" (click)="addEntry()">
+        <mat-icon>add</mat-icon>
+        Add PGN
+      </button>
+
+      @if (entries().length > 0) {
+        <button matButton type="button" (click)="toggleAllExpanded()">
+          <mat-icon>{{ allCollapsed() ? 'unfold_more' : 'unfold_less' }}</mat-icon>
+          {{ allCollapsed() ? 'Expand all' : 'Collapse all' }}
+        </button>
+      }
+    </div>
 
     <mat-accordion
       class="pgn-grid-editor__entries"

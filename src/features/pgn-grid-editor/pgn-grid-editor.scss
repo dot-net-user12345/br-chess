@@ -58,8 +58,11 @@
     margin-left: auto;
   }
 
-  &__add {
-    align-self: flex-start;
+  &__actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
   }
 
   &__entries {

@@ -475,6 +475,20 @@ export class PgnGridEditor {
     return this.chess.parsePgn(entry.pgn).valid ? 'valid' : 'invalid';
   }
 
+  /** True when every line panel is collapsed, so the button offers "Expand all". */
+  protected readonly allCollapsed = computed(() => {
+    const entries = this.entries();
+    const collapsed = this.collapsedIds();
+    return entries.length > 0 && entries.every((entry) => collapsed.has(entry.id));
+  });
+
+  /** Collapses every line panel, or re-opens them all when none are open. */
+  protected toggleAllExpanded(): void {
+    this.collapsedIds.set(
+      this.allCollapsed() ? new Set() : new Set(this.entries().map((entry) => entry.id)),
+    );
+  }
+
   protected isExpanded(entryId: string): boolean {
     return !this.collapsedIds().has(entryId);
   }
