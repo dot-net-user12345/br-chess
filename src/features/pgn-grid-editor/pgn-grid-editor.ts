@@ -134,7 +134,7 @@ export class PgnGridEditor {
   /**
    * One row per line that diverges: that line's own differing-move boards
    * (the first and second moves that differ from its compared neighbor), paired.
-   * Each row names both lines: the diverging one and the one it branches from.
+   * Each row is named after the diverging line.
    */
   protected readonly comparisonRows = computed<ComparisonRow[]>(() => {
     const parsed = this.parsedEntries();
@@ -152,20 +152,11 @@ export class PgnGridEditor {
       if (boards.length === 0) {
         return;
       }
-      // The line this one was compared against: the previous entry, or the next
-      // one when this is the first. Always present once boards exist, since
-      // divergent plies are only computed against a valid reference.
-      const referenceIndex = comparisonIndex(i, parsed.length);
-      const reference = entries[referenceIndex];
-      if (!reference) {
-        return;
-      }
       // Each comparison gets its own color, cycling through the palette.
       const color = COMPARISON_PALETTE[flatIndex % COMPARISON_PALETTE.length];
       rows.push({
         flatIndex: flatIndex++,
         label: this.labelFor(entries[i], i),
-        referenceLabel: this.labelFor(reference, referenceIndex),
         color,
         boards,
       });
