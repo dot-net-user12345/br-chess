@@ -31,7 +31,12 @@ import {
   UploadedImage,
 } from '../../core/workspace-models';
 import { COMPARISON_PALETTE } from '../../core/board-assets';
-import { comparisonIndex, divergentPlies, firstDeviationPly } from '../../core/move-comparison';
+import {
+  comparisonIndex,
+  deviationPlies,
+  divergentPlies,
+  firstDeviationPly,
+} from '../../core/move-comparison';
 import { FocusOnInit } from '../../shared/focus-on-init';
 import { ImageAttachments, takeImageFiles } from '../../shared/image-attachments';
 import { ChessBoard } from '../chess-board/chess-board';
@@ -132,21 +137,24 @@ export class PgnGridEditor {
   });
 
   /**
-   * One row per line that diverges: that line's own differing-move boards
-   * (the first and second moves that differ from its compared neighbor), paired.
-   * Each row is named after the diverging line.
+   * One row per line that diverges: the board where that line first departs
+   * from its compared neighbor, paired with the move straight after it in the
+   * same line. Each row is named after the diverging line.
    */
   protected readonly comparisonRows = computed<ComparisonRow[]>(() => {
     const parsed = this.parsedEntries();
     const entries = this.entries();
-    const divergent = this.divergentPliesByIndex();
     const rows: ComparisonRow[] = [];
     let flatIndex = 0;
     parsed.forEach((result, i) => {
       if (!result.valid) {
         return;
       }
-      const boards = [...divergent[i]]
+      const reference = parsed[comparisonIndex(i, parsed.length)];
+      if (!reference?.valid) {
+        return;
+      }
+      const boards = [...deviationPlies(result.positions, reference.positions)]
         .map((ply) => this.boardAt(result.positions, ply))
         .filter((board): board is ComparisonBoard => board !== null);
       if (boards.length === 0) {

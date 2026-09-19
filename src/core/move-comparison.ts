@@ -60,3 +60,21 @@ export function divergentPlies(
   }
   return plies;
 }
+
+/**
+ * The pair of plies to display for a line's deviation from `reference`: the
+ * ply where it first plays a different move, and the ply straight after it in
+ * the same line — so the two boards are always consecutive, and therefore
+ * always opposite colors. Returns an empty set when the lines are identical, or
+ * the deviating ply alone when the line ends there.
+ */
+export function deviationPlies(
+  line: readonly GamePosition[],
+  reference: readonly GamePosition[],
+): Set<number> {
+  const ply = firstDeviationPly(line, reference);
+  if (ply === null || !line[ply]) {
+    return new Set<number>();
+  }
+  return line[ply + 1] ? new Set([ply, ply + 1]) : new Set([ply]);
+}
