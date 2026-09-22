@@ -13,9 +13,7 @@
             placeholder="Untitled comparison"
           />
         </h2>
-        <p class="pgn-grid-editor__summary">
-          {{ summary().valid }} of {{ summary().total }} valid
-        </p>
+        <p class="pgn-grid-editor__summary">{{ summary().valid }} of {{ summary().total }} valid</p>
       </div>
       <mat-button-toggle-group
         class="pgn-grid-editor__orientation"
@@ -27,371 +25,381 @@
         <mat-button-toggle value="white">White</mat-button-toggle>
         <mat-button-toggle value="black">Black</mat-button-toggle>
       </mat-button-toggle-group>
-      <button
-        matButton="filled"
-        type="button"
-        (click)="save()"
-        [disabled]="!summary().allValid"
-      >
+      <button matButton="filled" type="button" (click)="save()" [disabled]="!summary().allValid">
         <mat-icon>save</mat-icon>
         Save
       </button>
     </header>
 
-    <div class="pgn-grid-editor__actions">
-      <button matButton="outlined" type="button" (click)="addEntry()">
-        <mat-icon>add</mat-icon>
-        Add PGN
-      </button>
+    <mat-tab-group class="pgn-grid-editor__tabs" [(selectedIndex)]="selectedTab">
+      <mat-tab label="Lines">
+        <div class="pgn-grid-editor__tab">
+          <div class="pgn-grid-editor__actions">
+            <button matButton="outlined" type="button" (click)="addEntry()">
+              <mat-icon>add</mat-icon>
+              Add PGN
+            </button>
 
-      @if (entries().length > 0) {
-        <button matButton type="button" (click)="toggleAllExpanded()">
-          <mat-icon>{{ allCollapsed() ? 'unfold_more' : 'unfold_less' }}</mat-icon>
-          {{ allCollapsed() ? 'Expand all' : 'Collapse all' }}
-        </button>
-      }
-    </div>
+            @if (entries().length > 0) {
+              <button matButton type="button" (click)="toggleAllExpanded()">
+                <mat-icon>{{ allCollapsed() ? 'unfold_more' : 'unfold_less' }}</mat-icon>
+                {{ allCollapsed() ? 'Expand all' : 'Collapse all' }}
+              </button>
+            }
+          </div>
 
-    <mat-accordion
-      class="pgn-grid-editor__entries"
-      multi
-      cdkDropList
-      (cdkDropListDropped)="onReorder($event)"
-    >
-      @for (entry of entries(); track entry.id; let i = $index) {
-        <!-- Handle and remove sit beside the panel (not inside its role="button"
-             header) so no interactive control is nested inside another. -->
-        <div class="entry-panel" cdkDrag cdkDragLockAxis="y">
-          <button
-            matIconButton
-            type="button"
-            cdkDragHandle
-            class="entry-panel__handle"
-            aria-label="Reorder line (drag)"
+          <mat-accordion
+            class="pgn-grid-editor__entries"
+            multi
+            cdkDropList
+            (cdkDropListDropped)="onReorder($event)"
           >
-            <mat-icon>drag_indicator</mat-icon>
-          </button>
-
-          <!-- Rename field: shown only while editing. It is a sibling of the
-               header (not nested in its role="button"), overlaid on the title
-               zone, so it stays AXE-clean and editable even when collapsed. -->
-          @if (isEditing(entry.id)) {
-            <input
-              #labelInput
-              appFocusOnInit
-              class="entry-panel__title-input"
-              type="text"
-              [value]="entry.label || ''"
-              [attr.placeholder]="'Line ' + (i + 1)"
-              [attr.aria-label]="'Rename line ' + (i + 1)"
-              (keydown.enter)="commitRename(entry.id, labelInput.value)"
-              (keydown.escape)="cancelRename(entry.id)"
-              (blur)="commitRename(entry.id, labelInput.value)"
-            />
-          }
-
-          <mat-expansion-panel
-            class="entry-panel__panel"
-            hideToggle
-            [expanded]="isExpanded(entry.id)"
-            (expandedChange)="setExpanded(entry.id, $event)"
-          >
-            <mat-expansion-panel-header (keydown.f2)="startRename(entry.id)">
-              <mat-panel-title class="entry-panel__title">
-                <mat-icon
-                  class="entry-panel__chevron"
-                  [class.entry-panel__chevron--open]="isExpanded(entry.id)"
-                  aria-hidden="true"
-                >
-                  expand_more
-                </mat-icon>
-                @if (!isEditing(entry.id)) {
-                  <!-- Left-click toggles the panel (via the header); right-click
-                       opens the rename menu. -->
-                  <span
-                    class="entry-panel__name"
-                    (contextmenu)="onTitleContextMenu($event, entry.id)"
-                  >
-                    {{ labelFor(entry, i) }}
-                  </span>
-                }
-              </mat-panel-title>
-              <mat-panel-description class="entry-panel__meta">
-                @switch (statusOf(entry)) {
-                  @case ('valid') {
-                    <span class="entry-panel__status entry-panel__status--valid">
-                      <mat-icon aria-hidden="true">check_circle</mat-icon>
-                      Valid
-                    </span>
-                  }
-                  @case ('invalid') {
-                    <span class="entry-panel__status entry-panel__status--invalid">
-                      <mat-icon aria-hidden="true">error</mat-icon>
-                      Invalid
-                    </span>
-                  }
-                  @default {
-                    <span class="entry-panel__status entry-panel__status--empty">Empty</span>
-                  }
-                }
-              </mat-panel-description>
-            </mat-expansion-panel-header>
-
-            <app-pgn-container
-              [initialPgn]="entry.pgn"
-              [highlightedPlies]="divergentPliesByIndex()[i]"
-              [captions]="entry.captions ?? {}"
-              [orientation]="orientation()"
-              [middleGamePlan]="entry.middleGamePlan ?? {}"
-              (contentChange)="onEntryChange(entry.id, $event)"
-              (captionsChange)="onCaptionsChange(entry.id, $event)"
-              (middleGamePlanChange)="onPlanChange(entry.id, $event)"
-            />
-          </mat-expansion-panel>
-
-          <button
-            matIconButton
-            type="button"
-            class="entry-panel__remove"
-            [disabled]="entries().length <= 1"
-            [attr.aria-label]="'Remove ' + labelFor(entry, i)"
-            (click)="confirmRemove(entry.id, labelFor(entry, i))"
-          >
-            <mat-icon>delete_outline</mat-icon>
-          </button>
-        </div>
-      }
-    </mat-accordion>
-
-    <!-- Zero-size, cursor-anchored element the title right-click menu opens from. -->
-    <div
-      #contextTrigger
-      class="entry-panel__context-trigger"
-      [matMenuTriggerFor]="titleMenu"
-    ></div>
-    <mat-menu #titleMenu>
-      <button mat-menu-item type="button" (click)="renameMenuTarget()">
-        <mat-icon>edit</mat-icon>
-        <span>Rename</span>
-      </button>
-      <button
-        mat-menu-item
-        type="button"
-        [matMenuTriggerFor]="moveMenu"
-        [disabled]="entries().length <= 1"
-      >
-        <mat-icon>format_list_numbered</mat-icon>
-        <span>Move to</span>
-      </button>
-      <button
-        mat-menu-item
-        type="button"
-        [disabled]="entries().length <= 1"
-        (click)="deleteMenuTarget()"
-      >
-        <mat-icon>delete_outline</mat-icon>
-        <span>Delete</span>
-      </button>
-    </mat-menu>
-    <mat-menu #moveMenu>
-      @for (entry of entries(); track entry.id; let i = $index) {
-        <button
-          mat-menu-item
-          type="button"
-          [disabled]="i === menuTargetIndex()"
-          (click)="moveMenuTarget(i)"
-        >
-          Position {{ i + 1 }}
-        </button>
-      }
-    </mat-menu>
-
-    <mat-expansion-panel
-      class="notes"
-      [expanded]="notesExpanded()"
-      (expandedChange)="notesExpanded.set($event)"
-    >
-      <mat-expansion-panel-header>
-        <mat-panel-title>Notes</mat-panel-title>
-      </mat-expansion-panel-header>
-
-      <mat-form-field appearance="outline" class="notes__field">
-        <mat-label>Notes</mat-label>
-        <textarea
-          matInput
-          [formControl]="notesControl"
-          rows="6"
-          placeholder="Write notes about this file…"
-        ></textarea>
-      </mat-form-field>
-    </mat-expansion-panel>
-
-    <mat-expansion-panel
-      class="images"
-      [expanded]="imagesExpanded()"
-      (expandedChange)="imagesExpanded.set($event)"
-    >
-      <mat-expansion-panel-header>
-        <mat-panel-title>Images</mat-panel-title>
-        <mat-panel-description>
-          {{ uploadedImages().length }}
-          {{ uploadedImages().length === 1 ? 'image' : 'images' }}
-        </mat-panel-description>
-      </mat-expansion-panel-header>
-
-      <div class="images__body">
-        <input
-          #imageInput
-          type="file"
-          accept="image/*"
-          multiple
-          hidden
-          (change)="onImagesSelected($event)"
-        />
-        <button
-          matButton="outlined"
-          type="button"
-          class="images__upload"
-          [disabled]="uploading()"
-          (click)="imageInput.click()"
-        >
-          <mat-icon>upload</mat-icon>
-          {{ uploading() ? 'Uploading…' : 'Upload image' }}
-        </button>
-
-        @if (imageError(); as error) {
-          <p class="images__error" role="alert">{{ error }}</p>
-        }
-
-        @if (uploadedImages().length > 0) {
-          <ul class="images__grid">
-            @for (image of uploadedImages(); track image.id) {
-              <li class="images__item">
-                <a
-                  class="images__thumb"
-                  [href]="image.url"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  [attr.aria-label]="'View ' + image.name + ' full size'"
-                >
-                  <img [src]="image.url" [alt]="image.name" loading="lazy" />
-                </a>
+            @for (entry of entries(); track entry.id; let i = $index) {
+              <!-- Handle and remove sit beside the panel (not inside its role="button"
+               header) so no interactive control is nested inside another. -->
+              <div class="entry-panel" cdkDrag cdkDragLockAxis="y">
                 <button
                   matIconButton
                   type="button"
-                  class="images__remove"
-                  [attr.aria-label]="'Delete ' + image.name"
-                  (click)="confirmRemoveImage(image)"
+                  cdkDragHandle
+                  class="entry-panel__handle"
+                  aria-label="Reorder line (drag)"
+                >
+                  <mat-icon>drag_indicator</mat-icon>
+                </button>
+
+                <!-- Rename field: shown only while editing. It is a sibling of the
+                 header (not nested in its role="button"), overlaid on the title
+                 zone, so it stays AXE-clean and editable even when collapsed. -->
+                @if (isEditing(entry.id)) {
+                  <input
+                    #labelInput
+                    appFocusOnInit
+                    class="entry-panel__title-input"
+                    type="text"
+                    [value]="entry.label || ''"
+                    [attr.placeholder]="'Line ' + (i + 1)"
+                    [attr.aria-label]="'Rename line ' + (i + 1)"
+                    (keydown.enter)="commitRename(entry.id, labelInput.value)"
+                    (keydown.escape)="cancelRename(entry.id)"
+                    (blur)="commitRename(entry.id, labelInput.value)"
+                  />
+                }
+
+                <mat-expansion-panel
+                  class="entry-panel__panel"
+                  hideToggle
+                  [expanded]="isExpanded(entry.id)"
+                  (expandedChange)="setExpanded(entry.id, $event)"
+                >
+                  <mat-expansion-panel-header (keydown.f2)="startRename(entry.id)">
+                    <mat-panel-title class="entry-panel__title">
+                      <mat-icon
+                        class="entry-panel__chevron"
+                        [class.entry-panel__chevron--open]="isExpanded(entry.id)"
+                        aria-hidden="true"
+                      >
+                        expand_more
+                      </mat-icon>
+                      @if (!isEditing(entry.id)) {
+                        <!-- Left-click toggles the panel (via the header); right-click
+                         opens the rename menu. -->
+                        <span
+                          class="entry-panel__name"
+                          (contextmenu)="onTitleContextMenu($event, entry.id)"
+                        >
+                          {{ labelFor(entry, i) }}
+                        </span>
+                      }
+                    </mat-panel-title>
+                    <mat-panel-description class="entry-panel__meta">
+                      @switch (statusOf(entry)) {
+                        @case ('valid') {
+                          <span class="entry-panel__status entry-panel__status--valid">
+                            <mat-icon aria-hidden="true">check_circle</mat-icon>
+                            Valid
+                          </span>
+                        }
+                        @case ('invalid') {
+                          <span class="entry-panel__status entry-panel__status--invalid">
+                            <mat-icon aria-hidden="true">error</mat-icon>
+                            Invalid
+                          </span>
+                        }
+                        @default {
+                          <span class="entry-panel__status entry-panel__status--empty">Empty</span>
+                        }
+                      }
+                    </mat-panel-description>
+                  </mat-expansion-panel-header>
+
+                  <app-pgn-container
+                    [initialPgn]="entry.pgn"
+                    [highlightedPlies]="divergentPliesByIndex()[i]"
+                    [captions]="entry.captions ?? {}"
+                    [orientation]="orientation()"
+                    [middleGamePlan]="entry.middleGamePlan ?? {}"
+                    (contentChange)="onEntryChange(entry.id, $event)"
+                    (captionsChange)="onCaptionsChange(entry.id, $event)"
+                    (middleGamePlanChange)="onPlanChange(entry.id, $event)"
+                  />
+                </mat-expansion-panel>
+
+                <button
+                  matIconButton
+                  type="button"
+                  class="entry-panel__remove"
+                  [disabled]="entries().length <= 1"
+                  [attr.aria-label]="'Remove ' + labelFor(entry, i)"
+                  (click)="confirmRemove(entry.id, labelFor(entry, i))"
                 >
                   <mat-icon>delete_outline</mat-icon>
                 </button>
-              </li>
+              </div>
             }
-          </ul>
-        } @else {
-          <p class="images__empty">No images yet. Upload one to attach it to this file.</p>
-        }
-      </div>
-    </mat-expansion-panel>
+          </mat-accordion>
 
-    @if (comparisonRows().length > 0) {
-      <mat-expansion-panel
-        class="comparison"
-        [expanded]="differencesExpanded()"
-        (expandedChange)="differencesExpanded.set($event)"
-      >
-        <mat-expansion-panel-header>
-          <mat-panel-title>Deviations - where a line branches from previous</mat-panel-title>
-        </mat-expansion-panel-header>
+          <!-- Zero-size, cursor-anchored element the title right-click menu opens from. -->
+          <div
+            #contextTrigger
+            class="entry-panel__context-trigger"
+            [matMenuTriggerFor]="titleMenu"
+          ></div>
+          <mat-menu #titleMenu>
+            <button mat-menu-item type="button" (click)="renameMenuTarget()">
+              <mat-icon>edit</mat-icon>
+              <span>Rename</span>
+            </button>
+            <button
+              mat-menu-item
+              type="button"
+              [matMenuTriggerFor]="moveMenu"
+              [disabled]="entries().length <= 1"
+            >
+              <mat-icon>format_list_numbered</mat-icon>
+              <span>Move to</span>
+            </button>
+            <button
+              mat-menu-item
+              type="button"
+              [disabled]="entries().length <= 1"
+              (click)="deleteMenuTarget()"
+            >
+              <mat-icon>delete_outline</mat-icon>
+              <span>Delete</span>
+            </button>
+          </mat-menu>
+          <mat-menu #moveMenu>
+            @for (entry of entries(); track entry.id; let i = $index) {
+              <button
+                mat-menu-item
+                type="button"
+                [disabled]="i === menuTargetIndex()"
+                (click)="moveMenuTarget(i)"
+              >
+                Position {{ i + 1 }}
+              </button>
+            }
+          </mat-menu>
 
-        <div class="comparison__body">
-          <p class="comparison__hint">
-            Each row names a line, then shows that line's differing moves. Select it to view them
-            fullscreen.
-          </p>
+          <mat-expansion-panel
+            class="notes"
+            [expanded]="notesExpanded()"
+            (expandedChange)="notesExpanded.set($event)"
+          >
+            <mat-expansion-panel-header>
+              <mat-panel-title>Notes</mat-panel-title>
+            </mat-expansion-panel-header>
 
-          <ol class="comparison__rows">
-            @for (row of comparisonRows(); track row.flatIndex) {
-              <li>
-                <button
-                  type="button"
-                  class="comparison__row"
-                  (click)="openComparison(row)"
-                  [attr.aria-label]="'View differing moves fullscreen: ' + row.label"
+            <mat-form-field appearance="outline" class="notes__field">
+              <mat-label>Notes</mat-label>
+              <textarea
+                matInput
+                [formControl]="notesControl"
+                rows="6"
+                placeholder="Write notes about this file…"
+              ></textarea>
+            </mat-form-field>
+          </mat-expansion-panel>
+
+          <mat-expansion-panel
+            class="images"
+            [expanded]="imagesExpanded()"
+            (expandedChange)="imagesExpanded.set($event)"
+          >
+            <mat-expansion-panel-header>
+              <mat-panel-title>Images</mat-panel-title>
+              <mat-panel-description>
+                {{ uploadedImages().length }}
+                {{ uploadedImages().length === 1 ? 'image' : 'images' }}
+              </mat-panel-description>
+            </mat-expansion-panel-header>
+
+            <div class="images__body">
+              <input
+                #imageInput
+                type="file"
+                accept="image/*"
+                multiple
+                hidden
+                (change)="onImagesSelected($event)"
+              />
+              <button
+                matButton="outlined"
+                type="button"
+                class="images__upload"
+                [disabled]="uploading()"
+                (click)="imageInput.click()"
+              >
+                <mat-icon>upload</mat-icon>
+                {{ uploading() ? 'Uploading…' : 'Upload image' }}
+              </button>
+
+              @if (imageError(); as error) {
+                <p class="images__error" role="alert">{{ error }}</p>
+              }
+
+              @if (uploadedImages().length > 0) {
+                <ul class="images__grid">
+                  @for (image of uploadedImages(); track image.id) {
+                    <li class="images__item">
+                      <a
+                        class="images__thumb"
+                        [href]="image.url"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        [attr.aria-label]="'View ' + image.name + ' full size'"
+                      >
+                        <img [src]="image.url" [alt]="image.name" loading="lazy" />
+                      </a>
+                      <button
+                        matIconButton
+                        type="button"
+                        class="images__remove"
+                        [attr.aria-label]="'Delete ' + image.name"
+                        (click)="confirmRemoveImage(image)"
+                      >
+                        <mat-icon>delete_outline</mat-icon>
+                      </button>
+                    </li>
+                  }
+                </ul>
+              } @else {
+                <p class="images__empty">No images yet. Upload one to attach it to this file.</p>
+              }
+            </div>
+          </mat-expansion-panel>
+
+          @if (comparisonRows().length > 0) {
+            <mat-expansion-panel
+              class="comparison"
+              [expanded]="differencesExpanded()"
+              (expandedChange)="differencesExpanded.set($event)"
+            >
+              <mat-expansion-panel-header>
+                <mat-panel-title>Deviations - where a line branches from previous</mat-panel-title>
+              </mat-expansion-panel-header>
+
+              <div class="comparison__body">
+                <p class="comparison__hint">
+                  Each row names a line, then shows that line's differing moves. Select it to view
+                  them fullscreen.
+                </p>
+
+                <ol class="comparison__rows">
+                  @for (row of comparisonRows(); track row.flatIndex) {
+                    <li>
+                      <button
+                        type="button"
+                        class="comparison__row"
+                        (click)="openComparison(row)"
+                        [attr.aria-label]="'View differing moves fullscreen: ' + row.label"
+                      >
+                        <span class="comparison__label">{{ row.label }}</span>
+                        <span class="comparison__cells">
+                          @for (board of row.boards; track $index) {
+                            <span class="comparison__cell">
+                              <app-chess-board
+                                [fen]="board.fen"
+                                [caption]="board.caption"
+                                [from]="board.from"
+                                [to]="board.to"
+                                [highlighted]="true"
+                                [highlightColor]="row.color"
+                                [orientation]="orientation()"
+                              />
+                              <span class="comparison__caption">{{ board.caption }}</span>
+                            </span>
+                          }
+                        </span>
+                      </button>
+                    </li>
+                  }
+                </ol>
+              </div>
+            </mat-expansion-panel>
+          }
+
+          @if (fileComparisonRows().length > 0) {
+            <mat-expansion-panel
+              class="comparison"
+              [expanded]="fileDifferencesExpanded()"
+              (expandedChange)="fileDifferencesExpanded.set($event)"
+            >
+              <mat-expansion-panel-header>
+                <mat-panel-title
+                  >Deviations from other files - where this file first branches from each
+                  sibling</mat-panel-title
                 >
-                  <span class="comparison__label">{{ row.label }}</span>
-                  <span class="comparison__cells">
-                    @for (board of row.boards; track $index) {
-                      <span class="comparison__cell">
-                        <app-chess-board
-                          [fen]="board.fen"
-                          [caption]="board.caption"
-                          [from]="board.from"
-                          [to]="board.to"
-                          [highlighted]="true"
-                          [highlightColor]="row.color"
-                          [orientation]="orientation()"
-                        />
-                        <span class="comparison__caption">{{ board.caption }}</span>
-                      </span>
-                    }
-                  </span>
-                </button>
-              </li>
-            }
-          </ol>
+              </mat-expansion-panel-header>
+
+              <div class="comparison__body">
+                <p class="comparison__hint">
+                  Each row compares this file's first line with another file's first line in the
+                  same folder. Select it to view the deviation fullscreen.
+                </p>
+
+                <ol class="comparison__rows">
+                  @for (row of fileComparisonRows(); track row.flatIndex) {
+                    <li>
+                      <button
+                        type="button"
+                        class="comparison__row"
+                        (click)="openFileComparison(row)"
+                        [attr.aria-label]="
+                          'View where this file deviates from ' + row.label + ' fullscreen'
+                        "
+                      >
+                        <span class="comparison__label">{{ row.label }}</span>
+                        <span class="comparison__cells">
+                          @for (board of row.boards; track $index) {
+                            <span class="comparison__cell">
+                              <app-chess-board
+                                [fen]="board.fen"
+                                [caption]="board.caption"
+                                [from]="board.from"
+                                [to]="board.to"
+                                [highlighted]="true"
+                                [highlightColor]="row.color"
+                                [orientation]="orientation()"
+                              />
+                              <span class="comparison__caption">{{ board.caption }}</span>
+                            </span>
+                          }
+                        </span>
+                      </button>
+                    </li>
+                  }
+                </ol>
+              </div>
+            </mat-expansion-panel>
+          }
         </div>
-      </mat-expansion-panel>
-    }
+      </mat-tab>
 
-    @if (fileComparisonRows().length > 0) {
-      <mat-expansion-panel
-        class="comparison"
-        [expanded]="fileDifferencesExpanded()"
-        (expandedChange)="fileDifferencesExpanded.set($event)"
-      >
-        <mat-expansion-panel-header>
-          <mat-panel-title>Deviations from other files - where this file first branches from each sibling</mat-panel-title>
-        </mat-expansion-panel-header>
-
-        <div class="comparison__body">
-          <p class="comparison__hint">
-            Each row compares this file's first line with another file's first line in the same
-            folder. Select it to view the deviation fullscreen.
-          </p>
-
-          <ol class="comparison__rows">
-            @for (row of fileComparisonRows(); track row.flatIndex) {
-              <li>
-                <button
-                  type="button"
-                  class="comparison__row"
-                  (click)="openFileComparison(row)"
-                  [attr.aria-label]="'View where this file deviates from ' + row.label + ' fullscreen'"
-                >
-                  <span class="comparison__label">{{ row.label }}</span>
-                  <span class="comparison__cells">
-                    @for (board of row.boards; track $index) {
-                      <span class="comparison__cell">
-                        <app-chess-board
-                          [fen]="board.fen"
-                          [caption]="board.caption"
-                          [from]="board.from"
-                          [to]="board.to"
-                          [highlighted]="true"
-                          [highlightColor]="row.color"
-                          [orientation]="orientation()"
-                        />
-                        <span class="comparison__caption">{{ board.caption }}</span>
-                      </span>
-                    }
-                  </span>
-                </button>
-              </li>
-            }
-          </ol>
-        </div>
-      </mat-expansion-panel>
-    }
+      <mat-tab label="Move explorer">
+        <app-move-explorer [lines]="explorerLines()" [orientation]="orientation()" />
+      </mat-tab>
+    </mat-tab-group>
   </div>
 }

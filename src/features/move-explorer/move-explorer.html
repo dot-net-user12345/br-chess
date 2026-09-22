@@ -1,0 +1,103 @@
+<div class="explorer">
+  <div class="explorer__bar">
+    <p class="explorer__hint">
+      Select a move to pin its position below; select it again to unpin it.
+    </p>
+    <span class="explorer__spacer"></span>
+    <button matButton type="button" (click)="clear()" [disabled]="!hasPinned()">
+      <mat-icon>layers_clear</mat-icon>
+      Clear pinned
+    </button>
+  </div>
+
+  <!-- Scrolls on both axes: sideways past the line columns, down through a long line. -->
+  <div class="explorer__lines">
+    @if (columns().length === 0) {
+      <p class="explorer__empty">
+        No lines to explore yet. Add a valid PGN on the Lines tab to see its moves here.
+      </p>
+    }
+    @for (column of columns(); track $index) {
+      <section class="line">
+        <h3 class="line__title">{{ column.label }}</h3>
+        <ol class="line__moves">
+          @for (row of column.rows; track $index) {
+            <li class="line__row">
+              <span class="line__num" aria-hidden="true">{{ row.moveNumber }}.</span>
+              @if (row.white; as cell) {
+                <button
+                  type="button"
+                  class="line__move"
+                  [class.line__move--pinned]="isPinned(cell.key)"
+                  [attr.aria-pressed]="isPinned(cell.key)"
+                  [attr.aria-label]="cell.ariaLabel"
+                  [matTooltip]="cell.caption"
+                  (click)="toggle(cell.key)"
+                >
+                  {{ cell.san }}
+                </button>
+              } @else {
+                <span class="line__move line__move--blank" aria-hidden="true"></span>
+              }
+              @if (row.black; as cell) {
+                <button
+                  type="button"
+                  class="line__move"
+                  [class.line__move--pinned]="isPinned(cell.key)"
+                  [attr.aria-pressed]="isPinned(cell.key)"
+                  [attr.aria-label]="cell.ariaLabel"
+                  [matTooltip]="cell.caption"
+                  (click)="toggle(cell.key)"
+                >
+                  {{ cell.san }}
+                </button>
+              } @else {
+                <span class="line__move line__move--blank" aria-hidden="true"></span>
+              }
+            </li>
+          }
+        </ol>
+      </section>
+    }
+  </div>
+
+  <div class="explorer__strip">
+    @if (hasPinned()) {
+      <!-- One container per line, so pinned positions stay with the line they
+           came from however they were clicked. -->
+      <ol #strip class="strip" aria-label="Pinned positions">
+        @for (group of pinnedGroups(); track group.lineIndex) {
+          <li class="group">
+            <h3 class="group__title">{{ group.label }}</h3>
+            <ol class="group__boards">
+              @for (board of group.boards; track board.key) {
+                <li class="group__tile">
+                  <button
+                    type="button"
+                    class="group__button"
+                    [attr.data-key]="board.key"
+                    [attr.aria-label]="'Unpin ' + board.ariaLabel"
+                    (click)="toggle(board.key)"
+                  >
+                    <app-chess-board
+                      [fen]="board.fen"
+                      [caption]="board.ariaLabel"
+                      [from]="board.from"
+                      [to]="board.to"
+                      [orientation]="orientation()"
+                    />
+                  </button>
+                  <p class="group__caption">{{ board.move }}</p>
+                </li>
+              }
+            </ol>
+          </li>
+        }
+      </ol>
+    } @else {
+      <p class="explorer__empty">
+        No positions pinned yet. Select any move above to see the game up to that move here.
+      </p>
+    }
+  </div>
+</div>

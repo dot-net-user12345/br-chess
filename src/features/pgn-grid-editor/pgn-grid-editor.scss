@@ -1,7 +1,36 @@
+:host {
+  // Fill the scroll area the page gives us, so the tab bodies have a definite
+  // height to divide up rather than growing the page.
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
 .pgn-grid-editor {
   display: flex;
   flex-direction: column;
   gap: 1.25rem;
+  flex: 1 1 auto;
+  min-height: 0;
+
+  // Skinny tab strip: it sits above both tab bodies, so every row it takes is a
+  // row the boards below lose.
+  &__tabs {
+    --mat-tab-container-height: 2.25rem;
+    --mat-tab-label-text-size: 0.8125rem;
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+
+  // The lines tab keeps the page's own vertical rhythm and scrolls internally,
+  // leaving the file title and tab strip in place.
+  &__tab {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+    padding: 1rem 0.25rem;
+  }
 
   &__header {
     display: flex;

@@ -20,6 +20,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatMenuModule, MatMenuTrigger } from '@angular/material/menu';
+import { MatTabsModule } from '@angular/material/tabs';
 import { ChessService } from '../../core/chess-service';
 import { BoardOrientation, GamePosition, PgnParseResult } from '../../core/chess-models';
 import { DuplicateLinePair, WorkspaceStore } from '../../core/workspace-store';
@@ -46,6 +47,7 @@ import {
   ComparisonDialogItem,
 } from '../comparison-dialog/comparison-dialog';
 import { ConfirmDialog, ConfirmDialogData } from '../confirm-dialog/confirm-dialog';
+import { MoveExplorer, MoveExplorerLine } from '../move-explorer/move-explorer';
 import { PgnContainer } from '../pgn-container/pgn-container';
 
 /** Validity of a single entry's PGN, used to badge its collapsed panel header. */
@@ -69,9 +71,11 @@ interface ComparisonRow extends ComparisonDialogItem {
     MatIconModule,
     MatInputModule,
     MatMenuModule,
+    MatTabsModule,
     FocusOnInit,
     ChessBoard,
     PgnContainer,
+    MoveExplorer,
   ],
   templateUrl: './pgn-grid-editor.html',
   styleUrl: './pgn-grid-editor.scss',
@@ -512,6 +516,29 @@ export class PgnGridEditor {
       return next;
     });
   }
+
+  /** Which tab is open: 0 = the lines, 1 = the move explorer. */
+  protected readonly selectedTab = signal(0);
+
+  /**
+   * Lines the move explorer lists, one column each: every entry that parses,
+   * with its label and captions.
+   */
+  protected readonly explorerLines = computed<MoveExplorerLine[]>(() => {
+    const entries = this.entries();
+    const lines: MoveExplorerLine[] = [];
+    this.parsedEntries().forEach((result, index) => {
+      if (!result.valid || result.positions.length < 2) {
+        return;
+      }
+      lines.push({
+        label: this.labelFor(entries[index], index),
+        positions: result.positions,
+        captions: entries[index].captions ?? {},
+      });
+    });
+    return lines;
+  });
 
   /** Opens the fullscreen comparison, starting at the clicked differing move. */
   protected openComparison(row: ComparisonRow): void {

@@ -1,0 +1,243 @@
+:host {
+  display: block;
+  // Fills the tab body, so every section below is measured against the space
+  // the page has actually left for it — the tab strip already taken off.
+  height: 100%;
+  min-height: 0;
+}
+
+.explorer {
+  --bar-height: 2.5rem;
+  // Below the bar, the move columns take 70% of the remaining height and the
+  // pinned strip 27%, leaving 3% split between the two gaps.
+  --content-height: calc(100% - var(--bar-height));
+  height: 100%;
+  display: grid;
+  grid-template-rows:
+    var(--bar-height)
+    calc(var(--content-height) * 0.7)
+    calc(var(--content-height) * 0.27);
+  row-gap: calc(var(--content-height) * 0.015);
+
+  &__bar {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0 0.25rem;
+    min-width: 0;
+  }
+
+  &__hint {
+    margin: 0;
+    font: var(--mat-sys-body-small);
+    color: var(--mat-sys-on-surface-variant);
+    // The Clear button matters more than the hint when the bar is tight.
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  &__spacer {
+    flex: 1 1 auto;
+  }
+
+  // One scroller for every column: sideways past the lines, down through a long
+  // line, with all columns scrolling together so move numbers stay aligned.
+  &__lines {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    overflow: auto;
+    padding: 0 0.25rem;
+  }
+
+  &__strip {
+    // The boards are sized by this section's height, so it scrolls sideways only.
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: 0 0.25rem;
+  }
+
+  &__empty {
+    margin: 0;
+    font: var(--mat-sys-body-medium);
+    color: var(--mat-sys-on-surface-variant);
+  }
+}
+
+.line {
+  flex: 0 0 auto;
+  width: 11.5rem;
+  background: var(--mat-sys-surface-container);
+  border-radius: var(--mat-sys-corner-medium);
+
+  &__title {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    margin: 0;
+    padding: 0.5rem 0.625rem;
+    font: var(--mat-sys-title-small);
+    color: var(--mat-sys-on-surface);
+    background: var(--mat-sys-surface-container);
+    border-bottom: 1px solid var(--mat-sys-outline-variant);
+    border-radius: var(--mat-sys-corner-medium) var(--mat-sys-corner-medium) 0 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  &__moves {
+    list-style: none;
+    margin: 0;
+    padding: 0.375rem 0.5rem 0.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+  }
+
+  &__row {
+    display: grid;
+    grid-template-columns: 1.75rem 1fr 1fr;
+    align-items: center;
+    gap: 0.25rem;
+  }
+
+  &__num {
+    font: var(--mat-sys-body-small);
+    color: var(--mat-sys-on-surface-variant);
+    text-align: right;
+  }
+
+  &__move {
+    min-height: 1.75rem;
+    padding: 0.125rem 0.25rem;
+    border: 1px solid transparent;
+    border-radius: var(--mat-sys-corner-small);
+    background: var(--mat-sys-surface-container-high);
+    color: var(--mat-sys-on-surface);
+    font: var(--mat-sys-body-medium);
+    text-align: center;
+    cursor: pointer;
+
+    &:hover {
+      background: var(--mat-sys-secondary-container);
+      color: var(--mat-sys-on-secondary-container);
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--mat-sys-primary);
+      outline-offset: 2px;
+    }
+
+    // Pinned to the strip below: filled, so it reads as pressed at a glance.
+    &--pinned {
+      background: var(--mat-sys-primary);
+      color: var(--mat-sys-on-primary);
+
+      &:hover {
+        background: var(--mat-sys-primary);
+        color: var(--mat-sys-on-primary);
+        opacity: 0.9;
+      }
+    }
+
+    // Placeholder where a line ends on White's move, keeping the grid aligned.
+    &--blank {
+      background: none;
+      cursor: default;
+    }
+  }
+}
+
+// The strip of pinned boards: one container per line, scrolling sideways.
+.strip {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  align-items: stretch;
+  gap: 0.75rem;
+  height: 100%;
+}
+
+.group {
+  flex: 0 0 auto;
+  height: 100%;
+  // The line's title above, its boards filling the rest — so each board has a
+  // definite height and its width follows from being square.
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 0.25rem;
+  padding: 0.25rem 0.5rem 0.375rem;
+  background: var(--mat-sys-surface-container);
+  border-radius: var(--mat-sys-corner-medium);
+
+  &__title {
+    // width: 0 keeps a long line name from widening the container past its
+    // boards; min-width then stretches it back over the width they set.
+    width: 0;
+    min-width: 100%;
+    margin: 0;
+    font: var(--mat-sys-title-small);
+    color: var(--mat-sys-on-surface);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  &__boards {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    min-height: 0;
+    display: flex;
+    align-items: stretch;
+    gap: 0.5rem;
+  }
+
+  &__tile {
+    flex: 0 0 auto;
+    height: 100%;
+    display: grid;
+    grid-template-rows: minmax(0, 1fr) auto;
+    justify-items: center;
+    gap: 0.125rem;
+  }
+
+  // Square, so any number of pinned boards scrolls sideways instead of shrinking.
+  &__button {
+    height: 100%;
+    aspect-ratio: 1;
+    padding: 0;
+    border: none;
+    background: none;
+    border-radius: var(--mat-sys-corner-small);
+    cursor: pointer;
+
+    &:hover {
+      opacity: 0.85;
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--mat-sys-primary);
+      outline-offset: 2px;
+    }
+  }
+
+  &__caption {
+    margin: 0;
+    font: var(--mat-sys-body-small);
+    color: var(--mat-sys-on-surface-variant);
+    text-align: center;
+    white-space: nowrap;
+  }
+}
+
+// On a narrow screen the hint costs the title and buttons too much room.
+@media (max-width: 48rem) {
+  .explorer__hint {
+    display: none;
+  }
+}
