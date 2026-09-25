@@ -137,10 +137,12 @@
                     [initialPgn]="entry.pgn"
                     [highlightedPlies]="divergentPliesByIndex()[i]"
                     [captions]="entry.captions ?? {}"
+                    [focusPlies]="entry.focusPlies ?? []"
                     [orientation]="orientation()"
                     [middleGamePlan]="entry.middleGamePlan ?? {}"
                     (contentChange)="onEntryChange(entry.id, $event)"
                     (captionsChange)="onCaptionsChange(entry.id, $event)"
+                    (focusPliesChange)="onFocusPliesChange(entry.id, $event)"
                     (middleGamePlanChange)="onPlanChange(entry.id, $event)"
                   />
                 </mat-expansion-panel>
@@ -402,6 +404,7 @@
           [lines]="explorerLines()"
           [orientation]="orientation()"
           (captionsChange)="onCaptionsChange($event.id, $event.captions)"
+          (focusPliesChange)="onFocusPliesChange($event.id, $event.focusPlies)"
         />
       </mat-tab>
     </mat-tab-group>

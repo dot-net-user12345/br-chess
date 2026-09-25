@@ -15,6 +15,7 @@ import {
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
+import { MatMenuModule, MatMenuTrigger } from '@angular/material/menu';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { BoardOrientation, GamePosition } from '../../core/chess-models';
 import { BoardDialog, BoardDialogTile } from '../board-dialog/board-dialog';
@@ -31,6 +32,8 @@ export interface MoveExplorerLine {
   readonly positions: readonly GamePosition[];
   /** The line's user-written captions, keyed by ply. */
   readonly captions: Readonly<Record<number, string>>;
+  /** Plies marked as focus points, outlined in red in the column. */
+  readonly focusPlies: readonly number[];
 }
 
 /** One clickable half-move in a line's column. */
@@ -42,6 +45,8 @@ interface MoveCell {
   readonly ariaLabel: string;
   /** The line's caption for this move, surfaced as a tooltip when set. */
   readonly caption: string;
+  /** Whether the move is marked as a focus point. */
+  readonly focus: boolean;
 }
 
 /** One full move of a line: its number, and White's and Black's half-moves. */
@@ -85,7 +90,7 @@ interface PinnedGroup {
  */
 @Component({
   selector: 'app-move-explorer',
-  imports: [MatButtonModule, MatIconModule, MatTooltipModule, ChessBoard],
+  imports: [MatButtonModule, MatIconModule, MatMenuModule, MatTooltipModule, ChessBoard],
   host: { class: 'move-explorer' },
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './move-explorer.html',
@@ -99,6 +104,8 @@ export class MoveExplorer {
 
   /** Emits a line's full updated caption map when one is saved from the large view. */
   readonly captionsChange = output<{ id: string; captions: Record<number, string> }>();
+  /** Emits a line's full updated focus-point list when one is toggled from the large view. */
+  readonly focusPliesChange = output<{ id: string; focusPlies: number[] }>();
 
   private readonly dialog = inject(MatDialog);
   private readonly injector = inject(Injector);
@@ -106,6 +113,13 @@ export class MoveExplorer {
 
   /** The pinned-board strip, scrolled to keep a freshly pinned board in view. */
   private readonly strip = viewChild<ElementRef<HTMLElement>>('strip');
+
+  /** Cursor-anchored trigger for the move right-click menu. */
+  private readonly contextTrigger = viewChild<ElementRef<HTMLElement>>('contextTrigger');
+  private readonly contextMenu = viewChild(MatMenuTrigger);
+
+  /** The move the right-click menu currently targets. */
+  private readonly menuTarget = signal<{ lineIndex: number; ply: number } | null>(null);
 
   /** Keys of the pinned moves, in the order they were clicked. */
   private readonly pinnedKeys = signal<readonly string[]>([]);
@@ -123,11 +137,13 @@ export class MoveExplorer {
           continue;
         }
         const move = moveLabel(position);
+        const focus = line.focusPlies.includes(position.ply);
         const cell: MoveCell = {
           key: `${lineIndex}:${position.ply}`,
           san: position.san,
-          ariaLabel: `${line.label}, ${move}`,
+          ariaLabel: `${line.label}, ${move}${focus ? ', focus point' : ''}`,
           caption: line.captions[position.ply] ?? '',
+          focus,
         };
         const row = rows.at(-1);
         if (position.color === 'black' && row?.moveNumber === position.moveNumber && !row.black) {
@@ -216,6 +232,37 @@ export class MoveExplorer {
     this.copiedTimer = setTimeout(() => this.copiedIndex.set(null), 1500);
   }
 
+  /** Opens the move's menu at the cursor, or under the move when opened from the keyboard. */
+  protected onMoveContextMenu(event: MouseEvent, key: string): void {
+    event.preventDefault();
+    const [lineIndex, ply] = key.split(':').map(Number);
+    this.menuTarget.set({ lineIndex, ply });
+    const trigger = this.contextMenu();
+    const el = this.contextTrigger()?.nativeElement;
+    if (!trigger || !el) {
+      return;
+    }
+    // The context-menu key and Shift+F10 report no pointer position.
+    let x = event.clientX;
+    let y = event.clientY;
+    if (x === 0 && y === 0 && event.currentTarget instanceof HTMLElement) {
+      const rect = event.currentTarget.getBoundingClientRect();
+      x = rect.left;
+      y = rect.bottom;
+    }
+    el.style.left = `${x}px`;
+    el.style.top = `${y}px`;
+    trigger.openMenu();
+  }
+
+  /** Opens the right-clicked move in the large view. */
+  protected openMenuTarget(): void {
+    const target = this.menuTarget();
+    if (target) {
+      this.openBoard(target.lineIndex, target.ply);
+    }
+  }
+
   protected clear(): void {
     this.pinnedKeys.set([]);
   }
@@ -247,6 +294,9 @@ export class MoveExplorer {
         orientation: this.orientation(),
         onCaptionChange: (captions: Record<number, string>) =>
           this.captionsChange.emit({ id: line.id, captions }),
+        focusPlies: line.focusPlies,
+        onFocusChange: (focusPlies: number[]) =>
+          this.focusPliesChange.emit({ id: line.id, focusPlies }),
       },
       panelClass: 'board-dialog-panel',
       ariaLabel: 'Board preview',

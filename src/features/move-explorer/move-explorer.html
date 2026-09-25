@@ -42,10 +42,12 @@
                   type="button"
                   class="line__move"
                   [class.line__move--pinned]="isPinned(cell.key)"
+                  [class.line__move--focus]="cell.focus"
                   [attr.aria-pressed]="isPinned(cell.key)"
                   [attr.aria-label]="cell.ariaLabel"
                   [matTooltip]="cell.caption"
                   (click)="toggle(cell.key)"
+                  (contextmenu)="onMoveContextMenu($event, cell.key)"
                 >
                   {{ cell.san }}
                 </button>
@@ -57,10 +59,12 @@
                   type="button"
                   class="line__move"
                   [class.line__move--pinned]="isPinned(cell.key)"
+                  [class.line__move--focus]="cell.focus"
                   [attr.aria-pressed]="isPinned(cell.key)"
                   [attr.aria-label]="cell.ariaLabel"
                   [matTooltip]="cell.caption"
                   (click)="toggle(cell.key)"
+                  (contextmenu)="onMoveContextMenu($event, cell.key)"
                 >
                   {{ cell.san }}
                 </button>
@@ -73,6 +77,15 @@
       </section>
     }
   </div>
+
+  <!-- Zero-size, cursor-anchored element the move right-click menu opens from. -->
+  <div #contextTrigger class="explorer__context-trigger" [matMenuTriggerFor]="moveMenu"></div>
+  <mat-menu #moveMenu>
+    <button mat-menu-item type="button" (click)="openMenuTarget()">
+      <mat-icon>open_in_full</mat-icon>
+      <span>Open large view</span>
+    </button>
+  </mat-menu>
 
   <div class="explorer__strip">
     @if (hasPinned()) {

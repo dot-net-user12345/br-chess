@@ -68,6 +68,8 @@ export class PgnContainer implements OnInit {
   readonly highlightedPlies = input<ReadonlySet<number>>(new Set());
   /** User-entered captions per board position, keyed by ply. */
   readonly captions = input<Readonly<Record<number, string>>>({});
+  /** Plies marked as focus points; their move labels are drawn on a red chip. */
+  readonly focusPlies = input<readonly number[]>([]);
   /** Side to view every board from; `black` rotates each board 180°. */
   readonly orientation = input<BoardOrientation>('white');
   /** This line's optional middle game plan; empty when it has none. */
@@ -76,6 +78,8 @@ export class PgnContainer implements OnInit {
   readonly contentChange = output<{ pgn: string; result: PgnParseResult }>();
   /** Emits the full updated caption map when the user saves a caption. */
   readonly captionsChange = output<Record<number, string>>();
+  /** Emits the full updated focus-point list when one is toggled in the large view. */
+  readonly focusPliesChange = output<number[]>();
   /** Emits the whole plan whenever its notes or images change. */
   readonly middleGamePlanChange = output<MiddleGamePlan>();
 
@@ -146,6 +150,8 @@ export class PgnContainer implements OnInit {
         captions: this.captions(),
         orientation: this.orientation(),
         onCaptionChange: (captions: Record<number, string>) => this.captionsChange.emit(captions),
+        focusPlies: this.focusPlies(),
+        onFocusChange: (focusPlies: number[]) => this.focusPliesChange.emit(focusPlies),
       },
       panelClass: 'board-dialog-panel',
       ariaLabel: 'Board preview',

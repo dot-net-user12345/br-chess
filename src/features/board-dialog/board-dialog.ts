@@ -34,6 +34,10 @@ export interface BoardDialogData {
   readonly onCaptionChange: (captions: Record<number, string>) => void;
   /** Side to view every board from; defaults to white when absent. */
   readonly orientation?: BoardOrientation;
+  /** Plies currently marked as focus points. */
+  readonly focusPlies?: readonly number[];
+  /** Called with the full updated, ascending focus-point list whenever one is toggled. */
+  readonly onFocusChange?: (focusPlies: number[]) => void;
 }
 
 /** A board position shown large in a modal, navigable through the whole game. */
@@ -96,6 +100,19 @@ export interface BoardDialogData {
         >
           <mat-icon>last_page</mat-icon>
         </button>
+        @if (canFocus) {
+          <button
+            matButton
+            type="button"
+            [class.board-dialog__focus--on]="isFocus()"
+            (click)="toggleFocus()"
+            [disabled]="current().san === null"
+            [attr.aria-pressed]="isFocus()"
+          >
+            <mat-icon>{{ isFocus() ? 'flag' : 'outlined_flag' }}</mat-icon>
+            Focus point
+          </button>
+        }
         <button
           matButton
           type="button"
@@ -199,6 +216,12 @@ export interface BoardDialogData {
       flex: 1 1 auto;
     }
 
+    /* Marked: filled in the same red the move gets in the explorer and Lines tab. */
+    .board-dialog__focus--on {
+      background: var(--mat-sys-error);
+      color: var(--mat-sys-on-error);
+    }
+
     .board-dialog__body {
       display: flex;
       gap: 1rem;
@@ -254,6 +277,9 @@ export interface BoardDialogData {
 })
 export class BoardDialog {
   private readonly data = inject<BoardDialogData>(MAT_DIALOG_DATA);
+
+  /** Whether the opener stores focus points, so the toggle has somewhere to save to. */
+  protected readonly canFocus = this.data.onFocusChange !== undefined;
   private readonly clipboard = inject(Clipboard);
   private readonly chess = inject(ChessService);
 
@@ -285,6 +311,12 @@ export class BoardDialog {
 
   /** The saved caption for the board currently shown, or '' if none. */
   protected readonly savedCaption = computed(() => this.captions()[this.current().ply] ?? '');
+
+  /** Working copy of the focus points, updated as the user toggles them. */
+  private readonly focusPlies = signal<readonly number[]>(this.data.focusPlies ?? []);
+
+  /** Whether the board currently shown is marked as a focus point. */
+  protected readonly isFocus = computed(() => this.focusPlies().includes(this.current().ply));
 
   /** Whether the caption editor is open (explicitly, or because none exists yet). */
   private readonly editing = signal(false);
@@ -361,6 +393,16 @@ export class BoardDialog {
     this.captions.set(next);
     this.editing.set(false);
     this.data.onCaptionChange({ ...next });
+  }
+
+  /** Marks or unmarks the current move as a focus point. */
+  protected toggleFocus(): void {
+    const ply = this.current().ply;
+    const next = this.isFocus()
+      ? this.focusPlies().filter((p) => p !== ply)
+      : [...this.focusPlies(), ply].sort((a, b) => a - b);
+    this.focusPlies.set(next);
+    this.data.onFocusChange?.([...next]);
   }
 
   /** Moves to board `i`, closing the editor and re-seeding the field for it. */

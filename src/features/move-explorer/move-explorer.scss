@@ -59,6 +59,15 @@
     padding: 0 0.25rem;
   }
 
+  // Zero-size, cursor-anchored element the right-click menu opens from. Fixed,
+  // so it takes no row in the grid.
+  &__context-trigger {
+    position: fixed;
+    width: 0;
+    height: 0;
+    visibility: hidden;
+  }
+
   &__empty {
     margin: 0;
     font: var(--mat-sys-body-medium);
@@ -180,6 +189,13 @@
         color: var(--mat-sys-on-primary);
         opacity: 0.9;
       }
+    }
+
+    // A focus point, marked from the large view. An outline rather than a fill,
+    // so it still reads alongside the pinned state.
+    &--focus {
+      border-color: var(--mat-sys-error);
+      box-shadow: inset 0 0 0 1px var(--mat-sys-error);
     }
 
     // Placeholder where a line ends on White's move, keeping the grid aligned.

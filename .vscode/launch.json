@@ -2,6 +2,21 @@
   "version": "0.2.0",
   "configurations": [
     {
+      "type": "chrome",
+      "request": "launch",
+      "name": "ng serve + Chrome",
+      "preLaunchTask": "npm: start",
+      "url": "http://localhost:4200",
+      "webRoot": "${workspaceFolder}"
+    },
+    {
+      "type": "chrome",
+      "request": "launch",
+      "name": "Chrome (localhost:4200)",
+      "url": "http://localhost:4200",
+      "webRoot": "${workspaceFolder}"
+    },
+    {
       "type": "editor-browser",
       "request": "launch",
       "name": "Launch Angular in VS Code Browser",

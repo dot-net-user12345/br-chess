@@ -24,7 +24,12 @@
               (click)="openTile(i)"
               (contextmenu)="onTileContextMenu($event, tile.fen)"
               [matTooltip]="captions()[tile.ply]"
-              [attr.aria-label]="'View ' + tile.caption + ' fullscreen'"
+              [attr.aria-label]="
+                'View ' +
+                tile.caption +
+                (focusPlies().includes(tile.ply) ? ', focus point,' : '') +
+                ' fullscreen'
+              "
             >
               <app-chess-board
                 [fen]="tile.fen"
@@ -35,7 +40,12 @@
                 [orientation]="orientation()"
               />
             </button>
-            <span class="pgn-container__caption">{{ tile.caption }}</span>
+            <span
+              class="pgn-container__caption"
+              [class.pgn-container__caption--focus]="focusPlies().includes(tile.ply)"
+            >
+              {{ tile.caption }}
+            </span>
           </li>
         }
       </ol>

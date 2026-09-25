@@ -322,6 +322,22 @@ export class PgnGridEditor {
     );
   }
 
+  /** Replaces one line's focus points; an empty list drops the field entirely. */
+  protected onFocusPliesChange(entryId: string, focusPlies: number[]): void {
+    this.writeEntries(
+      this.entries().map((entry) => {
+        if (entry.id !== entryId) {
+          return entry;
+        }
+        if (focusPlies.length > 0) {
+          return { ...entry, focusPlies };
+        }
+        const { focusPlies: _dropped, ...rest } = entry;
+        return rest;
+      }),
+    );
+  }
+
   /**
    * Replaces one line's middle game plan. An empty plan drops the field entirely,
    * so lines without one stay as they were before the feature existed.
@@ -537,6 +553,7 @@ export class PgnGridEditor {
         pgn: entries[index].pgn,
         positions: result.positions,
         captions: entries[index].captions ?? {},
+        focusPlies: entries[index].focusPlies ?? [],
       });
     });
     return lines;

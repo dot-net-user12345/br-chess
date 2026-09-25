@@ -41,6 +41,15 @@
     font: var(--mat-sys-body-small);
     color: var(--mat-sys-on-surface-variant);
     text-align: center;
+
+    // A focus point: the move label on a red chip.
+    &--focus {
+      align-self: center;
+      padding: 0 0.5rem;
+      border-radius: var(--mat-sys-corner-small);
+      background: var(--mat-sys-error);
+      color: var(--mat-sys-on-error);
+    }
   }
 
   // Separate the optional plan panel from the board grid above it.
