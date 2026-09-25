@@ -532,7 +532,9 @@ export class PgnGridEditor {
         return;
       }
       lines.push({
+        id: entries[index].id,
         label: this.labelFor(entries[index], index),
+        pgn: entries[index].pgn,
         positions: result.positions,
         captions: entries[index].captions ?? {},
       });

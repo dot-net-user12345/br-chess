@@ -398,7 +398,11 @@
       </mat-tab>
 
       <mat-tab label="Move explorer">
-        <app-move-explorer [lines]="explorerLines()" [orientation]="orientation()" />
+        <app-move-explorer
+          [lines]="explorerLines()"
+          [orientation]="orientation()"
+          (captionsChange)="onCaptionsChange($event.id, $event.captions)"
+        />
       </mat-tab>
     </mat-tab-group>
   </div>

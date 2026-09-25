@@ -72,20 +72,59 @@
   background: var(--mat-sys-surface-container);
   border-radius: var(--mat-sys-corner-medium);
 
-  &__title {
+  // The line's name and its copy button, pinned to the top of the column.
+  &__header {
     position: sticky;
     top: 0;
     z-index: 1;
-    margin: 0;
-    padding: 0.5rem 0.625rem;
-    font: var(--mat-sys-title-small);
-    color: var(--mat-sys-on-surface);
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.25rem 0.25rem 0.25rem 0.625rem;
     background: var(--mat-sys-surface-container);
     border-bottom: 1px solid var(--mat-sys-outline-variant);
     border-radius: var(--mat-sys-corner-medium) var(--mat-sys-corner-medium) 0 0;
+  }
+
+  &__title {
+    flex: 1 1 auto;
+    min-width: 0;
+    margin: 0;
+    font: var(--mat-sys-title-small);
+    color: var(--mat-sys-on-surface);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+
+  &__copy {
+    flex: 0 0 auto;
+    width: 2rem;
+    height: 2rem;
+    display: grid;
+    place-items: center;
+    padding: 0;
+    border: none;
+    border-radius: var(--mat-sys-corner-full);
+    background: none;
+    color: var(--mat-sys-on-surface-variant);
+    cursor: pointer;
+
+    &:hover {
+      background: var(--mat-sys-surface-container-high);
+      color: var(--mat-sys-on-surface);
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--mat-sys-primary);
+      outline-offset: 1px;
+    }
+
+    mat-icon {
+      font-size: 1.125rem;
+      width: 1.125rem;
+      height: 1.125rem;
+    }
   }
 
   &__moves {
@@ -207,9 +246,17 @@
   }
 
   // Square, so any number of pinned boards scrolls sideways instead of shrinking.
-  &__button {
+  // It also anchors the unpin button to the board's own corner.
+  &__frame {
+    position: relative;
     height: 100%;
     aspect-ratio: 1;
+  }
+
+  &__button {
+    display: block;
+    width: 100%;
+    height: 100%;
     padding: 0;
     border: none;
     background: none;
@@ -223,6 +270,39 @@
     &:focus-visible {
       outline: 2px solid var(--mat-sys-primary);
       outline-offset: 2px;
+    }
+  }
+
+  &__unpin {
+    position: absolute;
+    top: 0.125rem;
+    right: 0.125rem;
+    width: 1.5rem;
+    height: 1.5rem;
+    display: grid;
+    place-items: center;
+    padding: 0;
+    border: none;
+    border-radius: var(--mat-sys-corner-full);
+    // Its own surface, so the icon stays legible over any square beneath it.
+    background: color-mix(in srgb, var(--mat-sys-surface) 85%, transparent);
+    color: var(--mat-sys-on-surface-variant);
+    cursor: pointer;
+
+    &:hover {
+      background: var(--mat-sys-surface);
+      color: var(--mat-sys-error);
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--mat-sys-primary);
+      outline-offset: 1px;
+    }
+
+    mat-icon {
+      font-size: 1rem;
+      width: 1rem;
+      height: 1rem;
     }
   }
 

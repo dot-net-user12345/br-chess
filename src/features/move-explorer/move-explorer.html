@@ -1,7 +1,7 @@
 <div class="explorer">
   <div class="explorer__bar">
     <p class="explorer__hint">
-      Select a move to pin its position below; select it again to unpin it.
+      Select a move to pin its position below; select a pinned board to open it large.
     </p>
     <span class="explorer__spacer"></span>
     <button matButton type="button" (click)="clear()" [disabled]="!hasPinned()">
@@ -17,9 +17,22 @@
         No lines to explore yet. Add a valid PGN on the Lines tab to see its moves here.
       </p>
     }
-    @for (column of columns(); track $index) {
+    @for (column of columns(); track $index; let lineIndex = $index) {
       <section class="line">
-        <h3 class="line__title">{{ column.label }}</h3>
+        <div class="line__header">
+          <h3 class="line__title">{{ column.label }}</h3>
+          <button
+            type="button"
+            class="line__copy"
+            [attr.aria-label]="
+              copiedIndex() === lineIndex ? column.label + ' PGN copied' : 'Copy ' + column.label + ' PGN'
+            "
+            [matTooltip]="copiedIndex() === lineIndex ? 'Copied' : 'Copy PGN'"
+            (click)="copyPgn(lineIndex)"
+          >
+            <mat-icon>{{ copiedIndex() === lineIndex ? 'check' : 'content_copy' }}</mat-icon>
+          </button>
+        </div>
         <ol class="line__moves">
           @for (row of column.rows; track $index) {
             <li class="line__row">
@@ -72,21 +85,33 @@
             <ol class="group__boards">
               @for (board of group.boards; track board.key) {
                 <li class="group__tile">
-                  <button
-                    type="button"
-                    class="group__button"
-                    [attr.data-key]="board.key"
-                    [attr.aria-label]="'Unpin ' + board.ariaLabel"
-                    (click)="toggle(board.key)"
-                  >
-                    <app-chess-board
-                      [fen]="board.fen"
-                      [caption]="board.ariaLabel"
-                      [from]="board.from"
-                      [to]="board.to"
-                      [orientation]="orientation()"
-                    />
-                  </button>
+                  <!-- The board opens the large view; unpinning is the corner
+                       button (or the move itself, back up in the column). -->
+                  <div class="group__frame">
+                    <button
+                      type="button"
+                      class="group__button"
+                      [attr.data-key]="board.key"
+                      [attr.aria-label]="'View ' + board.ariaLabel + ' fullscreen'"
+                      (click)="openBoard(group.lineIndex, board.ply)"
+                    >
+                      <app-chess-board
+                        [fen]="board.fen"
+                        [caption]="board.ariaLabel"
+                        [from]="board.from"
+                        [to]="board.to"
+                        [orientation]="orientation()"
+                      />
+                    </button>
+                    <button
+                      type="button"
+                      class="group__unpin"
+                      [attr.aria-label]="'Unpin ' + board.ariaLabel"
+                      (click)="toggle(board.key)"
+                    >
+                      <mat-icon>close</mat-icon>
+                    </button>
+                  </div>
                   <p class="group__caption">{{ board.move }}</p>
                 </li>
               }

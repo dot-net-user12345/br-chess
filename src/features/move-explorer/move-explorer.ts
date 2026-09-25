@@ -1,3 +1,4 @@
+import { Clipboard } from '@angular/cdk/clipboard';
 import {
   afterNextRender,
   ChangeDetectionStrategy,
@@ -7,18 +8,25 @@ import {
   inject,
   Injector,
   input,
+  output,
   signal,
   viewChild,
 } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
+import { MatDialog } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { BoardOrientation, GamePosition } from '../../core/chess-models';
+import { BoardDialog, BoardDialogTile } from '../board-dialog/board-dialog';
 import { ChessBoard } from '../chess-board/chess-board';
 
 /** One line the explorer lists as a column of clickable moves. */
 export interface MoveExplorerLine {
+  /** The owning entry's id, so caption edits can be written back to it. */
+  readonly id: string;
   readonly label: string;
+  /** The line's PGN as written, which the column's copy button puts on the clipboard. */
+  readonly pgn: string;
   /** Every position from the start through the final move. */
   readonly positions: readonly GamePosition[];
   /** The line's user-written captions, keyed by ply. */
@@ -45,6 +53,7 @@ interface MoveRow {
 
 interface LineColumn {
   readonly label: string;
+  readonly pgn: string;
   readonly rows: readonly MoveRow[];
 }
 
@@ -54,6 +63,7 @@ interface PinnedBoard {
   readonly fen: string;
   readonly from: string | null;
   readonly to: string | null;
+  readonly ply: number;
   /** `5… O-O` — the move itself; the group it sits in names the line. */
   readonly move: string;
   /** Screen-reader name, which needs the owning line to be unambiguous. */
@@ -87,13 +97,22 @@ export class MoveExplorer {
   /** Side to view every board from; `black` rotates each board 180°. */
   readonly orientation = input<BoardOrientation>('white');
 
+  /** Emits a line's full updated caption map when one is saved from the large view. */
+  readonly captionsChange = output<{ id: string; captions: Record<number, string> }>();
+
+  private readonly dialog = inject(MatDialog);
   private readonly injector = inject(Injector);
+  private readonly clipboard = inject(Clipboard);
 
   /** The pinned-board strip, scrolled to keep a freshly pinned board in view. */
   private readonly strip = viewChild<ElementRef<HTMLElement>>('strip');
 
   /** Keys of the pinned moves, in the order they were clicked. */
   private readonly pinnedKeys = signal<readonly string[]>([]);
+
+  /** The column whose PGN was just copied, to confirm it on that button; cleared after a moment. */
+  protected readonly copiedIndex = signal<number | null>(null);
+  private copiedTimer: ReturnType<typeof setTimeout> | null = null;
 
   /** One column per line, its moves grouped into numbered rows. */
   protected readonly columns = computed<LineColumn[]>(() =>
@@ -121,7 +140,7 @@ export class MoveExplorer {
           });
         }
       }
-      return { label: line.label, rows };
+      return { label: line.label, pgn: line.pgn, rows };
     }),
   );
 
@@ -143,6 +162,7 @@ export class MoveExplorer {
         const move = moveLabel(position);
         boards.push({
           key,
+          ply: position.ply,
           fen: position.fen,
           from: position.from,
           to: position.to,
@@ -183,8 +203,57 @@ export class MoveExplorer {
     }
   }
 
+  /** Copies a line's PGN, confirming it with a transient state on its button. */
+  protected copyPgn(index: number): void {
+    const pgn = this.columns()[index]?.pgn.trim() ?? '';
+    if (pgn.length === 0 || !this.clipboard.copy(pgn)) {
+      return;
+    }
+    this.copiedIndex.set(index);
+    if (this.copiedTimer) {
+      clearTimeout(this.copiedTimer);
+    }
+    this.copiedTimer = setTimeout(() => this.copiedIndex.set(null), 1500);
+  }
+
   protected clear(): void {
     this.pinnedKeys.set([]);
+  }
+
+  /**
+   * Opens the pinned board fullscreen, at the move it was pinned at and
+   * navigable through the rest of its line — the same large view a board on the
+   * Lines tab opens, captions included.
+   */
+  protected openBoard(lineIndex: number, ply: number): void {
+    const line = this.lines()[lineIndex];
+    if (!line) {
+      return;
+    }
+    const tiles: BoardDialogTile[] = line.positions.map((position) => ({
+      ply: position.ply,
+      fen: position.fen,
+      caption: position.ply === 0 || position.san === null ? 'Start' : moveLabel(position),
+      san: position.san,
+      from: position.from,
+      to: position.to,
+    }));
+    this.dialog.open(BoardDialog, {
+      data: {
+        tiles,
+        // Positions run from the starting board, so a ply is its own tile index.
+        index: ply,
+        captions: line.captions,
+        orientation: this.orientation(),
+        onCaptionChange: (captions: Record<number, string>) =>
+          this.captionsChange.emit({ id: line.id, captions }),
+      },
+      panelClass: 'board-dialog-panel',
+      ariaLabel: 'Board preview',
+      maxWidth: '98vw',
+      maxHeight: '98vh',
+      autoFocus: 'dialog',
+    });
   }
 }
 
