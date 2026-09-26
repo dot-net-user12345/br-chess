@@ -11,6 +11,13 @@ import {
   pieceAssetPath,
 } from './board-assets';
 import { BoardOrientation, GamePosition } from './chess-models';
+import {
+  BoardDrawing,
+  DRAWING_ARROW_COLOR,
+  DRAWING_SQUARE_FILL,
+  drawingKey,
+  gridIndex,
+} from './board-drawing';
 
 /**
  * Pixel size of one square in the exported PNG (independent of the on-screen
@@ -47,16 +54,23 @@ export class BoardImageService {
 
   /**
    * Resolves a Storage download URL for every position, in order. Plies listed
-   * in `highlightedPlies` render in the divergent color with a matching border.
+   * in `highlightedPlies` render in the divergent color with a matching border,
+   * and each position carries the user's drawing for its ply, if any.
    */
   urlsForPositions(
     positions: readonly GamePosition[],
     highlightedPlies: ReadonlySet<number> = new Set(),
     orientation: BoardOrientation = 'white',
+    drawings: Readonly<Record<number, BoardDrawing>> = {},
   ): Promise<string[]> {
     return Promise.all(
       positions.map((position) =>
-        this.urlForPosition(position, highlightedPlies.has(position.ply), orientation),
+        this.urlForPosition(
+          position,
+          highlightedPlies.has(position.ply),
+          orientation,
+          drawings[position.ply] ?? null,
+        ),
       ),
     );
   }
@@ -65,18 +79,22 @@ export class BoardImageService {
     position: GamePosition,
     highlighted: boolean,
     orientation: BoardOrientation,
+    drawing: BoardDrawing | null,
   ): Promise<string> {
+    const drawn = drawingKey(drawing);
     const key =
       `${RENDER_SQUARE}|${position.fen}|${position.from ?? ''}${position.to ?? ''}` +
       // Only appended when highlighted, so normal renders keep their existing keys.
       (highlighted ? '|divergent' : '') +
       // Only appended for black, so white renders keep their existing keys.
-      (orientation === 'black' ? '|black' : '');
+      (orientation === 'black' ? '|black' : '') +
+      // Only appended when something is drawn, so plain renders keep their keys.
+      (drawn ? `|draw:${drawn}` : '');
     const existing = this.urlByKey.get(key);
     if (existing) {
       return existing;
     }
-    const pending = this.resolveUrl(position, key, highlighted, orientation);
+    const pending = this.resolveUrl(position, key, highlighted, orientation, drawing);
     this.urlByKey.set(key, pending);
     return pending;
   }
@@ -86,6 +104,7 @@ export class BoardImageService {
     key: string,
     highlighted: boolean,
     orientation: BoardOrientation,
+    drawing: BoardDrawing | null,
   ): Promise<string> {
     const fileRef = ref(this.storage, `moves/${await this.hash(key)}.png`);
     try {
@@ -96,7 +115,7 @@ export class BoardImageService {
         throw err;
       }
     }
-    const blob = await this.render(position, highlighted, orientation);
+    const blob = await this.render(position, highlighted, orientation, drawing);
     await uploadBytes(fileRef, blob, { contentType: 'image/png' });
     return getDownloadURL(fileRef);
   }
@@ -105,6 +124,7 @@ export class BoardImageService {
     position: GamePosition,
     highlighted: boolean,
     orientation: BoardOrientation,
+    drawing: BoardDrawing | null,
   ): Promise<Blob> {
     const rows = this.chess.fenToSquares(position.fen);
     const black = orientation === 'black';
@@ -115,12 +135,22 @@ export class BoardImageService {
     if (!ctx) {
       throw new Error('Could not acquire a 2D canvas context to render the board.');
     }
+    // Grid cells (row by row, as the viewer sees them) the user colored.
+    const marked = new Set(
+      (drawing?.squares ?? [])
+        .map((square) => gridIndex(square, orientation))
+        .filter((index): index is number => index !== null),
+    );
     for (let rank = 0; rank < 8; rank++) {
       for (let file = 0; file < 8; file++) {
         const x = file * RENDER_SQUARE;
         const y = rank * RENDER_SQUARE;
         ctx.fillStyle = (rank + file) % 2 === 0 ? LIGHT_SQUARE : DARK_SQUARE;
         ctx.fillRect(x, y, RENDER_SQUARE, RENDER_SQUARE);
+        if (marked.has(rank * 8 + file)) {
+          ctx.fillStyle = DRAWING_SQUARE_FILL;
+          ctx.fillRect(x, y, RENDER_SQUARE, RENDER_SQUARE);
+        }
         // Black views the board rotated 180°, so read the mirrored source cell.
         const piece = black ? (rows[7 - rank]?.[7 - file] ?? null) : (rows[rank]?.[file] ?? null);
         if (piece) {
@@ -130,6 +160,9 @@ export class BoardImageService {
     }
     if (position.from && position.to) {
       this.drawArrow(ctx, position.from, position.to, highlighted ? DIVERGENT_MOVE_COLOR : MOVE_ARROW_COLOR, black);
+    }
+    for (const arrow of drawing?.arrows ?? []) {
+      this.drawArrow(ctx, arrow.from, arrow.to, DRAWING_ARROW_COLOR, black);
     }
     if (highlighted) {
       this.drawHighlightBorder(ctx);

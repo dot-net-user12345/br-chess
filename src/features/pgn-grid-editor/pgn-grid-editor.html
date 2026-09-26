@@ -145,6 +145,8 @@
                     (focusPliesChange)="onFocusPliesChange(entry.id, $event)"
                     [moveImages]="entry.moveImages ?? {}"
                     (moveImagesChange)="onMoveImagesChange(entry.id, $event)"
+                    [drawings]="entry.drawings ?? {}"
+                    (drawingsChange)="onDrawingsChange(entry.id, $event)"
                     (middleGamePlanChange)="onPlanChange(entry.id, $event)"
                   />
                 </mat-expansion-panel>
@@ -408,6 +410,7 @@
           (captionsChange)="onCaptionsChange($event.id, $event.captions)"
           (focusPliesChange)="onFocusPliesChange($event.id, $event.focusPlies)"
           (moveImagesChange)="onMoveImagesChange($event.id, $event.moveImages)"
+          (drawingsChange)="onDrawingsChange($event.id, $event.drawings)"
         />
       </mat-tab>
     </mat-tab-group>

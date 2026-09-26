@@ -505,6 +505,7 @@ export class WorkspaceStore {
             ...(entry.captions !== undefined ? { captions: entry.captions } : {}),
             ...(entry.focusPlies !== undefined ? { focusPlies: entry.focusPlies } : {}),
             ...(entry.moveImages !== undefined ? { moveImages: entry.moveImages } : {}),
+            ...(entry.drawings !== undefined ? { drawings: entry.drawings } : {}),
             ...(entry.middleGamePlan !== undefined
               ? { middleGamePlan: entry.middleGamePlan }
               : {}),
@@ -518,6 +519,7 @@ export class WorkspaceStore {
           result.positions,
           highlighted,
           orientation,
+          entry.drawings,
         );
         return { ...entry, boardImageUrls };
       }),

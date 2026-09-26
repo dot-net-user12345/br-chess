@@ -24,7 +24,7 @@ import { MatMenuModule, MatMenuTrigger } from '@angular/material/menu';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { BoardOrientation, GamePosition } from '../../core/chess-models';
 import { ChessService } from '../../core/chess-service';
-import { UploadedImage } from '../../core/workspace-models';
+import { BoardDrawing, UploadedImage } from '../../core/workspace-models';
 import { BoardDialog, BoardDialogTile } from '../board-dialog/board-dialog';
 import { ChessBoard } from '../chess-board/chess-board';
 
@@ -43,6 +43,8 @@ export interface MoveExplorerLine {
   readonly focusPlies: readonly number[];
   /** Each move's own images, keyed by ply; managed in the large view. */
   readonly moveImages: Readonly<Record<number, readonly UploadedImage[]>>;
+  /** Each move's drawing (colored squares and arrows), keyed by ply. */
+  readonly drawings: Readonly<Record<number, BoardDrawing>>;
 }
 
 /** One clickable half-move in a line's column. */
@@ -84,6 +86,8 @@ interface PinnedBoard {
   readonly move: string;
   /** Screen-reader name, which needs the owning line to be unambiguous. */
   readonly ariaLabel: string;
+  /** The user's saved drawing for this move, if any. */
+  readonly drawing: BoardDrawing | null;
 }
 
 /** One line's pinned boards, shown together under the line's own title. */
@@ -132,6 +136,8 @@ export class MoveExplorer {
     id: string;
     moveImages: Record<number, readonly UploadedImage[]>;
   }>();
+  /** Emits a line's full updated drawing map when drawings are saved in the large view. */
+  readonly drawingsChange = output<{ id: string; drawings: Record<number, BoardDrawing> }>();
 
   private readonly dialog = inject(MatDialog);
   private readonly injector = inject(Injector);
@@ -271,6 +277,7 @@ export class MoveExplorer {
           to: position.to,
           move,
           ariaLabel: `${line.label}, ${move}`,
+          drawing: line.drawings[position.ply] ?? null,
         });
       }
       if (boards.length > 0) {
@@ -439,6 +446,9 @@ export class MoveExplorer {
         moveImages: line.moveImages,
         onMoveImagesChange: (moveImages: Record<number, readonly UploadedImage[]>) =>
           this.moveImagesChange.emit({ id: line.id, moveImages }),
+        drawings: line.drawings,
+        onDrawingsChange: (drawings: Record<number, BoardDrawing>) =>
+          this.drawingsChange.emit({ id: line.id, drawings }),
       },
       panelClass: 'board-dialog-panel',
       ariaLabel: 'Board preview',

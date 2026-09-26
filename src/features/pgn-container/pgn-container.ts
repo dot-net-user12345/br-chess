@@ -21,7 +21,7 @@ import { MatMenuModule, MatMenuTrigger } from '@angular/material/menu';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { ChessService } from '../../core/chess-service';
 import { BoardOrientation, PgnParseResult } from '../../core/chess-models';
-import { MiddleGamePlan, UploadedImage } from '../../core/workspace-models';
+import { BoardDrawing, MiddleGamePlan, UploadedImage } from '../../core/workspace-models';
 import { BoardDialog } from '../board-dialog/board-dialog';
 import { ChessBoard } from '../chess-board/chess-board';
 import { MiddleGamePlanPanel } from '../middle-game-plan/middle-game-plan';
@@ -72,6 +72,8 @@ export class PgnContainer implements OnInit {
   readonly focusPlies = input<readonly number[]>([]);
   /** Each move's own images, keyed by ply; managed in the large view. */
   readonly moveImages = input<Readonly<Record<number, readonly UploadedImage[]>>>({});
+  /** Each move's drawing (colored squares and arrows), keyed by ply. */
+  readonly drawings = input<Readonly<Record<number, BoardDrawing>>>({});
   /** Side to view every board from; `black` rotates each board 180°. */
   readonly orientation = input<BoardOrientation>('white');
   /** This line's optional middle game plan; empty when it has none. */
@@ -84,6 +86,8 @@ export class PgnContainer implements OnInit {
   readonly focusPliesChange = output<number[]>();
   /** Emits the full updated image map when a move's images change in the large view. */
   readonly moveImagesChange = output<Record<number, readonly UploadedImage[]>>();
+  /** Emits the full updated drawing map when drawings are saved in the large view. */
+  readonly drawingsChange = output<Record<number, BoardDrawing>>();
   /** Emits the whole plan whenever its notes or images change. */
   readonly middleGamePlanChange = output<MiddleGamePlan>();
 
@@ -159,6 +163,9 @@ export class PgnContainer implements OnInit {
         moveImages: this.moveImages(),
         onMoveImagesChange: (moveImages: Record<number, readonly UploadedImage[]>) =>
           this.moveImagesChange.emit(moveImages),
+        drawings: this.drawings(),
+        onDrawingsChange: (drawings: Record<number, BoardDrawing>) =>
+          this.drawingsChange.emit(drawings),
       },
       panelClass: 'board-dialog-panel',
       ariaLabel: 'Board preview',

@@ -21,6 +21,11 @@
   box-shadow: 0 0 8px 1px var(--board-highlight-color);
 }
 
+// Drawable with the right mouse button: keep a drag from selecting the pieces.
+:host(.chess-board--drawable) {
+  user-select: none;
+}
+
 .chess-board__arrow {
   position: absolute;
   inset: 0;
@@ -35,11 +40,18 @@
   justify-content: center;
 
   &.light {
-    background: #f0d9b5;
+    // Color only, not the `background` shorthand, which would wipe the
+    // drawing tint a colored square layers on as a background image.
+    background-color: #f0d9b5;
   }
 
   &.dark {
-    background: #b58863;
+    background-color: #b58863;
+  }
+
+  // A square the user colored: a tint over the square, beneath its piece.
+  &--marked {
+    background-image: linear-gradient(var(--board-drawing-fill), var(--board-drawing-fill));
   }
 
   // A differing move's destination square: inner glow in the arrow color.

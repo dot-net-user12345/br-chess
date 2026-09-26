@@ -16,6 +16,7 @@ import { MatInputModule } from '@angular/material/input';
 import { ChessService } from '../../core/chess-service';
 import { BoardOrientation } from '../../core/chess-models';
 import { UploadedImage } from '../../core/workspace-models';
+import { BoardDrawing, EMPTY_DRAWING, isEmptyDrawing } from '../../core/board-drawing';
 import { ChessBoard } from '../chess-board/chess-board';
 import { imageFilesIn } from '../../shared/image-drop';
 import { MoveImages } from './move-images';
@@ -52,6 +53,10 @@ export interface BoardDialogData {
   readonly moveImages?: Readonly<Record<number, readonly UploadedImage[]>>;
   /** Called with the full updated image map whenever a move's images change. */
   readonly onMoveImagesChange?: (moveImages: Record<number, readonly UploadedImage[]>) => void;
+  /** Each move's saved drawing (colored squares and arrows), keyed by ply. */
+  readonly drawings?: Readonly<Record<number, BoardDrawing>>;
+  /** Called with the full updated drawing map when the user saves drawing edits. */
+  readonly onDrawingsChange?: (drawings: Record<number, BoardDrawing>) => void;
 }
 
 /** A board position shown large in a modal, navigable through the whole game. */
@@ -161,6 +166,9 @@ export interface BoardDialogData {
             [to]="current().to"
             [highlighted]="current().highlighted ?? false"
             [orientation]="orientation()"
+            [drawing]="currentDrawing()"
+            [drawable]="canDraw"
+            (drawingChange)="onDraw($event)"
           />
         </div>
         <div class="board-dialog__caption">
@@ -189,6 +197,34 @@ export interface BoardDialogData {
                 Edit
               </button>
             </div>
+          }
+          @if (canDraw) {
+            <section class="board-dialog__drawing" aria-labelledby="board-dialog-drawing-heading">
+              <h3 id="board-dialog-drawing-heading" class="board-dialog__caption-heading">
+                Drawing
+              </h3>
+              <p class="board-dialog__drawing-hint">
+                Right-click a square to color it; right-drag between squares to draw an arrow.
+              </p>
+              @if (hasUnsavedDrawings()) {
+                <p class="board-dialog__drawing-status" role="status">Unsaved drawing changes</p>
+              }
+              <div class="board-dialog__caption-actions">
+                @if (hasUnsavedDrawings()) {
+                  <button matButton="filled" type="button" (click)="saveDrawings()">Save</button>
+                  <button matButton type="button" (click)="discardDrawings()">Discard</button>
+                }
+                <button
+                  matButton
+                  type="button"
+                  [disabled]="currentDrawingEmpty()"
+                  (click)="clearDrawing()"
+                >
+                  <mat-icon>ink_eraser</mat-icon>
+                  Clear
+                </button>
+              </div>
+            </section>
           }
           @if (canAddImages && current().san !== null) {
             <app-move-images
@@ -280,6 +316,24 @@ export interface BoardDialogData {
       overflow-y: auto;
     }
 
+    .board-dialog__drawing {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      margin-top: 0.5rem;
+    }
+
+    .board-dialog__drawing-hint,
+    .board-dialog__drawing-status {
+      margin: 0;
+      font: var(--mat-sys-body-small);
+      color: var(--mat-sys-on-surface-variant);
+    }
+
+    .board-dialog__drawing-status {
+      color: var(--mat-sys-primary);
+    }
+
     .board-dialog__images {
       display: block;
       margin-top: 0.5rem;
@@ -362,6 +416,29 @@ export class BoardDialog {
     () => this.moveImages()[this.current().ply] ?? [],
   );
 
+  /** Whether the opener stores drawings, so the board can be drawn on. */
+  protected readonly canDraw = this.data.onDrawingsChange !== undefined;
+
+  /** Every move's drawing as last saved. */
+  private readonly savedDrawings = signal<Record<number, BoardDrawing>>({
+    ...this.data.drawings,
+  });
+
+  /** Drawing edits not yet saved, keyed by ply; kept while stepping between moves. */
+  private readonly draftDrawings = signal<Record<number, BoardDrawing>>({});
+
+  /** The current move's drawing: its unsaved edit if any, else what was saved. */
+  protected readonly currentDrawing = computed<BoardDrawing | null>(() => {
+    const ply = this.current().ply;
+    return this.draftDrawings()[ply] ?? this.savedDrawings()[ply] ?? null;
+  });
+
+  protected readonly currentDrawingEmpty = computed(() => isEmptyDrawing(this.currentDrawing()));
+
+  protected readonly hasUnsavedDrawings = computed(
+    () => Object.keys(this.draftDrawings()).length > 0,
+  );
+
   /** Whether the board currently shown is marked as a focus point. */
   protected readonly isFocus = computed(() => this.focusPlies().includes(this.current().ply));
 
@@ -441,7 +518,43 @@ export class BoardDialog {
     this.editing.set(false);
   }
 
+  /** Records a right-click or right-drag on the board as an unsaved edit. */
+  protected onDraw(drawing: BoardDrawing): void {
+    const ply = this.current().ply;
+    this.draftDrawings.update((drafts) => ({ ...drafts, [ply]: drawing }));
+  }
+
+  /** Clears the current move's drawing (as an unsaved edit, like any other). */
+  protected clearDrawing(): void {
+    this.onDraw(EMPTY_DRAWING);
+  }
+
+  protected discardDrawings(): void {
+    this.draftDrawings.set({});
+  }
+
+  /** Saves every move's unsaved drawing edits and hands the whole map to the opener. */
+  protected saveDrawings(): void {
+    const drafts = this.draftDrawings();
+    if (Object.keys(drafts).length === 0) {
+      return;
+    }
+    const next: Record<number, BoardDrawing> = { ...this.savedDrawings() };
+    for (const [ply, drawing] of Object.entries(drafts)) {
+      if (isEmptyDrawing(drawing)) {
+        delete next[Number(ply)];
+      } else {
+        next[Number(ply)] = drawing;
+      }
+    }
+    this.savedDrawings.set(next);
+    this.draftDrawings.set({});
+    this.data.onDrawingsChange?.({ ...next });
+  }
+
   protected saveCaption(): void {
+    // The caption's Save saves any drawing edits too.
+    this.saveDrawings();
     const value = this.captionControl.value.trim();
     const ply = this.current().ply;
     const next = { ...this.captions() };

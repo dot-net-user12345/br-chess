@@ -27,6 +27,7 @@ import { DuplicateLinePair, WorkspaceStore } from '../../core/workspace-store';
 import {
   MiddleGamePlan,
   NodeId,
+  BoardDrawing,
   PgnEntry,
   PgnGridFileNode,
   UploadedImage,
@@ -357,6 +358,29 @@ export class PgnGridEditor {
     }
   }
 
+  /**
+   * Replaces one line's board drawings and saves the file, so drawings saved in
+   * the large view stick at once. An empty map drops the field entirely.
+   */
+  protected async onDrawingsChange(
+    entryId: string,
+    drawings: Record<number, BoardDrawing>,
+  ): Promise<void> {
+    const empty = Object.keys(drawings).length === 0;
+    this.writeEntries(
+      this.entries().map((entry) => {
+        if (entry.id !== entryId) {
+          return entry;
+        }
+        const { drawings: _dropped, ...rest } = entry;
+        return empty ? rest : { ...rest, drawings };
+      }),
+    );
+    if (await this.attachments.ensureSignedIn()) {
+      await this.store.saveFile(this.fileId());
+    }
+  }
+
   /** Replaces one line's focus points; an empty list drops the field entirely. */
   protected onFocusPliesChange(entryId: string, focusPlies: number[]): void {
     this.writeEntries(
@@ -590,6 +614,7 @@ export class PgnGridEditor {
         captions: entries[index].captions ?? {},
         focusPlies: entries[index].focusPlies ?? [],
         moveImages: entries[index].moveImages ?? {},
+        drawings: entries[index].drawings ?? {},
       });
     });
     return lines;

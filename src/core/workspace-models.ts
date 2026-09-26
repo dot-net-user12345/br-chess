@@ -18,6 +18,11 @@ export interface MiddleGamePlan {
 }
 
 /** One PGN entry inside a pgn-grid file. */
+import { BoardDrawing } from './board-drawing';
+
+/** A user's colored squares and arrows on one board, as saved with the file. */
+export type { BoardDrawing };
+
 export interface PgnEntry {
   readonly id: string;
   readonly pgn: string;
@@ -29,6 +34,8 @@ export interface PgnEntry {
   readonly focusPlies?: readonly number[];
   /** Each move's own reference images, keyed by ply. Absent until one is added. */
   readonly moveImages?: Readonly<Record<number, readonly UploadedImage[]>>;
+  /** Each move's drawing (colored squares and arrows), keyed by ply. Absent until one is saved. */
+  readonly drawings?: Readonly<Record<number, BoardDrawing>>;
   /**
    * Cloud Storage download URLs for each rendered board position, in ply order
    * (index 0 is the starting position). Populated on save; absent for entries

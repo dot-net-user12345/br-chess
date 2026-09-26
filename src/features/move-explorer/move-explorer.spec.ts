@@ -21,6 +21,7 @@ describe('MoveExplorer', () => {
       captions: {},
       focusPlies: [],
       moveImages: {},
+      drawings: {},
     };
     const fixture = TestBed.createComponent(MoveExplorer);
     fixture.componentRef.setInput('lines', [line]);
@@ -89,5 +90,32 @@ describe('MoveExplorer', () => {
       chess.parsePgn('1. e4 e5 2. Nf3').positions[3].fen,
       '1. e4 e5\n2. Nf3',
     ]);
+  });
+
+  it('keeps drawing edits unsaved until Save, then emits every edited move', () => {
+    const { component } = setup();
+    const emitted: unknown[] = [];
+    component.drawingsChange.subscribe((change) => emitted.push(change));
+
+    (component as unknown as { openBoard(i: number, ply: number): void }).openBoard(0, 1);
+    const dialog = TestBed.inject(MatDialog).openDialogs[0].componentInstance as unknown as {
+      onDraw(drawing: unknown): void;
+      next(): void;
+      saveDrawings(): void;
+      hasUnsavedDrawings(): boolean;
+    };
+    const onE4 = { squares: ['e4'], arrows: [] };
+    const onE5 = { squares: [], arrows: [{ from: 'g1', to: 'f3' }] };
+    dialog.onDraw(onE4);
+    dialog.next();
+    dialog.onDraw(onE5);
+
+    expect(emitted).toEqual([]);
+    expect(dialog.hasUnsavedDrawings()).toBe(true);
+
+    dialog.saveDrawings();
+
+    expect(dialog.hasUnsavedDrawings()).toBe(false);
+    expect(emitted).toEqual([{ id: 'line-1', drawings: { 1: onE4, 2: onE5 } }]);
   });
 });
