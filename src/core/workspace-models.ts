@@ -27,6 +27,8 @@ export interface PgnEntry {
   readonly captions?: Readonly<Record<number, string>>;
   /** Plies the user marked as focus points, in ascending order. Absent until one is marked. */
   readonly focusPlies?: readonly number[];
+  /** Each move's own reference images, keyed by ply. Absent until one is added. */
+  readonly moveImages?: Readonly<Record<number, readonly UploadedImage[]>>;
   /**
    * Cloud Storage download URLs for each rendered board position, in ply order
    * (index 0 is the starting position). Populated on save; absent for entries

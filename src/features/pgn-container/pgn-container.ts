@@ -21,7 +21,7 @@ import { MatMenuModule, MatMenuTrigger } from '@angular/material/menu';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { ChessService } from '../../core/chess-service';
 import { BoardOrientation, PgnParseResult } from '../../core/chess-models';
-import { MiddleGamePlan } from '../../core/workspace-models';
+import { MiddleGamePlan, UploadedImage } from '../../core/workspace-models';
 import { BoardDialog } from '../board-dialog/board-dialog';
 import { ChessBoard } from '../chess-board/chess-board';
 import { MiddleGamePlanPanel } from '../middle-game-plan/middle-game-plan';
@@ -70,6 +70,8 @@ export class PgnContainer implements OnInit {
   readonly captions = input<Readonly<Record<number, string>>>({});
   /** Plies marked as focus points; their move labels are drawn on a red chip. */
   readonly focusPlies = input<readonly number[]>([]);
+  /** Each move's own images, keyed by ply; managed in the large view. */
+  readonly moveImages = input<Readonly<Record<number, readonly UploadedImage[]>>>({});
   /** Side to view every board from; `black` rotates each board 180°. */
   readonly orientation = input<BoardOrientation>('white');
   /** This line's optional middle game plan; empty when it has none. */
@@ -80,6 +82,8 @@ export class PgnContainer implements OnInit {
   readonly captionsChange = output<Record<number, string>>();
   /** Emits the full updated focus-point list when one is toggled in the large view. */
   readonly focusPliesChange = output<number[]>();
+  /** Emits the full updated image map when a move's images change in the large view. */
+  readonly moveImagesChange = output<Record<number, readonly UploadedImage[]>>();
   /** Emits the whole plan whenever its notes or images change. */
   readonly middleGamePlanChange = output<MiddleGamePlan>();
 
@@ -152,6 +156,9 @@ export class PgnContainer implements OnInit {
         onCaptionChange: (captions: Record<number, string>) => this.captionsChange.emit(captions),
         focusPlies: this.focusPlies(),
         onFocusChange: (focusPlies: number[]) => this.focusPliesChange.emit(focusPlies),
+        moveImages: this.moveImages(),
+        onMoveImagesChange: (moveImages: Record<number, readonly UploadedImage[]>) =>
+          this.moveImagesChange.emit(moveImages),
       },
       panelClass: 'board-dialog-panel',
       ariaLabel: 'Board preview',

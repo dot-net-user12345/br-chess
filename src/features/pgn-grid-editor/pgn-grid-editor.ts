@@ -333,6 +333,30 @@ export class PgnGridEditor {
     }
   }
 
+  /**
+   * Replaces one line's per-move images and saves the file, so an upload or
+   * delete in the large view sticks at once, as a caption save does. An empty
+   * map drops the field entirely.
+   */
+  protected async onMoveImagesChange(
+    entryId: string,
+    moveImages: Record<number, readonly UploadedImage[]>,
+  ): Promise<void> {
+    const empty = Object.keys(moveImages).length === 0;
+    this.writeEntries(
+      this.entries().map((entry) => {
+        if (entry.id !== entryId) {
+          return entry;
+        }
+        const { moveImages: _dropped, ...rest } = entry;
+        return empty ? rest : { ...rest, moveImages };
+      }),
+    );
+    if (await this.attachments.ensureSignedIn()) {
+      await this.store.saveFile(this.fileId());
+    }
+  }
+
   /** Replaces one line's focus points; an empty list drops the field entirely. */
   protected onFocusPliesChange(entryId: string, focusPlies: number[]): void {
     this.writeEntries(
@@ -565,6 +589,7 @@ export class PgnGridEditor {
         positions: result.positions,
         captions: entries[index].captions ?? {},
         focusPlies: entries[index].focusPlies ?? [],
+        moveImages: entries[index].moveImages ?? {},
       });
     });
     return lines;

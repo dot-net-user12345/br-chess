@@ -23,6 +23,7 @@ import { MatMenuModule, MatMenuTrigger } from '@angular/material/menu';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { BoardOrientation, GamePosition } from '../../core/chess-models';
 import { ChessService } from '../../core/chess-service';
+import { UploadedImage } from '../../core/workspace-models';
 import { BoardDialog, BoardDialogTile } from '../board-dialog/board-dialog';
 import { ChessBoard } from '../chess-board/chess-board';
 
@@ -39,6 +40,8 @@ export interface MoveExplorerLine {
   readonly captions: Readonly<Record<number, string>>;
   /** Plies marked as focus points, outlined in red in the column. */
   readonly focusPlies: readonly number[];
+  /** Each move's own images, keyed by ply; managed in the large view. */
+  readonly moveImages: Readonly<Record<number, readonly UploadedImage[]>>;
 }
 
 /** One clickable half-move in a line's column. */
@@ -122,6 +125,11 @@ export class MoveExplorer {
   readonly captionsChange = output<{ id: string; captions: Record<number, string> }>();
   /** Emits a line's full updated focus-point list when one is toggled from the large view. */
   readonly focusPliesChange = output<{ id: string; focusPlies: number[] }>();
+  /** Emits a line's full updated image map when a move's images change in the large view. */
+  readonly moveImagesChange = output<{
+    id: string;
+    moveImages: Record<number, readonly UploadedImage[]>;
+  }>();
 
   private readonly dialog = inject(MatDialog);
   private readonly injector = inject(Injector);
@@ -402,6 +410,9 @@ export class MoveExplorer {
         focusPlies: line.focusPlies,
         onFocusChange: (focusPlies: number[]) =>
           this.focusPliesChange.emit({ id: line.id, focusPlies }),
+        moveImages: line.moveImages,
+        onMoveImagesChange: (moveImages: Record<number, readonly UploadedImage[]>) =>
+          this.moveImagesChange.emit({ id: line.id, moveImages }),
       },
       panelClass: 'board-dialog-panel',
       ariaLabel: 'Board preview',

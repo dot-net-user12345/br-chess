@@ -8,7 +8,9 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { ChessService } from '../../core/chess-service';
 import { BoardOrientation } from '../../core/chess-models';
+import { UploadedImage } from '../../core/workspace-models';
 import { ChessBoard } from '../chess-board/chess-board';
+import { MoveImages } from './move-images';
 
 /** One board position the dialog can display. */
 export interface BoardDialogTile {
@@ -38,6 +40,10 @@ export interface BoardDialogData {
   readonly focusPlies?: readonly number[];
   /** Called with the full updated, ascending focus-point list whenever one is toggled. */
   readonly onFocusChange?: (focusPlies: number[]) => void;
+  /** Each move's own images, keyed by ply. */
+  readonly moveImages?: Readonly<Record<number, readonly UploadedImage[]>>;
+  /** Called with the full updated image map whenever a move's images change. */
+  readonly onMoveImagesChange?: (moveImages: Record<number, readonly UploadedImage[]>) => void;
 }
 
 /** A board position shown large in a modal, navigable through the whole game. */
@@ -51,6 +57,7 @@ export interface BoardDialogData {
     MatInputModule,
     ReactiveFormsModule,
     ChessBoard,
+    MoveImages,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: {
@@ -174,6 +181,14 @@ export interface BoardDialogData {
               </button>
             </div>
           }
+          @if (canAddImages && current().san !== null) {
+            <app-move-images
+              class="board-dialog__images"
+              [images]="currentImages()"
+              [move]="current().caption"
+              (imagesChange)="saveImages($event)"
+            />
+          }
         </div>
       </div>
     </div>
@@ -249,6 +264,15 @@ export interface BoardDialogData {
       display: flex;
       flex-direction: column;
       gap: 0.5rem;
+      /* No taller than the board beside it; the images scroll within it. */
+      box-sizing: border-box;
+      max-height: min(calc(97vw - var(--caption-column)), calc(98vh - var(--bar-height)));
+      overflow-y: auto;
+    }
+
+    .board-dialog__images {
+      display: block;
+      margin-top: 0.5rem;
     }
 
     .board-dialog__caption-heading {
@@ -314,6 +338,19 @@ export class BoardDialog {
 
   /** Working copy of the focus points, updated as the user toggles them. */
   private readonly focusPlies = signal<readonly number[]>(this.data.focusPlies ?? []);
+
+  /** Whether the opener stores move images, so uploads have somewhere to save to. */
+  protected readonly canAddImages = this.data.onMoveImagesChange !== undefined;
+
+  /** Working copy of every move's images, updated as the user uploads and deletes. */
+  private readonly moveImages = signal<Record<number, readonly UploadedImage[]>>({
+    ...this.data.moveImages,
+  });
+
+  /** The images of the board currently shown. */
+  protected readonly currentImages = computed(
+    () => this.moveImages()[this.current().ply] ?? [],
+  );
 
   /** Whether the board currently shown is marked as a focus point. */
   protected readonly isFocus = computed(() => this.focusPlies().includes(this.current().ply));
@@ -393,6 +430,19 @@ export class BoardDialog {
     this.captions.set(next);
     this.editing.set(false);
     this.data.onCaptionChange({ ...next });
+  }
+
+  /** Records the current move's new image list and hands the whole map to the opener. */
+  protected saveImages(images: UploadedImage[]): void {
+    const ply = this.current().ply;
+    const next = { ...this.moveImages() };
+    if (images.length > 0) {
+      next[ply] = images;
+    } else {
+      delete next[ply];
+    }
+    this.moveImages.set(next);
+    this.data.onMoveImagesChange?.({ ...next });
   }
 
   /** Marks or unmarks the current move as a focus point. */

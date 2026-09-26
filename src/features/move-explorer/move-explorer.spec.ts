@@ -19,6 +19,7 @@ describe('MoveExplorer', () => {
       positions: chess.parsePgn('1. e4 e5 2. Nf3').positions,
       captions: {},
       focusPlies: [],
+      moveImages: {},
     };
     const fixture = TestBed.createComponent(MoveExplorer);
     fixture.componentRef.setInput('lines', [line]);
@@ -43,5 +44,24 @@ describe('MoveExplorer', () => {
     internals.saveCaption();
 
     expect(emitted).toEqual([{ id: 'line-1', captions: { 2: 'Symmetrical reply' } }]);
+  });
+
+  it("emits the line's image map when a move's images change in the large view", () => {
+    const { component } = setup();
+    const emitted: unknown[] = [];
+    component.moveImagesChange.subscribe((change) => emitted.push(change));
+    const image = { id: 'img-1', url: 'https://example.test/a.png', path: 'uploads/u/img-1', name: 'a.png' };
+
+    (component as unknown as { openBoard(i: number, ply: number): void }).openBoard(0, 3);
+    const dialog = TestBed.inject(MatDialog).openDialogs[0].componentInstance as unknown as {
+      saveImages(images: unknown[]): void;
+    };
+    dialog.saveImages([image]);
+    dialog.saveImages([]);
+
+    expect(emitted).toEqual([
+      { id: 'line-1', moveImages: { 3: [image] } },
+      { id: 'line-1', moveImages: {} },
+    ]);
   });
 });

@@ -504,6 +504,7 @@ export class WorkspaceStore {
             ...(entry.label !== undefined ? { label: entry.label } : {}),
             ...(entry.captions !== undefined ? { captions: entry.captions } : {}),
             ...(entry.focusPlies !== undefined ? { focusPlies: entry.focusPlies } : {}),
+            ...(entry.moveImages !== undefined ? { moveImages: entry.moveImages } : {}),
             ...(entry.middleGamePlan !== undefined
               ? { middleGamePlan: entry.middleGamePlan }
               : {}),
