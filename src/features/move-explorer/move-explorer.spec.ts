@@ -166,4 +166,64 @@ describe('MoveExplorer', () => {
     expect(labels()).toEqual(['A', 'B', 'C']);
     expect(explorer.filterStatus()).toContain('Move filter: not a move yet.');
   });
+
+  it('filters to the lines reaching a board with a given piece on a given square', () => {
+    TestBed.configureTestingModule({
+      imports: [MoveExplorer],
+      providers: [provideNoopAnimations()],
+    });
+    const chess = TestBed.inject(ChessService);
+    const line = (id: string, pgn: string): MoveExplorerLine => ({
+      id,
+      label: id,
+      pgn,
+      positions: chess.parsePgn(pgn).positions,
+      captions: {},
+      focusPlies: [],
+      moveImages: {},
+      drawings: {},
+    });
+    const fixture = TestBed.createComponent(MoveExplorer);
+    fixture.componentRef.setInput('lines', [
+      line('A', '1. d4 Nf6 2. Bf4 g6'),
+      line('B', '1. d4 d5 2. Nf3 Nf6'),
+      line('C', '1. e4 e5 2. Nf3 Nc6'),
+    ]);
+    fixture.detectChanges();
+    const explorer = fixture.componentInstance as unknown as {
+      pieceColorControl: { setValue(v: string): void };
+      pieceTypeControl: { setValue(v: string): void };
+      squareControl: { setValue(v: string): void };
+      visibleColumns(): { label: string }[];
+      isPositionMatch(key: string): boolean;
+      filterStatus(): string;
+    };
+    const labels = () => explorer.visibleColumns().map((c) => c.label);
+
+    // A white bishop on f4: only line A, from 2. Bf4 (ply 3) onwards.
+    explorer.pieceColorControl.setValue('white');
+    explorer.pieceTypeControl.setValue('B');
+    explorer.squareControl.setValue('F4');
+    expect(labels()).toEqual(['A']);
+    expect(explorer.isPositionMatch('0:3')).toBe(true);
+    expect(explorer.isPositionMatch('0:4')).toBe(true);
+    expect(explorer.isPositionMatch('0:2')).toBe(false);
+
+    // Any piece of either color on f3: lines B and C.
+    explorer.pieceColorControl.setValue('');
+    explorer.pieceTypeControl.setValue('');
+    explorer.squareControl.setValue('f3');
+    expect(labels()).toEqual(['B', 'C']);
+
+    // A black knight on f6: lines A and B.
+    explorer.pieceColorControl.setValue('black');
+    explorer.pieceTypeControl.setValue('N');
+    explorer.squareControl.setValue('f6');
+    expect(labels()).toEqual(['A', 'B']);
+
+    // Not a square yet: nothing is filtered, and the status says why.
+    explorer.squareControl.setValue('f');
+    expect(labels()).toEqual(['A', 'B', 'C']);
+    expect(explorer.filterStatus()).toContain('enter a square like e4');
+  });
 });

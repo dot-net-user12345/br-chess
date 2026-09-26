@@ -66,6 +66,51 @@
     </button>
   </div>
 
+  <!-- Position filter: lines reaching a board with this piece on this square. -->
+  <div class="explorer__bar explorer__bar--position" role="group" aria-labelledby="explorer-position-label">
+    <span id="explorer-position-label" class="explorer__bar-label">Filter by position</span>
+    <mat-form-field class="explorer__filter explorer__filter--select" appearance="outline" subscriptSizing="dynamic">
+      <mat-label>Color</mat-label>
+      <mat-select [formControl]="pieceColorControl" aria-describedby="explorer-filter-status">
+        <mat-option value="">Any</mat-option>
+        <mat-option value="white">White</mat-option>
+        <mat-option value="black">Black</mat-option>
+      </mat-select>
+    </mat-form-field>
+    <mat-form-field class="explorer__filter explorer__filter--select" appearance="outline" subscriptSizing="dynamic">
+      <mat-label>Piece</mat-label>
+      <mat-select [formControl]="pieceTypeControl" aria-describedby="explorer-filter-status">
+        <mat-option value="">Any</mat-option>
+        @for (type of pieceTypes; track type.value) {
+          <mat-option [value]="type.value">{{ type.label }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+    <mat-form-field class="explorer__filter explorer__filter--square" appearance="outline" subscriptSizing="dynamic">
+      <mat-label>Square</mat-label>
+      <input
+        matInput
+        type="text"
+        autocomplete="off"
+        spellcheck="false"
+        maxlength="2"
+        aria-describedby="explorer-filter-status"
+        [attr.aria-invalid]="squareInvalid()"
+        [formControl]="squareControl"
+        (keydown.escape)="squareControl.setValue('')"
+      />
+    </mat-form-field>
+    <button
+      matButton
+      type="button"
+      (click)="clearPositionFilter()"
+      [disabled]="!positionFilter()"
+    >
+      <mat-icon>close</mat-icon>
+      Clear
+    </button>
+  </div>
+
   <!-- Scrolls on both axes: sideways past the line columns, down through a long line. -->
   <div class="explorer__lines">
     @if (columns().length === 0) {
@@ -73,7 +118,7 @@
         No lines to explore yet. Add a valid PGN on the Lines tab to see its moves here.
       </p>
     } @else if (visibleColumns().length === 0) {
-      <p class="explorer__empty">No lines start with those moves.</p>
+      <p class="explorer__empty">No lines match the filters.</p>
     }
     @for (column of visibleColumns(); track column.lineIndex) {
       @let lineIndex = column.lineIndex;
@@ -103,6 +148,7 @@
                   [class.line__move--pinned]="isPinned(cell.key)"
                   [class.line__move--focus]="cell.focus"
                   [class.line__move--match]="isMatch(cell.key)"
+                  [class.line__move--position]="isPositionMatch(cell.key)"
                   [attr.aria-pressed]="isPinned(cell.key)"
                   [attr.aria-label]="cell.ariaLabel"
                   [matTooltip]="cell.caption"
@@ -121,6 +167,7 @@
                   [class.line__move--pinned]="isPinned(cell.key)"
                   [class.line__move--focus]="cell.focus"
                   [class.line__move--match]="isMatch(cell.key)"
+                  [class.line__move--position]="isPositionMatch(cell.key)"
                   [attr.aria-pressed]="isPinned(cell.key)"
                   [attr.aria-label]="cell.ariaLabel"
                   [matTooltip]="cell.caption"
