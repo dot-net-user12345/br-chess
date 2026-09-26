@@ -46,10 +46,16 @@
   }
 
   &__filter {
-    // Compact, so the field fits the bar alongside the hint and Clear button.
+    // Compact, so both filters fit the bar alongside the hint and Clear button.
     @include mat.form-field-density(-4);
-    flex: 0 1 20rem;
-    min-width: 12rem;
+    flex: 0 1 18rem;
+    min-width: 10rem;
+
+    // A single move is short, so its field can be narrower.
+    &--move {
+      flex-basis: 12rem;
+      min-width: 8rem;
+    }
   }
 
   &__filter-icon {
@@ -203,6 +209,14 @@
         color: var(--mat-sys-on-primary);
         opacity: 0.9;
       }
+    }
+
+    // A move the move filter matched: tinted so it stands out down the column.
+    // A pinned move keeps its pinned fill.
+    &--match:not(.line__move--pinned) {
+      background: var(--mat-sys-tertiary-container);
+      color: var(--mat-sys-on-tertiary-container);
+      font-weight: 600;
     }
 
     // A focus point, marked from the large view. An outline rather than a fill,

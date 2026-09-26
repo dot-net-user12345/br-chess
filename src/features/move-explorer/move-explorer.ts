@@ -24,6 +24,7 @@ import { MatMenuModule, MatMenuTrigger } from '@angular/material/menu';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { BoardOrientation, GamePosition } from '../../core/chess-models';
 import { ChessService } from '../../core/chess-service';
+import { findMatchingSpan, MoveQuery, parseMoveQuery } from '../../core/line-search';
 import { BoardDrawing, UploadedImage } from '../../core/workspace-models';
 import { BoardDialog, BoardDialogTile } from '../board-dialog/board-dialog';
 import { ChessBoard } from '../chess-board/chess-board';
@@ -178,30 +179,95 @@ export class MoveExplorer {
     return filter && 'sans' in filter ? filter.sans : [];
   });
 
-  /** The line columns that open with the filter's moves; every column when unfiltered. */
+  /** A single move the columns are filtered by, e.g. `7. Na6`, `7… Na6`, or `Na6`. */
+  protected readonly moveControl = new FormControl('', { nonNullable: true });
+  private readonly moveText = toSignal(this.moveControl.valueChanges, { initialValue: '' });
+
+  /**
+   * The move filter's parsed query, `null` when the field is empty, or an
+   * error while what's typed doesn't name a move yet.
+   */
+  protected readonly moveFilter = computed<{ query: MoveQuery } | { error: string } | null>(
+    () => {
+      const text = this.moveText().trim();
+      if (text.length === 0) {
+        return null;
+      }
+      const query = parseMoveQuery(text);
+      return query ? { query } : { error: 'Not a move yet' };
+    },
+  );
+
+  protected readonly moveFilterInvalid = computed(() => {
+    const filter = this.moveFilter();
+    return filter !== null && 'error' in filter;
+  });
+
+  /**
+   * For each line (by index), the plies where it plays the move filter's move,
+   * or null when the move filter isn't in effect.
+   */
+  private readonly moveMatches = computed<(readonly number[])[] | null>(() => {
+    const filter = this.moveFilter();
+    if (!filter || !('query' in filter)) {
+      return null;
+    }
+    return this.lines().map((line) => {
+      const span = findMatchingSpan(line.positions, filter.query);
+      if (!span) {
+        return [];
+      }
+      const plies: number[] = [];
+      for (let ply = span.start.ply; ply <= span.end.ply; ply++) {
+        plies.push(ply);
+      }
+      return plies;
+    });
+  });
+
+  /** `lineIndex:ply` keys of the moves the move filter matched, highlighted in the columns. */
+  private readonly matchedKeys = computed(() => {
+    const keys = new Set<string>();
+    this.moveMatches()?.forEach((plies, lineIndex) =>
+      plies.forEach((ply) => keys.add(`${lineIndex}:${ply}`)),
+    );
+    return keys;
+  });
+
+  protected isMatch(key: string): boolean {
+    return this.matchedKeys().has(key);
+  }
+
+  /**
+   * The line columns that pass both filters: opening with the PGN filter's
+   * moves, and playing the move filter's move. Every column when unfiltered.
+   */
   protected readonly visibleColumns = computed(() => {
     const sans = this.filterSans();
-    if (sans.length === 0) {
-      return this.columns();
-    }
+    const matches = this.moveMatches();
     const lines = this.lines();
-    return this.columns().filter((column) =>
-      sans.every((san, i) => lines[column.lineIndex].positions[i + 1]?.san === san),
+    return this.columns().filter(
+      (column) =>
+        sans.every((san, i) => lines[column.lineIndex].positions[i + 1]?.san === san) &&
+        (!matches || matches[column.lineIndex].length > 0),
     );
   });
 
-  /** Screen-reader and on-screen summary of the filter's effect; '' when unfiltered. */
+  /** Screen-reader and on-screen summary of the filters' effect; '' when unfiltered. */
   protected readonly filterStatus = computed(() => {
-    const filter = this.filter();
-    if (!filter) {
+    const pgn = this.filter();
+    const move = this.moveFilter();
+    if (!pgn && !move) {
       return '';
     }
-    if ('error' in filter) {
-      return filter.error;
-    }
+    const problems = [
+      pgn && 'error' in pgn ? 'PGN filter: not a valid PGN yet.' : '',
+      move && 'error' in move ? 'Move filter: not a move yet.' : '',
+    ].filter(Boolean);
     const shown = this.visibleColumns().length;
     const total = this.columns().length;
-    return `Showing ${shown} of ${total} ${total === 1 ? 'line' : 'lines'}.`;
+    const summary = `Showing ${shown} of ${total} ${total === 1 ? 'line' : 'lines'}.`;
+    return [...problems, summary].join(' ');
   });
 
   /** The pinned-board strip, scrolled to keep a freshly pinned board in view. */
@@ -315,6 +381,10 @@ export class MoveExplorer {
 
   protected clearFilter(): void {
     this.filterControl.setValue('');
+  }
+
+  protected clearMoveFilter(): void {
+    this.moveControl.setValue('');
   }
 
   /** Copies a line's PGN, confirming it with a transient state on its button. */

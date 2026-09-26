@@ -20,6 +20,32 @@
         <mat-icon matSuffix class="explorer__filter-icon">filter_list</mat-icon>
       }
     </mat-form-field>
+    <mat-form-field class="explorer__filter explorer__filter--move" appearance="outline" subscriptSizing="dynamic">
+      <mat-label>Filter by move</mat-label>
+      <input
+        matInput
+        type="text"
+        autocomplete="off"
+        spellcheck="false"
+        aria-describedby="explorer-filter-status"
+        [attr.aria-invalid]="moveFilterInvalid()"
+        [formControl]="moveControl"
+        (keydown.escape)="clearMoveFilter()"
+      />
+      @if (moveFilter()) {
+        <button
+          matIconButton
+          matSuffix
+          type="button"
+          (click)="clearMoveFilter()"
+          aria-label="Clear move filter"
+        >
+          <mat-icon>close</mat-icon>
+        </button>
+      } @else {
+        <mat-icon matSuffix class="explorer__filter-icon">search</mat-icon>
+      }
+    </mat-form-field>
     <!-- One live region for the filter's result, or the usage hint while unfiltered. -->
     <p
       id="explorer-filter-status"
@@ -76,6 +102,7 @@
                   class="line__move"
                   [class.line__move--pinned]="isPinned(cell.key)"
                   [class.line__move--focus]="cell.focus"
+                  [class.line__move--match]="isMatch(cell.key)"
                   [attr.aria-pressed]="isPinned(cell.key)"
                   [attr.aria-label]="cell.ariaLabel"
                   [matTooltip]="cell.caption"
@@ -93,6 +120,7 @@
                   class="line__move"
                   [class.line__move--pinned]="isPinned(cell.key)"
                   [class.line__move--focus]="cell.focus"
+                  [class.line__move--match]="isMatch(cell.key)"
                   [attr.aria-pressed]="isPinned(cell.key)"
                   [attr.aria-label]="cell.ariaLabel"
                   [matTooltip]="cell.caption"

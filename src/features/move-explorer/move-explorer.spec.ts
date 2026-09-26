@@ -118,4 +118,52 @@ describe('MoveExplorer', () => {
     expect(dialog.hasUnsavedDrawings()).toBe(false);
     expect(emitted).toEqual([{ id: 'line-1', drawings: { 1: onE4, 2: onE5 } }]);
   });
+
+  it('filters to the lines that play a single move, highlighting it', () => {
+    TestBed.configureTestingModule({
+      imports: [MoveExplorer],
+      providers: [provideNoopAnimations()],
+    });
+    const chess = TestBed.inject(ChessService);
+    const line = (id: string, pgn: string): MoveExplorerLine => ({
+      id,
+      label: id,
+      pgn,
+      positions: chess.parsePgn(pgn).positions,
+      captions: {},
+      focusPlies: [],
+      moveImages: {},
+      drawings: {},
+    });
+    const fixture = TestBed.createComponent(MoveExplorer);
+    fixture.componentRef.setInput('lines', [
+      line('A', '1. d4 Nf6 2. Bf4 g6'),
+      line('B', '1. d4 d5 2. Bf4 Nf6'),
+      line('C', '1. e4 e5 2. Nf3 Nc6'),
+    ]);
+    fixture.detectChanges();
+    const explorer = fixture.componentInstance as unknown as {
+      moveControl: { setValue(v: string): void };
+      visibleColumns(): { label: string }[];
+      isMatch(key: string): boolean;
+      filterStatus(): string;
+    };
+    const labels = () => explorer.visibleColumns().map((c) => c.label);
+
+    // Anywhere in the line: A plays it as Black's first move, B as Black's second.
+    explorer.moveControl.setValue('Nf6');
+    expect(labels()).toEqual(['A', 'B']);
+    expect(explorer.isMatch('0:2')).toBe(true);
+    expect(explorer.isMatch('1:4')).toBe(true);
+    expect(explorer.filterStatus()).toBe('Showing 2 of 3 lines.');
+
+    // Anchored to a move number and side.
+    explorer.moveControl.setValue('1... Nf6');
+    expect(labels()).toEqual(['A']);
+
+    // Not a move yet: every line stays.
+    explorer.moveControl.setValue('Zz');
+    expect(labels()).toEqual(['A', 'B', 'C']);
+    expect(explorer.filterStatus()).toContain('Move filter: not a move yet.');
+  });
 });
