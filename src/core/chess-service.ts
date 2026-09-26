@@ -66,6 +66,18 @@ export class ChessService {
   }
 
   /**
+   * Like {@link toMoveText}, but with each full move on its own line:
+   * `1. e4 e5`, then `2. Nf3`. Still parses back through {@link parsePgn}.
+   */
+  toMoveLines(sans: readonly string[]): string {
+    const lines: string[] = [];
+    for (let i = 0; i < sans.length; i += 2) {
+      lines.push([`${i / 2 + 1}.`, ...sans.slice(i, i + 2)].join(' '));
+    }
+    return lines.join('\n');
+  }
+
+  /**
    * Converts the board portion of a FEN string into an 8x8 grid, rank 8 first
    * and file a first, so it can be laid out directly in a template.
    */

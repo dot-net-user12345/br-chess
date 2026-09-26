@@ -61,6 +61,18 @@ describe('ChessService', () => {
     expect(reparsed.positions.slice(1).map((position) => position.san)).toEqual(sans);
   });
 
+  it('renders moves one full move per line, parsing back to the same moves', () => {
+    const sans = ['e4', 'e5', 'Nf3', 'Nc6', 'Bb5'];
+
+    const moveLines = service.toMoveLines(sans);
+
+    expect(moveLines).toBe('1. e4 e5\n2. Nf3 Nc6\n3. Bb5');
+    expect(service.toMoveLines([])).toBe('');
+    const reparsed = service.parsePgn(moveLines);
+    expect(reparsed.valid).toBe(true);
+    expect(reparsed.positions.slice(1).map((position) => position.san)).toEqual(sans);
+  });
+
   it('converts a FEN into an 8x8 grid with pieces in the right corners', () => {
     const start = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
     const board = service.fenToSquares(start);

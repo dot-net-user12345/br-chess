@@ -302,7 +302,12 @@ export class MoveExplorer {
 
   /** Copies a line's PGN, confirming it with a transient state on its button. */
   protected copyPgn(lineIndex: number): void {
-    const pgn = this.lines()[lineIndex]?.pgn.trim() ?? '';
+    // Rebuilt from the parsed moves, one full move per line, rather than copied
+    // as typed, so it pastes the same however the line was entered.
+    const sans = (this.lines()[lineIndex]?.positions ?? []).flatMap((position) =>
+      position.san ? [position.san] : [],
+    );
+    const pgn = this.chess.toMoveLines(sans);
     if (pgn.length === 0 || !this.clipboard.copy(pgn)) {
       return;
     }
