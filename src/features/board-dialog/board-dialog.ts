@@ -69,10 +69,10 @@ export interface BoardDialogData {
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: {
-    '(keydown.arrowleft)': 'prev()',
-    '(keydown.arrowright)': 'next()',
-    '(keydown.home)': 'first()',
-    '(keydown.end)': 'last()',
+    // Arrow keys are left to the caption field and the rest of the dialog;
+    // moving between moves is done with the bar's buttons.
+    '(keydown.home)': 'onHomeEnd($event, true)',
+    '(keydown.end)': 'onHomeEnd($event, false)',
     '(document:paste)': 'onPaste($event)',
   },
   template: `
@@ -385,6 +385,19 @@ export class BoardDialog {
   protected next(): void {
     if (this.hasNext()) {
       this.goTo(this.index() + 1);
+    }
+  }
+
+  /** Home/End jump to the first/last move, except while typing in a text field. */
+  protected onHomeEnd(event: Event, home: boolean): void {
+    const target = event.target;
+    if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement) {
+      return;
+    }
+    if (home) {
+      this.first();
+    } else {
+      this.last();
     }
   }
 
