@@ -1,0 +1,47 @@
+import { TestBed } from '@angular/core/testing';
+import { MatDialog } from '@angular/material/dialog';
+import { provideNoopAnimations } from '@angular/platform-browser/animations';
+import { ChessService } from '../../core/chess-service';
+import { BoardDialog } from '../board-dialog/board-dialog';
+import { MoveExplorer, MoveExplorerLine } from './move-explorer';
+
+describe('MoveExplorer', () => {
+  function setup() {
+    TestBed.configureTestingModule({
+      imports: [MoveExplorer],
+      providers: [provideNoopAnimations()],
+    });
+    const chess = TestBed.inject(ChessService);
+    const line: MoveExplorerLine = {
+      id: 'line-1',
+      label: 'Line 1',
+      pgn: '1. e4 e5 2. Nf3',
+      positions: chess.parsePgn('1. e4 e5 2. Nf3').positions,
+      captions: {},
+      focusPlies: [],
+    };
+    const fixture = TestBed.createComponent(MoveExplorer);
+    fixture.componentRef.setInput('lines', [line]);
+    fixture.detectChanges();
+    return { fixture, component: fixture.componentInstance };
+  }
+
+  it('emits the saved caption when one is saved from the large view', () => {
+    const { component } = setup();
+    const emitted: { id: string; captions: Record<number, string> }[] = [];
+    component.captionsChange.subscribe((change) => emitted.push(change));
+
+    // Open the large view at 1… e5 (ply 2), as a right-click → Open large view does.
+    (component as unknown as { openBoard(i: number, ply: number): void }).openBoard(0, 2);
+    const dialogRef = TestBed.inject(MatDialog).openDialogs[0];
+    const dialog = dialogRef.componentInstance as BoardDialog;
+    const internals = dialog as unknown as {
+      captionControl: { setValue(v: string): void };
+      saveCaption(): void;
+    };
+    internals.captionControl.setValue('Symmetrical reply');
+    internals.saveCaption();
+
+    expect(emitted).toEqual([{ id: 'line-1', captions: { 2: 'Symmetrical reply' } }]);
+  });
+});

@@ -314,12 +314,23 @@ export class PgnGridEditor {
     );
   }
 
-  protected onCaptionsChange(entryId: string, captions: Record<number, string>): void {
+  /**
+   * Replaces one line's captions and saves the file, since a caption is saved
+   * from the large view's own Save button and should stick without a second
+   * save here. The duplicate-lines check is skipped: a caption can't create one.
+   */
+  protected async onCaptionsChange(
+    entryId: string,
+    captions: Record<number, string>,
+  ): Promise<void> {
     this.writeEntries(
       this.entries().map((entry) =>
         entry.id === entryId ? { ...entry, captions } : entry,
       ),
     );
+    if (await this.attachments.ensureSignedIn()) {
+      await this.store.saveFile(this.fileId());
+    }
   }
 
   /** Replaces one line's focus points; an empty list drops the field entirely. */

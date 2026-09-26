@@ -463,8 +463,16 @@ export class WorkspaceStore {
       // Stamp ownership so a file created before signing in becomes the user's.
       const rendered = { ...(await this.withRenderedBoards(node)), ownerId: uid };
       await this.repo.saveNode(rendered);
-      // Keep the local copy in sync with the persisted image URLs and owner.
-      this.put(rendered);
+      // Keep the local copy in sync with the persisted image URLs and owner —
+      // unless it was edited while the boards rendered (e.g. a second caption
+      // saved in quick succession). Then keep those edits and take only the
+      // owner; the next save renders fresh URLs for them.
+      const current = this.nodes()[id];
+      if (current === node) {
+        this.put(rendered);
+      } else if (current) {
+        this.put({ ...current, ownerId: uid });
+      }
       this.status.set({ type: 'success', text: `Saved “${rendered.name}”.` });
     } catch (err) {
       this.status.set({ type: 'error', text: this.describe(err, 'Saving the file failed.') });
