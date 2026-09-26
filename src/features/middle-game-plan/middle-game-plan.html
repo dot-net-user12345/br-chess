@@ -8,7 +8,7 @@
     <mat-panel-description>{{ summary() }}</mat-panel-description>
   </mat-expansion-panel-header>
 
-  <div class="middle-game-plan__body">
+  <div class="middle-game-plan__body" appImageDrop (imageFiles)="addFiles($event)">
     <mat-form-field appearance="outline" class="middle-game-plan__field">
       <mat-label>Plan notes</mat-label>
       <textarea
@@ -37,6 +37,11 @@
       <mat-icon>upload</mat-icon>
       {{ uploading() ? 'Uploading…' : 'Upload image' }}
     </button>
+
+    <!-- Focusable, so a keyboard user can land here and paste. -->
+    <p class="middle-game-plan__dropzone" tabindex="0">
+      Paste (Ctrl+V) or drop images here
+    </p>
 
     @if (error(); as message) {
       <p class="middle-game-plan__error" role="alert">{{ message }}</p>

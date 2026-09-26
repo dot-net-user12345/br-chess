@@ -15,6 +15,29 @@
     align-self: flex-start;
   }
 
+  &__dropzone {
+    margin: 0;
+    padding: 0.5rem 0.75rem;
+    border: 1px dashed var(--mat-sys-outline);
+    border-radius: var(--mat-sys-corner-small);
+    font: var(--mat-sys-body-small);
+    color: var(--mat-sys-on-surface-variant);
+    text-align: center;
+
+    &:focus-visible {
+      outline: 2px solid var(--mat-sys-primary);
+      outline-offset: 2px;
+    }
+  }
+
+  // Images dragged over the plan: highlight the drop zone as the target.
+  &__body.image-drop--over &__dropzone {
+    border-style: solid;
+    border-color: var(--mat-sys-primary);
+    background: var(--mat-sys-primary-container);
+    color: var(--mat-sys-on-primary-container);
+  }
+
   &__error {
     margin: 0;
     font: var(--mat-sys-body-small);

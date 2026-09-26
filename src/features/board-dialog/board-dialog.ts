@@ -1,4 +1,11 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  inject,
+  signal,
+  viewChild,
+} from '@angular/core';
 import { Clipboard } from '@angular/cdk/clipboard';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
@@ -10,6 +17,7 @@ import { ChessService } from '../../core/chess-service';
 import { BoardOrientation } from '../../core/chess-models';
 import { UploadedImage } from '../../core/workspace-models';
 import { ChessBoard } from '../chess-board/chess-board';
+import { imageFilesIn } from '../../shared/image-drop';
 import { MoveImages } from './move-images';
 
 /** One board position the dialog can display. */
@@ -65,6 +73,7 @@ export interface BoardDialogData {
     '(keydown.arrowright)': 'next()',
     '(keydown.home)': 'first()',
     '(keydown.end)': 'last()',
+    '(document:paste)': 'onPaste($event)',
   },
   template: `
     <div class="board-dialog">
@@ -186,7 +195,8 @@ export interface BoardDialogData {
               class="board-dialog__images"
               [images]="currentImages()"
               [move]="current().caption"
-              (imagesChange)="saveImages($event)"
+              [ply]="current().ply"
+              (imagesChange)="saveImages($event.ply, $event.images)"
             />
           }
         </div>
@@ -432,9 +442,28 @@ export class BoardDialog {
     this.data.onCaptionChange({ ...next });
   }
 
+  /** The current move's image section; absent at the starting position. */
+  private readonly images = viewChild(MoveImages);
+
+  /**
+   * Adds a pasted image to the current move wherever focus is in the dialog.
+   * Listening on the document catches a paste while the dialog itself holds
+   * focus; one the image section already took is skipped, as is a text paste.
+   */
+  protected onPaste(event: ClipboardEvent): void {
+    const images = this.images();
+    if (!images || event.defaultPrevented) {
+      return;
+    }
+    const files = imageFilesIn(event.clipboardData);
+    if (files.length > 0) {
+      event.preventDefault();
+      void images.addFiles(files);
+    }
+  }
+
   /** Records the current move's new image list and hands the whole map to the opener. */
-  protected saveImages(images: UploadedImage[]): void {
-    const ply = this.current().ply;
+  protected saveImages(ply: number, images: UploadedImage[]): void {
     const next = { ...this.moveImages() };
     if (images.length > 0) {
       next[ply] = images;

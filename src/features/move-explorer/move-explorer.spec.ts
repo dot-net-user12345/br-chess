@@ -54,10 +54,10 @@ describe('MoveExplorer', () => {
 
     (component as unknown as { openBoard(i: number, ply: number): void }).openBoard(0, 3);
     const dialog = TestBed.inject(MatDialog).openDialogs[0].componentInstance as unknown as {
-      saveImages(images: unknown[]): void;
+      saveImages(ply: number, images: unknown[]): void;
     };
-    dialog.saveImages([image]);
-    dialog.saveImages([]);
+    dialog.saveImages(3, [image]);
+    dialog.saveImages(3, []);
 
     expect(emitted).toEqual([
       { id: 'line-1', moveImages: { 3: [image] } },

@@ -3,6 +3,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { UploadedImage } from '../../core/workspace-models';
 import { ImageAttachments, takeImageFiles } from '../../shared/image-attachments';
+import { ImageDrop } from '../../shared/image-drop';
 
 /**
  * One move's own reference images, shown in the large board view: upload,
@@ -11,10 +12,15 @@ import { ImageAttachments, takeImageFiles } from '../../shared/image-attachments
  */
 @Component({
   selector: 'app-move-images',
-  imports: [MatButtonModule, MatIconModule],
+  imports: [MatButtonModule, MatIconModule, ImageDrop],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <section class="move-images" [attr.aria-labelledby]="headingId">
+    <section
+      class="move-images"
+      [attr.aria-labelledby]="headingId"
+      appImageDrop
+      (imageFiles)="addFiles($event)"
+    >
       <div class="move-images__header">
         <h3 [id]="headingId" class="move-images__heading">Images</h3>
         <input
@@ -36,6 +42,11 @@ import { ImageAttachments, takeImageFiles } from '../../shared/image-attachments
           {{ uploading() ? 'Uploading…' : 'Upload' }}
         </button>
       </div>
+
+      <!-- Focusable, so a keyboard user can land here and paste. -->
+      <p class="move-images__dropzone" tabindex="0">
+        Paste (Ctrl+V) or drop images here
+      </p>
 
       @if (error(); as message) {
         <p class="move-images__error" role="alert">{{ message }}</p>
@@ -89,6 +100,29 @@ import { ImageAttachments, takeImageFiles } from '../../shared/image-attachments
       margin: 0;
       font: var(--mat-sys-title-small);
       color: var(--mat-sys-on-surface-variant);
+    }
+
+    .move-images__dropzone {
+      margin: 0;
+      padding: 0.5rem 0.75rem;
+      border: 1px dashed var(--mat-sys-outline);
+      border-radius: var(--mat-sys-corner-small);
+      font: var(--mat-sys-body-small);
+      color: var(--mat-sys-on-surface-variant);
+      text-align: center;
+
+      &:focus-visible {
+        outline: 2px solid var(--mat-sys-primary);
+        outline-offset: 2px;
+      }
+    }
+
+    /* Images dragged over the section: highlight it as the drop target. */
+    .image-drop--over .move-images__dropzone {
+      border-style: solid;
+      border-color: var(--mat-sys-primary);
+      background: var(--mat-sys-primary-container);
+      color: var(--mat-sys-on-primary-container);
     }
 
     .move-images__error {
@@ -150,25 +184,37 @@ export class MoveImages {
   readonly images = input<readonly UploadedImage[]>([]);
   /** The move they belong to, e.g. `5… O-O`, for labels and the delete prompt. */
   readonly move = input.required<string>();
+  /** The move's ply, returned with each change so it lands on the right move. */
+  readonly ply = input.required<number>();
 
-  /** Emits the whole updated list after an upload or a delete. */
-  readonly imagesChange = output<UploadedImage[]>();
+  /**
+   * Emits the move's whole updated list after an upload or a delete. Carries
+   * the ply the change was started on, since an upload can finish after the
+   * view has moved on to another move.
+   */
+  readonly imagesChange = output<{ ply: number; images: UploadedImage[] }>();
 
   protected readonly headingId = `move-images-${crypto.randomUUID()}`;
   protected readonly uploading = signal(false);
   protected readonly error = signal<string | null>(null);
 
-  protected async onImagesSelected(event: Event): Promise<void> {
-    const files = takeImageFiles(event);
-    if (files.length === 0) {
+  protected onImagesSelected(event: Event): void {
+    void this.addFiles(takeImageFiles(event));
+  }
+
+  /** Uploads `files` and adds them to the move — picked, pasted, or dropped alike. */
+  async addFiles(files: readonly File[]): Promise<void> {
+    if (files.length === 0 || this.uploading()) {
       return;
     }
+    const ply = this.ply();
+    const images = this.images();
     this.error.set(null);
     this.uploading.set(true);
     try {
       const uploaded = await this.attachments.upload(files);
       if (uploaded) {
-        this.imagesChange.emit([...this.images(), ...uploaded]);
+        this.imagesChange.emit({ ply, images: [...images, ...uploaded] });
       }
     } catch (err) {
       this.error.set(err instanceof Error ? err.message : 'Uploading the image failed.');
@@ -182,7 +228,10 @@ export class MoveImages {
     if (!(await this.attachments.confirmRemove(image, this.move()))) {
       return;
     }
-    this.imagesChange.emit(this.images().filter((img) => img.id !== image.id));
+    this.imagesChange.emit({
+      ply: this.ply(),
+      images: this.images().filter((img) => img.id !== image.id),
+    });
     this.attachments.detach(image);
   }
 }

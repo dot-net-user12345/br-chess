@@ -16,6 +16,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MiddleGamePlan, UploadedImage } from '../../core/workspace-models';
 import { ImageAttachments, takeImageFiles } from '../../shared/image-attachments';
+import { ImageDrop } from '../../shared/image-drop';
 
 /**
  * Optional per-line section for what to play once the opening ends: free-text
@@ -31,6 +32,7 @@ import { ImageAttachments, takeImageFiles } from '../../shared/image-attachments
     MatFormFieldModule,
     MatIconModule,
     MatInputModule,
+    ImageDrop,
   ],
   templateUrl: './middle-game-plan.html',
   styleUrl: './middle-game-plan.scss',
@@ -85,9 +87,13 @@ export class MiddleGamePlanPanel {
   }
 
   /** Uploads the chosen image files and attaches them to this line's plan. */
-  protected async onImagesSelected(event: Event): Promise<void> {
-    const files = takeImageFiles(event);
-    if (files.length === 0) {
+  protected onImagesSelected(event: Event): void {
+    void this.addFiles(takeImageFiles(event));
+  }
+
+  /** Uploads `files` and adds them to the plan — picked, pasted, or dropped alike. */
+  protected async addFiles(files: readonly File[]): Promise<void> {
+    if (files.length === 0 || this.uploading()) {
       return;
     }
     this.error.set(null);
