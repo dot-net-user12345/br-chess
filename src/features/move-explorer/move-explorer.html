@@ -1,7 +1,38 @@
 <div class="explorer">
   <div class="explorer__bar">
-    <p class="explorer__hint">
-      Select a move to pin its position below; select a pinned board to open it large.
+    <mat-form-field class="explorer__filter" appearance="outline" subscriptSizing="dynamic">
+      <mat-label>Filter by PGN</mat-label>
+      <input
+        matInput
+        type="text"
+        autocomplete="off"
+        spellcheck="false"
+        placeholder="1. d4 Nf6 2. Bf4"
+        aria-describedby="explorer-filter-status"
+        [attr.aria-invalid]="filterInvalid()"
+        [formControl]="filterControl"
+        (keydown.escape)="clearFilter()"
+      />
+      @if (filter()) {
+        <button matIconButton matSuffix type="button" (click)="clearFilter()" aria-label="Clear filter">
+          <mat-icon>close</mat-icon>
+        </button>
+      } @else {
+        <mat-icon matSuffix class="explorer__filter-icon">filter_list</mat-icon>
+      }
+    </mat-form-field>
+    <!-- One live region for the filter's result, or the usage hint while unfiltered. -->
+    <p
+      id="explorer-filter-status"
+      class="explorer__hint"
+      [class.explorer__hint--idle]="!filterStatus()"
+      aria-live="polite"
+    >
+      @if (filterStatus()) {
+        {{ filterStatus() }}
+      } @else {
+        Select a move to pin its position below; select a pinned board to open it large.
+      }
     </p>
     <span class="explorer__spacer"></span>
     <button matButton type="button" (click)="clear()" [disabled]="!hasPinned()">
@@ -16,8 +47,11 @@
       <p class="explorer__empty">
         No lines to explore yet. Add a valid PGN on the Lines tab to see its moves here.
       </p>
+    } @else if (visibleColumns().length === 0) {
+      <p class="explorer__empty">No lines start with those moves.</p>
     }
-    @for (column of columns(); track $index; let lineIndex = $index) {
+    @for (column of visibleColumns(); track column.lineIndex) {
+      @let lineIndex = column.lineIndex;
       <section class="line">
         <div class="line__header">
           <h3 class="line__title">{{ column.label }}</h3>

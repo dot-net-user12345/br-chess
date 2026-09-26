@@ -12,12 +12,17 @@ import {
   signal,
   viewChild,
 } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog } from '@angular/material/dialog';
+import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
+import { MatInputModule } from '@angular/material/input';
 import { MatMenuModule, MatMenuTrigger } from '@angular/material/menu';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { BoardOrientation, GamePosition } from '../../core/chess-models';
+import { ChessService } from '../../core/chess-service';
 import { BoardDialog, BoardDialogTile } from '../board-dialog/board-dialog';
 import { ChessBoard } from '../chess-board/chess-board';
 
@@ -57,6 +62,8 @@ interface MoveRow {
 }
 
 interface LineColumn {
+  /** The line's position in the file, which pins and copies key off even while filtered. */
+  readonly lineIndex: number;
   readonly label: string;
   readonly pgn: string;
   readonly rows: readonly MoveRow[];
@@ -90,7 +97,16 @@ interface PinnedGroup {
  */
 @Component({
   selector: 'app-move-explorer',
-  imports: [MatButtonModule, MatIconModule, MatMenuModule, MatTooltipModule, ChessBoard],
+  imports: [
+    ReactiveFormsModule,
+    MatButtonModule,
+    MatFormFieldModule,
+    MatIconModule,
+    MatInputModule,
+    MatMenuModule,
+    MatTooltipModule,
+    ChessBoard,
+  ],
   host: { class: 'move-explorer' },
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './move-explorer.html',
@@ -110,6 +126,67 @@ export class MoveExplorer {
   private readonly dialog = inject(MatDialog);
   private readonly injector = inject(Injector);
   private readonly clipboard = inject(Clipboard);
+  private readonly chess = inject(ChessService);
+
+  /** PGN the columns are filtered by: only lines that open with these moves are shown. */
+  protected readonly filterControl = new FormControl('', { nonNullable: true });
+  private readonly filterText = toSignal(this.filterControl.valueChanges, { initialValue: '' });
+
+  /**
+   * The filter's moves as SAN, `null` when the field is empty (no filtering),
+   * or an error message while what's typed isn't a PGN with at least one move.
+   */
+  protected readonly filter = computed<{ sans: readonly string[] } | { error: string } | null>(
+    () => {
+      const text = this.filterText().trim();
+      if (text.length === 0) {
+        return null;
+      }
+      const result = this.chess.parsePgn(text);
+      const sans = result.positions.flatMap((position) => (position.san ? [position.san] : []));
+      return result.valid && sans.length > 0
+        ? { sans }
+        : { error: 'Not a valid PGN yet — showing every line.' };
+    },
+  );
+
+  /** Whether something is typed that doesn't parse as a PGN with moves. */
+  protected readonly filterInvalid = computed(() => {
+    const filter = this.filter();
+    return filter !== null && 'error' in filter;
+  });
+
+  /** The filter's moves, or none while it's empty or invalid. */
+  private readonly filterSans = computed(() => {
+    const filter = this.filter();
+    return filter && 'sans' in filter ? filter.sans : [];
+  });
+
+  /** The line columns that open with the filter's moves; every column when unfiltered. */
+  protected readonly visibleColumns = computed(() => {
+    const sans = this.filterSans();
+    if (sans.length === 0) {
+      return this.columns();
+    }
+    const lines = this.lines();
+    return this.columns().filter((column) =>
+      sans.every((san, i) => lines[column.lineIndex].positions[i + 1]?.san === san),
+    );
+  });
+
+  /** Screen-reader and on-screen summary of the filter's effect; '' when unfiltered. */
+  protected readonly filterStatus = computed(() => {
+    const filter = this.filter();
+    if (!filter) {
+      return '';
+    }
+    if ('error' in filter) {
+      return filter.error;
+    }
+    const shown = this.visibleColumns().length;
+    const total = this.columns().length;
+    return `Showing ${shown} of ${total} ${total === 1 ? 'line' : 'lines'}.`;
+  });
 
   /** The pinned-board strip, scrolled to keep a freshly pinned board in view. */
   private readonly strip = viewChild<ElementRef<HTMLElement>>('strip');
@@ -156,7 +233,7 @@ export class MoveExplorer {
           });
         }
       }
-      return { label: line.label, pgn: line.pgn, rows };
+      return { lineIndex, label: line.label, pgn: line.pgn, rows };
     }),
   );
 
@@ -219,13 +296,17 @@ export class MoveExplorer {
     }
   }
 
+  protected clearFilter(): void {
+    this.filterControl.setValue('');
+  }
+
   /** Copies a line's PGN, confirming it with a transient state on its button. */
-  protected copyPgn(index: number): void {
-    const pgn = this.columns()[index]?.pgn.trim() ?? '';
+  protected copyPgn(lineIndex: number): void {
+    const pgn = this.lines()[lineIndex]?.pgn.trim() ?? '';
     if (pgn.length === 0 || !this.clipboard.copy(pgn)) {
       return;
     }
-    this.copiedIndex.set(index);
+    this.copiedIndex.set(lineIndex);
     if (this.copiedTimer) {
       clearTimeout(this.copiedTimer);
     }

@@ -1,3 +1,5 @@
+@use '@angular/material' as mat;
+
 :host {
   display: block;
   // Fills the tab body, so every section below is measured against the space
@@ -7,7 +9,8 @@
 }
 
 .explorer {
-  --bar-height: 2.5rem;
+  // Tall enough for the compact filter field.
+  --bar-height: 3.5rem;
   // Below the bar, the move columns take 70% of the remaining height and the
   // pinned strip 27%, leaving 3% split between the two gaps.
   --content-height: calc(100% - var(--bar-height));
@@ -40,6 +43,17 @@
 
   &__spacer {
     flex: 1 1 auto;
+  }
+
+  &__filter {
+    // Compact, so the field fits the bar alongside the hint and Clear button.
+    @include mat.form-field-density(-4);
+    flex: 0 1 20rem;
+    min-width: 12rem;
+  }
+
+  &__filter-icon {
+    color: var(--mat-sys-on-surface-variant);
   }
 
   // One scroller for every column: sideways past the lines, down through a long
@@ -331,9 +345,10 @@
   }
 }
 
-// On a narrow screen the hint costs the title and buttons too much room.
+// On a narrow screen the usage hint costs the filter and buttons too much room.
+// The filter's result stays, since it's the only sign of what the filter did.
 @media (max-width: 48rem) {
-  .explorer__hint {
+  .explorer__hint--idle {
     display: none;
   }
 }
