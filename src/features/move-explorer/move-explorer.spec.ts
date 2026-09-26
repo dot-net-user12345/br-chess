@@ -1,3 +1,4 @@
+import { Clipboard } from '@angular/cdk/clipboard';
 import { TestBed } from '@angular/core/testing';
 import { MatDialog } from '@angular/material/dialog';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
@@ -62,6 +63,31 @@ describe('MoveExplorer', () => {
     expect(emitted).toEqual([
       { id: 'line-1', moveImages: { 3: [image] } },
       { id: 'line-1', moveImages: {} },
+    ]);
+  });
+
+  it("copies the right-clicked board's FEN, and its line's moves up to it", () => {
+    const { component } = setup();
+    const copied: string[] = [];
+    vi.spyOn(TestBed.inject(Clipboard), 'copy').mockImplementation((text: string) => {
+      copied.push(text);
+      return true;
+    });
+    const internals = component as unknown as {
+      onMoveContextMenu(event: MouseEvent, key: string): void;
+      copyMenuTargetFen(): void;
+      copyMenuTargetPgn(): void;
+    };
+
+    // Right-click 2. Nf3 (ply 3), as on a pinned board in the bottom strip.
+    internals.onMoveContextMenu(new MouseEvent('contextmenu'), '0:3');
+    internals.copyMenuTargetFen();
+    internals.copyMenuTargetPgn();
+
+    const chess = TestBed.inject(ChessService);
+    expect(copied).toEqual([
+      chess.parsePgn('1. e4 e5 2. Nf3').positions[3].fen,
+      '1. e4 e5\n2. Nf3',
     ]);
   });
 });

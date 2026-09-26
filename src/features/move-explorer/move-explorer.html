@@ -122,6 +122,15 @@
       <mat-icon>{{ menuTargetIsFocus() ? 'outlined_flag' : 'flag' }}</mat-icon>
       <span>{{ menuTargetIsFocus() ? 'Remove focus point' : 'Mark as focus point' }}</span>
     </button>
+    <mat-divider />
+    <button mat-menu-item type="button" (click)="copyMenuTargetFen()">
+      <mat-icon>content_copy</mat-icon>
+      <span>Copy FEN</span>
+    </button>
+    <button mat-menu-item type="button" (click)="copyMenuTargetPgn()">
+      <mat-icon>content_copy</mat-icon>
+      <span>Copy PGN up to this move</span>
+    </button>
   </mat-menu>
 
   <div class="explorer__strip">
@@ -144,6 +153,7 @@
                       [attr.data-key]="board.key"
                       [attr.aria-label]="'View ' + board.ariaLabel + ' fullscreen'"
                       (click)="openBoard(group.lineIndex, board.ply)"
+                      (contextmenu)="onMoveContextMenu($event, board.key)"
                     >
                       <app-chess-board
                         [fen]="board.fen"

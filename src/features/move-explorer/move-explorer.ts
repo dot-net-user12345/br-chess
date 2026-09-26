@@ -16,6 +16,7 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog } from '@angular/material/dialog';
+import { MatDividerModule } from '@angular/material/divider';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
@@ -103,6 +104,7 @@ interface PinnedGroup {
   imports: [
     ReactiveFormsModule,
     MatButtonModule,
+    MatDividerModule,
     MatFormFieldModule,
     MatIconModule,
     MatInputModule,
@@ -354,6 +356,30 @@ export class MoveExplorer {
     const target = this.menuTarget();
     if (target) {
       this.openBoard(target.lineIndex, target.ply);
+    }
+  }
+
+  /** Copies the FEN of the right-clicked move's position. */
+  protected copyMenuTargetFen(): void {
+    const target = this.menuTarget();
+    const fen = target && this.lines()[target.lineIndex]?.positions[target.ply]?.fen;
+    if (fen) {
+      this.clipboard.copy(fen);
+    }
+  }
+
+  /**
+   * Copies the right-clicked line's moves up to and including that move, one
+   * full move per line — the same layout as the column's copy button.
+   */
+  protected copyMenuTargetPgn(): void {
+    const target = this.menuTarget();
+    const positions = target ? (this.lines()[target.lineIndex]?.positions ?? []) : [];
+    const sans = positions
+      .slice(1, (target?.ply ?? 0) + 1)
+      .flatMap((position) => (position.san ? [position.san] : []));
+    if (sans.length > 0) {
+      this.clipboard.copy(this.chess.toMoveLines(sans));
     }
   }
 
