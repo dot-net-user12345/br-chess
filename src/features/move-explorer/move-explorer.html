@@ -119,6 +119,10 @@
       <mat-icon>open_in_full</mat-icon>
       <span>Open large view</span>
     </button>
+    <button mat-menu-item type="button" (click)="toggleMenuTargetFocus()">
+      <mat-icon>{{ menuTargetIsFocus() ? 'outlined_flag' : 'flag' }}</mat-icon>
+      <span>{{ menuTargetIsFocus() ? 'Remove focus point' : 'Mark as focus point' }}</span>
+    </button>
   </mat-menu>
 
   <div class="explorer__strip">

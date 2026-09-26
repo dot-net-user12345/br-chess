@@ -344,6 +344,25 @@ export class MoveExplorer {
     }
   }
 
+  /** Whether the right-clicked move is already a focus point, which words its menu item. */
+  protected readonly menuTargetIsFocus = computed(() => {
+    const target = this.menuTarget();
+    return target !== null && !!this.lines()[target.lineIndex]?.focusPlies.includes(target.ply);
+  });
+
+  /** Marks or unmarks the right-clicked move as a focus point, without opening the large view. */
+  protected toggleMenuTargetFocus(): void {
+    const target = this.menuTarget();
+    const line = target && this.lines()[target.lineIndex];
+    if (!target || !line) {
+      return;
+    }
+    const focusPlies = line.focusPlies.includes(target.ply)
+      ? line.focusPlies.filter((ply) => ply !== target.ply)
+      : [...line.focusPlies, target.ply].sort((a, b) => a - b);
+    this.focusPliesChange.emit({ id: line.id, focusPlies });
+  }
+
   protected clear(): void {
     this.pinnedKeys.set([]);
   }
