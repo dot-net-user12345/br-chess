@@ -51,7 +51,7 @@
 
   // A square the user colored: a tint over the square, beneath its piece.
   &--marked {
-    background-image: linear-gradient(var(--board-drawing-fill), var(--board-drawing-fill));
+    background-image: linear-gradient(var(--square-fill), var(--square-fill));
   }
 
   // A differing move's destination square: inner glow in the arrow color.

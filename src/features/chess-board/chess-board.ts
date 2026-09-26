@@ -20,12 +20,15 @@ import {
   Point,
 } from '../../core/board-assets';
 import {
+  arrowColor as drawnArrowColor,
   BoardDrawing,
-  DRAWING_ARROW_COLOR,
-  DRAWING_SQUARE_FILL,
+  DEFAULT_DRAWING_COLOR,
+  DRAWING_COLORS,
+  DrawingColor,
   EMPTY_DRAWING,
   gridIndex,
   squareAt,
+  squareColor,
   toggleArrow,
   toggleSquare,
 } from '../../core/board-drawing';
@@ -42,6 +45,11 @@ interface RenderedArrow {
   readonly shaftTo: { readonly x: number; readonly y: number };
   readonly headPoints: string;
   readonly strokeWidth: number;
+}
+
+/** A user-drawn arrow, ready to render in its own color. */
+interface DrawnArrow extends RenderedArrow {
+  readonly color: string;
 }
 
 const PIECE_NAMES: Record<string, string> = {
@@ -68,7 +76,6 @@ const PIECE_NAMES: Record<string, string> = {
     '[class.chess-board--divergent]': 'highlighted()',
     '[class.chess-board--drawable]': 'drawable()',
     '[style.--board-highlight-color]': 'highlighted() ? highlightHue() : null',
-    '[style.--board-drawing-fill]': 'drawingFill',
     '[attr.aria-label]': 'ariaLabel()',
     role: 'img',
     '(pointerdown)': 'onPointerDown($event)',
@@ -84,7 +91,8 @@ const PIECE_NAMES: Record<string, string> = {
         [class.light]="square.light"
         [class.dark]="!square.light"
         [class.square--destination]="$index === destinationIndex()"
-        [class.square--marked]="markedIndexes().has($index)"
+        [class.square--marked]="markedFills().has($index)"
+        [style.--square-fill]="markedFills().get($index)"
         aria-hidden="true"
       >
         @if (square.asset) {
@@ -112,11 +120,11 @@ const PIECE_NAMES: Record<string, string> = {
             [attr.y1]="drawn.shaftFrom.y"
             [attr.x2]="drawn.shaftTo.x"
             [attr.y2]="drawn.shaftTo.y"
-            [attr.stroke]="drawingArrowColor"
+            [attr.stroke]="drawn.color"
             [attr.stroke-width]="drawn.strokeWidth"
             stroke-linecap="round"
           />
-          <polygon [attr.points]="drawn.headPoints" [attr.fill]="drawingArrowColor" />
+          <polygon [attr.points]="drawn.headPoints" [attr.fill]="drawn.color" />
         }
       </svg>
     }
@@ -143,12 +151,11 @@ export class ChessBoard {
   readonly drawing = input<BoardDrawing | null>(null);
   /** Lets the user draw with the right mouse button: click a square, drag an arrow. */
   readonly drawable = input<boolean>(false);
+  /** The color new squares and arrows are drawn in. */
+  readonly drawColor = input<DrawingColor>(DEFAULT_DRAWING_COLOR);
 
   /** Emits the whole updated drawing after each right-click or right-drag. */
   readonly drawingChange = output<BoardDrawing>();
-
-  protected readonly drawingArrowColor = DRAWING_ARROW_COLOR;
-  protected readonly drawingFill = DRAWING_SQUARE_FILL;
 
   /** Square a right-drag started on; null when no drag is under way. */
   protected readonly dragFrom = signal<string | null>(null);
@@ -171,16 +178,17 @@ export class ChessBoard {
     return to && this.highlighted() ? gridIndex(to, this.orientation()) : null;
   });
 
-  /** Grid indexes of the squares the user colored. */
-  protected readonly markedIndexes = computed(() => {
-    const indexes = new Set<number>();
-    for (const square of this.drawing()?.squares ?? []) {
+  /** The fill of each square the user colored, by grid index. */
+  protected readonly markedFills = computed(() => {
+    const fills = new Map<number, string>();
+    const drawing = this.drawing();
+    for (const square of drawing?.squares ?? []) {
       const index = gridIndex(square, this.orientation());
-      if (index !== null) {
-        indexes.add(index);
+      if (drawing && index !== null) {
+        fills.set(index, DRAWING_COLORS[squareColor(drawing, square)].fill);
       }
     }
-    return indexes;
+    return fills;
   });
 
   protected readonly ariaLabel = computed(() => {
@@ -195,12 +203,18 @@ export class ChessBoard {
   });
 
   /** The user's arrows, plus a preview of the one being dragged. */
-  protected readonly drawnArrows = computed<RenderedArrow[]>(() => {
-    const arrows = (this.drawing()?.arrows ?? []).map((a) => this.renderArrow(a.from, a.to));
+  protected readonly drawnArrows = computed<DrawnArrow[]>(() => {
+    const arrows = (this.drawing()?.arrows ?? []).map((a) => ({
+      ...this.renderArrow(a.from, a.to),
+      color: DRAWING_COLORS[drawnArrowColor(a)].arrow,
+    }));
     const from = this.dragFrom();
     const over = this.dragOver();
     if (from && over && from !== over) {
-      arrows.push(this.renderArrow(from, over));
+      arrows.push({
+        ...this.renderArrow(from, over),
+        color: DRAWING_COLORS[this.drawColor()].arrow,
+      });
     }
     return arrows;
   });
@@ -258,7 +272,9 @@ export class ChessBoard {
     const drawing = this.drawing() ?? EMPTY_DRAWING;
     // Released where it started: a click, which colors the square. Otherwise an arrow.
     this.drawingChange.emit(
-      to === from ? toggleSquare(drawing, from) : toggleArrow(drawing, from, to),
+      to === from
+        ? toggleSquare(drawing, from, this.drawColor())
+        : toggleArrow(drawing, from, to, this.drawColor()),
     );
   }
 

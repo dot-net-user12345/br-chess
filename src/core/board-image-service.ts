@@ -12,11 +12,12 @@ import {
 } from './board-assets';
 import { BoardOrientation, GamePosition } from './chess-models';
 import {
+  arrowColor,
   BoardDrawing,
-  DRAWING_ARROW_COLOR,
-  DRAWING_SQUARE_FILL,
+  DRAWING_COLORS,
   drawingKey,
   gridIndex,
+  squareColor,
 } from './board-drawing';
 
 /**
@@ -135,20 +136,23 @@ export class BoardImageService {
     if (!ctx) {
       throw new Error('Could not acquire a 2D canvas context to render the board.');
     }
-    // Grid cells (row by row, as the viewer sees them) the user colored.
-    const marked = new Set(
-      (drawing?.squares ?? [])
-        .map((square) => gridIndex(square, orientation))
-        .filter((index): index is number => index !== null),
-    );
+    // Fill of each grid cell (row by row, as the viewer sees them) the user colored.
+    const marked = new Map<number, string>();
+    for (const square of drawing?.squares ?? []) {
+      const index = gridIndex(square, orientation);
+      if (drawing && index !== null) {
+        marked.set(index, DRAWING_COLORS[squareColor(drawing, square)].fill);
+      }
+    }
     for (let rank = 0; rank < 8; rank++) {
       for (let file = 0; file < 8; file++) {
         const x = file * RENDER_SQUARE;
         const y = rank * RENDER_SQUARE;
         ctx.fillStyle = (rank + file) % 2 === 0 ? LIGHT_SQUARE : DARK_SQUARE;
         ctx.fillRect(x, y, RENDER_SQUARE, RENDER_SQUARE);
-        if (marked.has(rank * 8 + file)) {
-          ctx.fillStyle = DRAWING_SQUARE_FILL;
+        const fill = marked.get(rank * 8 + file);
+        if (fill) {
+          ctx.fillStyle = fill;
           ctx.fillRect(x, y, RENDER_SQUARE, RENDER_SQUARE);
         }
         // Black views the board rotated 180°, so read the mirrored source cell.
@@ -162,7 +166,7 @@ export class BoardImageService {
       this.drawArrow(ctx, position.from, position.to, highlighted ? DIVERGENT_MOVE_COLOR : MOVE_ARROW_COLOR, black);
     }
     for (const arrow of drawing?.arrows ?? []) {
-      this.drawArrow(ctx, arrow.from, arrow.to, DRAWING_ARROW_COLOR, black);
+      this.drawArrow(ctx, arrow.from, arrow.to, DRAWING_COLORS[arrowColor(arrow)].arrow, black);
     }
     if (highlighted) {
       this.drawHighlightBorder(ctx);

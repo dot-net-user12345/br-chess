@@ -1,9 +1,11 @@
 import {
+  arrowColor,
   drawingKey,
   EMPTY_DRAWING,
   gridIndex,
   isEmptyDrawing,
   squareAt,
+  squareColor,
   toggleArrow,
   toggleSquare,
 } from './board-drawing';
@@ -49,5 +51,33 @@ describe('board drawing', () => {
     const b = toggleSquare(toggleArrow(toggleSquare(EMPTY_DRAWING, 'd5'), 'g1', 'f3'), 'e4');
     expect(drawingKey(a)).toBe(drawingKey(b));
     expect(drawingKey(EMPTY_DRAWING)).toBe('');
+  });
+
+  it('recolors a mark drawn in another color, and clears one drawn in the same color', () => {
+    const green = toggleSquare(EMPTY_DRAWING, 'e4', 'green');
+    expect(squareColor(green, 'e4')).toBe('green');
+
+    const recolored = toggleSquare(green, 'e4', 'blue');
+    expect(recolored.squares).toEqual(['e4']);
+    expect(squareColor(recolored, 'e4')).toBe('blue');
+
+    const cleared = toggleSquare(recolored, 'e4', 'blue');
+    expect(cleared.squares).toEqual([]);
+    // No leftover color map once nothing non-default is colored.
+    expect(cleared.squareColors).toBeUndefined();
+
+    const red = toggleArrow(EMPTY_DRAWING, 'g1', 'f3', 'red');
+    const yellow = toggleArrow(red, 'g1', 'f3', 'yellow');
+    expect(yellow.arrows).toHaveLength(1);
+    expect(arrowColor(yellow.arrows[0])).toBe('yellow');
+    expect(toggleArrow(yellow, 'g1', 'f3', 'yellow').arrows).toEqual([]);
+  });
+
+  it('keeps default purple marks in their original, color-free form', () => {
+    const purple = toggleArrow(toggleSquare(EMPTY_DRAWING, 'e4'), 'g1', 'f3');
+    expect(purple).toEqual({ squares: ['e4'], arrows: [{ from: 'g1', to: 'f3' }] });
+    // So images rendered before colors existed keep their key.
+    expect(drawingKey(purple)).toBe('e4/g1f3');
+    expect(drawingKey(toggleSquare(purple, 'e4', 'green'))).toBe('e4:green/g1f3');
   });
 });

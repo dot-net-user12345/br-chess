@@ -13,10 +13,18 @@ import { MAT_DIALOG_DATA, MatDialogModule } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
+import { MatRadioModule } from '@angular/material/radio';
 import { ChessService } from '../../core/chess-service';
 import { BoardOrientation } from '../../core/chess-models';
 import { UploadedImage } from '../../core/workspace-models';
-import { BoardDrawing, EMPTY_DRAWING, isEmptyDrawing } from '../../core/board-drawing';
+import {
+  BoardDrawing,
+  DRAWING_COLOR_ORDER,
+  DRAWING_COLORS,
+  EMPTY_DRAWING,
+  isEmptyDrawing,
+} from '../../core/board-drawing';
+import { DrawingColorPreference } from './drawing-color-preference';
 import { ChessBoard } from '../chess-board/chess-board';
 import { imageFilesIn } from '../../shared/image-drop';
 import { MoveImages } from './move-images';
@@ -68,6 +76,7 @@ export interface BoardDialogData {
     MatIconModule,
     MatFormFieldModule,
     MatInputModule,
+    MatRadioModule,
     ReactiveFormsModule,
     ChessBoard,
     MoveImages,
@@ -168,6 +177,7 @@ export interface BoardDialogData {
             [orientation]="orientation()"
             [drawing]="currentDrawing()"
             [drawable]="canDraw"
+            [drawColor]="drawColor.color()"
             (drawingChange)="onDraw($event)"
           />
         </div>
@@ -206,6 +216,23 @@ export interface BoardDialogData {
               <p class="board-dialog__drawing-hint">
                 Right-click a square to color it; right-drag between squares to draw an arrow.
               </p>
+              <mat-radio-group
+                class="board-dialog__colors"
+                aria-label="Drawing color"
+                [value]="drawColor.color()"
+                (change)="drawColor.color.set($event.value)"
+              >
+                @for (color of drawingColors; track color) {
+                  <mat-radio-button [value]="color" class="board-dialog__color">
+                    <span
+                      class="board-dialog__swatch"
+                      [style.background]="drawingPalette[color].arrow"
+                      aria-hidden="true"
+                    ></span>
+                    {{ drawingPalette[color].label }}
+                  </mat-radio-button>
+                }
+              </mat-radio-group>
               @if (hasUnsavedDrawings()) {
                 <p class="board-dialog__drawing-status" role="status">Unsaved drawing changes</p>
               }
@@ -323,6 +350,22 @@ export interface BoardDialogData {
       margin-top: 0.5rem;
     }
 
+    .board-dialog__colors {
+      display: flex;
+      flex-wrap: wrap;
+      column-gap: 0.25rem;
+    }
+
+    .board-dialog__swatch {
+      display: inline-block;
+      width: 0.875rem;
+      height: 0.875rem;
+      margin-right: 0.25rem;
+      border-radius: 50%;
+      border: 1px solid var(--mat-sys-outline);
+      vertical-align: -0.125rem;
+    }
+
     .board-dialog__drawing-hint,
     .board-dialog__drawing-status {
       margin: 0;
@@ -418,6 +461,11 @@ export class BoardDialog {
 
   /** Whether the opener stores drawings, so the board can be drawn on. */
   protected readonly canDraw = this.data.onDrawingsChange !== undefined;
+
+  /** The color the right mouse button draws in, remembered across dialogs. */
+  protected readonly drawColor = inject(DrawingColorPreference);
+  protected readonly drawingColors = DRAWING_COLOR_ORDER;
+  protected readonly drawingPalette = DRAWING_COLORS;
 
   /** Every move's drawing as last saved. */
   private readonly savedDrawings = signal<Record<number, BoardDrawing>>({
