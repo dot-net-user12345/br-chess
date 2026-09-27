@@ -718,6 +718,20 @@ export class PgnGridEditor {
     this.attachments.detach(image);
   }
 
+  /** Records an image's caption once the field is left; a blank caption drops it. */
+  protected onImageCaptionChange(imageId: string, event: Event): void {
+    const caption = (event.target as HTMLTextAreaElement).value.trim();
+    this.writeImages(
+      this.uploadedImages().map((image) => {
+        if (image.id !== imageId) {
+          return image;
+        }
+        const { caption: _dropped, ...rest } = image;
+        return caption ? { ...rest, caption } : rest;
+      }),
+    );
+  }
+
   private writeImages(images: readonly UploadedImage[]): void {
     // Carry entries and orientation forward so attaching an image edits nothing else.
     this.store.updatePgnGridContent(this.fileId(), {

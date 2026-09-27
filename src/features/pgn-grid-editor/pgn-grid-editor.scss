@@ -276,12 +276,26 @@
     margin: 0;
     padding: 0;
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr));
+    // Each item is four image-widths wide: the image, then its caption in the
+    // other three. min() lets one item still fit a screen narrower than that.
+    grid-template-columns: repeat(auto-fill, minmax(min(36rem, 100%), 1fr));
     gap: 0.75rem;
   }
 
   &__item {
+    display: grid;
+    grid-template-columns: 9rem minmax(0, 1fr);
+    align-items: start;
+    gap: 0.75rem;
+  }
+
+  // Anchors the delete button to the image's own corner.
+  &__media {
     position: relative;
+  }
+
+  &__caption {
+    width: 100%;
   }
 
   &__thumb {

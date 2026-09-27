@@ -55,6 +55,8 @@ export interface UploadedImage {
   readonly path: string;
   /** Original file name, shown as a caption and used as alt text. */
   readonly name: string;
+  /** What the image shows, written after it's uploaded; used as its alt text when set. */
+  readonly caption?: string;
 }
 
 /** Content of a `pgn-grid` file: one or more PGNs, each rendered as a board grid. */

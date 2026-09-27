@@ -269,24 +269,44 @@
                 <ul class="images__grid">
                   @for (image of uploadedImages(); track image.id) {
                     <li class="images__item">
-                      <a
-                        class="images__thumb"
-                        [href]="image.url"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        [attr.aria-label]="'View ' + image.name + ' full size'"
+                      <div class="images__media">
+                        <a
+                          class="images__thumb"
+                          [href]="image.url"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          [attr.aria-label]="'View ' + image.name + ' full size'"
+                        >
+                          <img
+                            [src]="image.url"
+                            [alt]="image.caption || image.name"
+                            loading="lazy"
+                          />
+                        </a>
+                        <button
+                          matIconButton
+                          type="button"
+                          class="images__remove"
+                          [attr.aria-label]="'Delete ' + image.name"
+                          (click)="confirmRemoveImage(image)"
+                        >
+                          <mat-icon>delete_outline</mat-icon>
+                        </button>
+                      </div>
+                      <mat-form-field
+                        class="images__caption"
+                        appearance="outline"
+                        subscriptSizing="dynamic"
                       >
-                        <img [src]="image.url" [alt]="image.name" loading="lazy" />
-                      </a>
-                      <button
-                        matIconButton
-                        type="button"
-                        class="images__remove"
-                        [attr.aria-label]="'Delete ' + image.name"
-                        (click)="confirmRemoveImage(image)"
-                      >
-                        <mat-icon>delete_outline</mat-icon>
-                      </button>
+                        <mat-label>Caption</mat-label>
+                        <textarea
+                          matInput
+                          rows="4"
+                          [value]="image.caption ?? ''"
+                          [attr.aria-label]="'Caption for ' + image.name"
+                          (change)="onImageCaptionChange(image.id, $event)"
+                        ></textarea>
+                      </mat-form-field>
                     </li>
                   }
                 </ul>
