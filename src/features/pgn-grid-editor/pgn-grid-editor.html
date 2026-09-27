@@ -241,7 +241,7 @@
               </mat-panel-description>
             </mat-expansion-panel-header>
 
-            <div class="images__body">
+            <div class="images__body" appImageDrop (imageFiles)="addImageFiles($event)">
               <input
                 #imageInput
                 type="file"
@@ -260,6 +260,9 @@
                 <mat-icon>upload</mat-icon>
                 {{ uploading() ? 'Uploading…' : 'Upload image' }}
               </button>
+
+              <!-- Focusable, so a keyboard user can land here and paste. -->
+              <p class="images__dropzone" tabindex="0">Paste (Ctrl+V) or drop images here</p>
 
               @if (imageError(); as error) {
                 <p class="images__error" role="alert">{{ error }}</p>

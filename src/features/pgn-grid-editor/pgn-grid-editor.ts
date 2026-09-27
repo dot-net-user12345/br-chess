@@ -41,6 +41,7 @@ import {
 } from '../../core/move-comparison';
 import { FocusOnInit } from '../../shared/focus-on-init';
 import { ImageAttachments, takeImageFiles } from '../../shared/image-attachments';
+import { ImageDrop } from '../../shared/image-drop';
 import { ChessBoard } from '../chess-board/chess-board';
 import {
   ComparisonBoard,
@@ -74,6 +75,7 @@ interface ComparisonRow extends ComparisonDialogItem {
     MatMenuModule,
     MatTabsModule,
     FocusOnInit,
+    ImageDrop,
     ChessBoard,
     PgnContainer,
     MoveExplorer,
@@ -690,9 +692,13 @@ export class PgnGridEditor {
   }
 
   /** Uploads the chosen image files to Storage and attaches them to this file. */
-  protected async onImagesSelected(event: Event): Promise<void> {
-    const files = takeImageFiles(event);
-    if (files.length === 0) {
+  protected onImagesSelected(event: Event): void {
+    void this.addImageFiles(takeImageFiles(event));
+  }
+
+  /** Uploads `files` and attaches them to this file — picked, pasted, or dropped alike. */
+  protected async addImageFiles(files: readonly File[]): Promise<void> {
+    if (files.length === 0 || this.uploading()) {
       return;
     }
     this.imageError.set(null);
