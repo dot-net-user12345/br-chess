@@ -1,4 +1,4 @@
-import { PieceCode } from './chess-models';
+import { BoardOrientation, PieceCode } from './chess-models';
 
 /** Maps each FEN piece code to its bundled SVG asset basename. */
 const PIECE_ASSETS: Record<PieceCode, string> = {
@@ -115,3 +115,29 @@ export function moveArrowGeometry(from: string, to: string): MoveArrow {
     strokeWidth: ARROW_STROKE_WIDTH,
   };
 }
+
+/** File letters, a→h, and rank numbers as the grid stores them, 8 down to 1. */
+const FILE_LETTERS = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'] as const;
+const RANK_NUMBERS = ['8', '7', '6', '5', '4', '3', '2', '1'] as const;
+
+/** File letters from left to right, as the given side sees the board. */
+export function fileLabels(orientation: BoardOrientation): readonly string[] {
+  return orientation === 'black' ? [...FILE_LETTERS].reverse() : FILE_LETTERS;
+}
+
+/** Rank numbers from top to bottom, as the given side sees the board. */
+export function rankLabels(orientation: BoardOrientation): readonly string[] {
+  return orientation === 'black' ? [...RANK_NUMBERS].reverse() : RANK_NUMBERS;
+}
+
+/**
+ * Color of the rank/file coordinates drawn inside the board's edge squares. One
+ * near-black brown for both square colors: it clears WCAG AA (12.5:1 on
+ * {@link LIGHT_SQUARE}, 5:1 on {@link DARK_SQUARE}), while the conventional
+ * light-on-dark label cannot — white on {@link DARK_SQUARE} is only 3.1:1.
+ */
+export const COORDINATE_COLOR = '#2e2016';
+
+/** Coordinate text size and corner inset, as fractions of one square. */
+export const COORDINATE_FONT_SCALE = 0.24;
+export const COORDINATE_INSET = 0.06;

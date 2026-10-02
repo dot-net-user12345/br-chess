@@ -2,13 +2,18 @@ import { inject, Injectable } from '@angular/core';
 import { getDownloadURL, ref, Storage, StorageError, uploadBytes } from '@angular/fire/storage';
 import { ChessService } from './chess-service';
 import {
+  COORDINATE_COLOR,
+  COORDINATE_FONT_SCALE,
+  COORDINATE_INSET,
   DARK_SQUARE,
   DIVERGENT_MOVE_COLOR,
+  fileLabels,
   flipPoint,
   LIGHT_SQUARE,
   moveArrowGeometry,
   MOVE_ARROW_COLOR,
   pieceAssetPath,
+  rankLabels,
 } from './board-assets';
 import { BoardOrientation, GamePosition } from './chess-models';
 import {
@@ -36,8 +41,9 @@ function isNotFound(err: unknown): boolean {
 /**
  * Renders chess positions to PNG images and persists them to Cloud Storage.
  *
- * Each image shows the board plus a colored arrow from the move's origin to its
- * destination square. Images are content-addressed by a hash of the position's
+ * Each image shows the board, its rank/file coordinates, and a colored arrow
+ * from the move's origin to its destination square. Images are
+ * content-addressed by a hash of the position's
  * FEN and move (`moves/{hash}.png`), so a given position+move is rendered and
  * uploaded at most once and then reused across every entry, file, and save.
  * Rendering happens in the browser on a canvas using the same bundled piece
@@ -90,7 +96,10 @@ export class BoardImageService {
       // Only appended for black, so white renders keep their existing keys.
       (orientation === 'black' ? '|black' : '') +
       // Only appended when something is drawn, so plain renders keep their keys.
-      (drawn ? `|draw:${drawn}` : '');
+      (drawn ? `|draw:${drawn}` : '') +
+      // Bumped whenever the render itself changes, so already-uploaded images at
+      // the old appearance are re-rendered instead of reused.
+      '|v2-coords';
     const existing = this.urlByKey.get(key);
     if (existing) {
       return existing;
@@ -162,6 +171,7 @@ export class BoardImageService {
         }
       }
     }
+    this.drawCoordinates(ctx, orientation);
     if (position.from && position.to) {
       this.drawArrow(ctx, position.from, position.to, highlighted ? DIVERGENT_MOVE_COLOR : MOVE_ARROW_COLOR, black);
     }
@@ -177,6 +187,32 @@ export class BoardImageService {
         'image/png',
       );
     });
+  }
+
+  /**
+   * Labels the board's edge squares: rank numbers down the left file (top-left
+   * corner) and file letters along the bottom rank (bottom-right corner), both
+   * read from the viewer's side of the board.
+   */
+  private drawCoordinates(ctx: CanvasRenderingContext2D, orientation: BoardOrientation): void {
+    const files = fileLabels(orientation);
+    const ranks = rankLabels(orientation);
+    const inset = RENDER_SQUARE * COORDINATE_INSET;
+    ctx.save();
+    ctx.fillStyle = COORDINATE_COLOR;
+    ctx.font = `bold ${RENDER_SQUARE * COORDINATE_FONT_SCALE}px system-ui, sans-serif`;
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'top';
+    ranks.forEach((rank, index) => {
+      ctx.fillText(rank, inset, index * RENDER_SQUARE + inset);
+    });
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'bottom';
+    const bottom = BOARD_SIZE - inset;
+    files.forEach((file, index) => {
+      ctx.fillText(file, (index + 1) * RENDER_SQUARE - inset, bottom);
+    });
+    ctx.restore();
   }
 
   /** Draws a colored arrow with a triangular head from the `from` to the `to` square. */

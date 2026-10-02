@@ -13,11 +13,13 @@ import { ChessService } from '../../core/chess-service';
 import { BoardOrientation, PieceCode } from '../../core/chess-models';
 import {
   DIVERGENT_MOVE_COLOR,
+  fileLabels,
   flipPoint,
   moveArrowGeometry,
   MOVE_ARROW_COLOR,
   pieceAssetPath,
   Point,
+  rankLabels,
 } from '../../core/board-assets';
 import {
   arrowColor as drawnArrowColor,
@@ -38,6 +40,10 @@ interface RenderedSquare {
   readonly piece: PieceCode | null;
   readonly asset: string | null;
   readonly label: string;
+  /** Rank number to print, on the left file only; empty elsewhere. */
+  readonly rankLabel: string;
+  /** File letter to print, on the bottom rank only; empty elsewhere. */
+  readonly fileLabel: string;
 }
 
 interface RenderedArrow {
@@ -63,7 +69,8 @@ const PIECE_NAMES: Record<string, string> = {
 
 /**
  * Renders a single chess position (from a FEN) as an 8x8 grid of piece images,
- * with an optional move arrow from the `from` square to the `to` square, and
+ * labeled with its rank and file coordinates, with an optional move arrow from
+ * the `from` square to the `to` square, and
  * any user drawing (colored squares and arrows) laid over it. When `drawable`,
  * right-clicking a square colors it and right-dragging draws an arrow.
  */
@@ -95,6 +102,12 @@ const PIECE_NAMES: Record<string, string> = {
         [style.--square-fill]="markedFills().get($index)"
         aria-hidden="true"
       >
+        @if (square.rankLabel) {
+          <span class="square__coord square__coord--rank">{{ square.rankLabel }}</span>
+        }
+        @if (square.fileLabel) {
+          <span class="square__coord square__coord--file">{{ square.fileLabel }}</span>
+        }
         @if (square.asset) {
           <img [ngSrc]="square.asset" width="45" height="45" [alt]="square.label" />
         }
@@ -221,7 +234,10 @@ export class ChessBoard {
 
   protected readonly squares = computed<RenderedSquare[]>(() => {
     const rows = this.chess.fenToSquares(this.fen());
-    const result: RenderedSquare[] = [];
+    const orientation = this.orientation();
+    const files = fileLabels(orientation);
+    const ranks = rankLabels(orientation);
+    const result: Omit<RenderedSquare, 'rankLabel' | 'fileLabel'>[] = [];
     rows.forEach((rank, rankIndex) => {
       rank.forEach((piece, fileIndex) => {
         result.push({
@@ -234,7 +250,14 @@ export class ChessBoard {
     });
     // Black views the board rotated 180°: reversing the rank-8-first, file-a-first
     // grid yields rank-1-first, file-h-first, and each square keeps its own color.
-    return this.orientation() === 'black' ? result.reverse() : result;
+    const oriented = orientation === 'black' ? result.reverse() : result;
+    // Coordinates go on the board's near edges as the viewer sees them: numbers
+    // down the left file, letters along the bottom rank.
+    return oriented.map((square, index) => ({
+      ...square,
+      rankLabel: index % 8 === 0 ? ranks[index / 8] : '',
+      fileLabel: index >= 56 ? files[index - 56] : '',
+    }));
   });
 
   protected onPointerDown(event: PointerEvent): void {
