@@ -60,6 +60,16 @@
       }
     </p>
     <span class="explorer__spacer"></span>
+    <button
+      matButton
+      type="button"
+      (click)="showAnalysis()"
+      [disabled]="!canAnalyze()"
+      matTooltip="Describe what the pinned moves have in common"
+    >
+      <mat-icon>insights</mat-icon>
+      Analyze pattern
+    </button>
     <button matButton type="button" (click)="clear()" [disabled]="!hasPinned()">
       <mat-icon>layers_clear</mat-icon>
       Clear pinned
@@ -207,6 +217,27 @@
       <span>Copy PGN up to this move</span>
     </button>
   </mat-menu>
+
+  <!-- What the pinned moves have in common, sitting right above the boards it
+       describes. Announced when it appears, and as pinning changes it. -->
+  <div
+    class="explorer__analysis"
+    [class.explorer__analysis--hidden]="!analysis()"
+    role="status"
+    aria-live="polite"
+  >
+    @if (analysis()) {
+      <p class="explorer__analysis-text">{{ analysis() }}</p>
+      <button
+        matIconButton
+        type="button"
+        aria-label="Hide pattern analysis"
+        (click)="hideAnalysis()"
+      >
+        <mat-icon>close</mat-icon>
+      </button>
+    }
+  </div>
 
   <div class="explorer__strip">
     @if (hasPinned()) {

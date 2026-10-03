@@ -26,6 +26,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { BoardOrientation, GamePosition, PieceCode } from '../../core/chess-models';
 import { ChessService } from '../../core/chess-service';
 import { findMatchingSpan, MoveQuery, parseMoveQuery } from '../../core/line-search';
+import { analyzeMoves, SelectedMove } from '../../core/move-analysis';
 import { BoardDrawing, UploadedImage } from '../../core/workspace-models';
 import { BoardDialog, BoardDialogTile } from '../board-dialog/board-dialog';
 import { ChessBoard } from '../chess-board/chess-board';
@@ -470,6 +471,38 @@ export class MoveExplorer {
   /** Whether anything is pinned, which is what the strip and Clear button key off. */
   protected readonly hasPinned = computed(() => this.pinnedGroups().length > 0);
 
+  /** The pinned moves as the analyzer takes them, in the order they are shown. */
+  private readonly pinnedMoves = computed<SelectedMove[]>(() =>
+    this.pinnedGroups().flatMap((group) =>
+      group.boards.map((board) => ({ lineIndex: group.lineIndex, ply: board.ply })),
+    ),
+  );
+
+  /** Whether there are enough pinned moves to have anything in common. */
+  protected readonly canAnalyze = computed(() => this.pinnedMoves().length >= 2);
+
+  /** Whether the pattern summary is on show; the Analyze button turns it on. */
+  private readonly analysisShown = signal(false);
+
+  /**
+   * What the pinned moves have in common, in prose — '' while it is hidden.
+   * It is recomputed as moves are pinned and unpinned, so it never goes stale
+   * against the strip it describes.
+   */
+  protected readonly analysis = computed(() =>
+    this.analysisShown() && this.canAnalyze()
+      ? analyzeMoves(this.pinnedMoves(), this.lines()).summary
+      : '',
+  );
+
+  protected showAnalysis(): void {
+    this.analysisShown.set(true);
+  }
+
+  protected hideAnalysis(): void {
+    this.analysisShown.set(false);
+  }
+
   protected isPinned(key: string): boolean {
     return this.pinnedKeys().includes(key);
   }
@@ -595,6 +628,7 @@ export class MoveExplorer {
 
   protected clear(): void {
     this.pinnedKeys.set([]);
+    this.analysisShown.set(false);
   }
 
   /**

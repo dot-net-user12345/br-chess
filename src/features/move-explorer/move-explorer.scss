@@ -11,15 +11,17 @@
 .explorer {
   // Tall enough for the compact filter fields.
   --bar-height: 3.5rem;
-  // Below the two filter bars, the move columns take 70% of the remaining
-  // height and the pinned strip 27%, leaving 3% split between the two gaps.
+  // Below the two filter bars, the pinned strip keeps 27% of the remaining
+  // height and the move columns take whatever is left — which is about 70%,
+  // less the pattern summary's row whenever that is on show.
   --content-height: calc(100% - 2 * var(--bar-height));
   height: 100%;
   display: grid;
   grid-template-rows:
     var(--bar-height)
     var(--bar-height)
-    calc(var(--content-height) * 0.7)
+    minmax(0, 1fr)
+    auto
     calc(var(--content-height) * 0.27);
   row-gap: calc(var(--content-height) * 0.015);
 
@@ -90,6 +92,8 @@
   }
 
   &__strip {
+    // Pinned to its own row, so it stays put whether or not the summary shows.
+    grid-row: 5;
     // The boards are sized by this section's height, so it scrolls sideways only.
     overflow-x: auto;
     overflow-y: hidden;
@@ -109,6 +113,30 @@
     margin: 0;
     font: var(--mat-sys-body-medium);
     color: var(--mat-sys-on-surface-variant);
+  }
+
+  // The pattern summary for the pinned moves, with its dismiss button beside it.
+  &__analysis {
+    grid-row: 4;
+    display: flex;
+    gap: 0.5rem;
+    padding: 0.75rem;
+    border-radius: var(--mat-sys-corner-medium);
+    background: var(--mat-sys-secondary-container);
+    color: var(--mat-sys-on-secondary-container);
+    font: var(--mat-sys-body-medium);
+  }
+
+  // Hidden rather than removed, so the live region is already in the document
+  // when a summary lands in it.
+  &__analysis--hidden {
+    display: none;
+  }
+
+  // Takes the width the dismiss button leaves, however long the summary runs.
+  &__analysis-text {
+    flex: 1;
+    margin: 0;
   }
 }
 
