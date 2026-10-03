@@ -131,12 +131,14 @@ export function rankLabels(orientation: BoardOrientation): readonly string[] {
 }
 
 /**
- * Color of the rank/file coordinates drawn inside the board's edge squares. One
- * near-black brown for both square colors: it clears WCAG AA (12.5:1 on
- * {@link LIGHT_SQUARE}, 5:1 on {@link DARK_SQUARE}), while the conventional
- * light-on-dark label cannot — white on {@link DARK_SQUARE} is only 3.1:1.
+ * Color of the rank/file coordinates drawn inside the board's edge squares: a
+ * partly transparent black, so the labels sit back behind the position while
+ * still clearing WCAG AA on both square colors (13:1 over {@link LIGHT_SQUARE},
+ * 4.7:1 over {@link DARK_SQUARE}). The alpha is as low as that allows — any
+ * fainter drops the dark squares under 4.5:1, and the conventional
+ * light-on-dark label never reaches it (white on {@link DARK_SQUARE} is 3.1:1).
  */
-export const COORDINATE_COLOR = '#2e2016';
+export const COORDINATE_COLOR = 'rgba(0, 0, 0, 0.7)';
 
 /** Coordinate text size and corner inset, as fractions of one square. */
 export const COORDINATE_FONT_SCALE = 0.24;

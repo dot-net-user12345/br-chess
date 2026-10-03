@@ -73,8 +73,9 @@
     font-size: 3cqw;
     line-height: 1;
     font-weight: 700;
-    // Clears WCAG AA on both square colors; see COORDINATE_COLOR in board-assets.
-    color: #2e2016;
+    // Partly transparent, and still AA on both square colors; see
+    // COORDINATE_COLOR in board-assets, which the generated images use.
+    color: rgba(0, 0, 0, 0.7);
     pointer-events: none;
 
     &--rank {

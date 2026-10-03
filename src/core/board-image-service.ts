@@ -99,7 +99,7 @@ export class BoardImageService {
       (drawn ? `|draw:${drawn}` : '') +
       // Bumped whenever the render itself changes, so already-uploaded images at
       // the old appearance are re-rendered instead of reused.
-      '|v2-coords';
+      '|v3-coords';
     const existing = this.urlByKey.get(key);
     if (existing) {
       return existing;
