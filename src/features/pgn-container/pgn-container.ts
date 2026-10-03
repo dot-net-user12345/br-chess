@@ -12,6 +12,7 @@ import {
 } from '@angular/core';
 import { Clipboard } from '@angular/cdk/clipboard';
 import { FormControl, ReactiveFormsModule, ValidatorFn } from '@angular/forms';
+import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatDialog } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -44,6 +45,7 @@ interface BoardTile {
   selector: 'app-pgn-container',
   imports: [
     ReactiveFormsModule,
+    MatButtonModule,
     MatCardModule,
     MatFormFieldModule,
     MatInputModule,
@@ -130,6 +132,30 @@ export class PgnContainer implements OnInit {
       to: position.to,
     }));
   });
+
+  /**
+   * The PGN as it would be laid out: one full move per line. Rebuilt from the
+   * parsed moves, so a line comes out the same however it was typed — and so
+   * anything that is not a move is dropped. '' while the PGN has no moves.
+   */
+  private readonly formatted = computed(() =>
+    this.chess.toMoveLines(
+      this.result().positions.flatMap((position) => (position.san ? [position.san] : [])),
+    ),
+  );
+
+  /** Whether there are moves to lay out, and laying them out would change the text. */
+  protected readonly canFormat = computed(
+    () => this.formatted().length > 0 && this.formatted() !== this.value(),
+  );
+
+  /** Rewrites the PGN with each full move on its own line: `1. e4 e5`, then `2. Nf3 Nc6`. */
+  protected formatPgn(): void {
+    if (this.canFormat()) {
+      // Emits, so the reformatted text is saved like any other edit.
+      this.control.setValue(this.formatted());
+    }
+  }
 
   constructor() {
     this.control.valueChanges.subscribe((value) => {

@@ -9,6 +9,17 @@
         spellcheck="false"
         placeholder="1. e4 e5 2. Nf3 Nc6 3. Bb5 a6"
       ></textarea>
+      <button
+        matIconButton
+        matSuffix
+        type="button"
+        [disabled]="!canFormat()"
+        matTooltip="Put each move on its own line"
+        aria-label="Format PGN with one move per line"
+        (click)="formatPgn()"
+      >
+        <mat-icon>format_list_numbered</mat-icon>
+      </button>
       @if (control.hasError('pgn')) {
         <mat-error>{{ control.getError('pgn') }}</mat-error>
       }
