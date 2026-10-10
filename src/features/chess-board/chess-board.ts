@@ -20,17 +20,24 @@ import {
   pieceAssetPath,
   Point,
   rankLabels,
+  squareCrossGeometry,
 } from '../../core/board-assets';
 import {
   arrowColor as drawnArrowColor,
+  arrowStyle as drawnArrowStyle,
+  ArrowStyle,
   BoardDrawing,
+  DEFAULT_ARROW_STYLE,
   DEFAULT_DRAWING_COLOR,
+  DEFAULT_SQUARE_MARK,
   DRAWING_COLORS,
   DrawingColor,
   EMPTY_DRAWING,
   gridIndex,
   squareAt,
   squareColor,
+  squareMark,
+  SquareMark,
   toggleArrow,
   toggleSquare,
 } from '../../core/board-drawing';
@@ -51,10 +58,26 @@ interface RenderedArrow {
   readonly shaftTo: { readonly x: number; readonly y: number };
   readonly headPoints: string;
   readonly strokeWidth: number;
+  /** `stroke-dasharray` for a broken shaft; null when the shaft is unbroken. */
+  readonly dashArray: string | null;
+  /** Dashes keep square ends so they stay distinct; a solid shaft is rounded. */
+  readonly lineCap: 'round' | 'butt';
 }
 
 /** A user-drawn arrow, ready to render in its own color. */
 interface DrawnArrow extends RenderedArrow {
+  readonly color: string;
+}
+
+/** An X over a square, ready to render: two strokes in the square's color. */
+interface RenderedCross {
+  readonly lines: readonly {
+    readonly x1: number;
+    readonly y1: number;
+    readonly x2: number;
+    readonly y2: number;
+  }[];
+  readonly strokeWidth: number;
   readonly color: string;
 }
 
@@ -71,8 +94,9 @@ const PIECE_NAMES: Record<string, string> = {
  * Renders a single chess position (from a FEN) as an 8x8 grid of piece images,
  * labeled with its rank and file coordinates, with an optional move arrow from
  * the `from` square to the `to` square, and
- * any user drawing (colored squares and arrows) laid over it. When `drawable`,
- * right-clicking a square colors it and right-dragging draws an arrow.
+ * any user drawing (marked squares and arrows) laid over it. When `drawable`,
+ * right-clicking a square marks it — tinted or crossed with an X — and
+ * right-dragging draws an arrow.
  */
 @Component({
   selector: 'app-chess-board',
@@ -113,8 +137,21 @@ const PIECE_NAMES: Record<string, string> = {
         }
       </span>
     }
-    @if (arrow() || drawnArrows().length > 0) {
+    @if (arrow() || drawnArrows().length > 0 || crosses().length > 0) {
       <svg class="chess-board__arrow" viewBox="0 0 8 8" aria-hidden="true">
+        @for (cross of crosses(); track $index) {
+          @for (stroke of cross.lines; track $index) {
+            <line
+              [attr.x1]="stroke.x1"
+              [attr.y1]="stroke.y1"
+              [attr.x2]="stroke.x2"
+              [attr.y2]="stroke.y2"
+              [attr.stroke]="cross.color"
+              [attr.stroke-width]="cross.strokeWidth"
+              stroke-linecap="round"
+            />
+          }
+        }
         @if (arrow(); as arrow) {
           <line
             [attr.x1]="arrow.shaftFrom.x"
@@ -135,7 +172,8 @@ const PIECE_NAMES: Record<string, string> = {
             [attr.y2]="drawn.shaftTo.y"
             [attr.stroke]="drawn.color"
             [attr.stroke-width]="drawn.strokeWidth"
-            stroke-linecap="round"
+            [attr.stroke-dasharray]="drawn.dashArray"
+            [attr.stroke-linecap]="drawn.lineCap"
           />
           <polygon [attr.points]="drawn.headPoints" [attr.fill]="drawn.color" />
         }
@@ -166,6 +204,10 @@ export class ChessBoard {
   readonly drawable = input<boolean>(false);
   /** The color new squares and arrows are drawn in. */
   readonly drawColor = input<DrawingColor>(DEFAULT_DRAWING_COLOR);
+  /** The shaft style new arrows are drawn with. */
+  readonly drawArrowStyle = input<ArrowStyle>(DEFAULT_ARROW_STYLE);
+  /** The mark a right-clicked square is given: a fill or an X. */
+  readonly drawSquareMark = input<SquareMark>(DEFAULT_SQUARE_MARK);
 
   /** Emits the whole updated drawing after each right-click or right-drag. */
   readonly drawingChange = output<BoardDrawing>();
@@ -191,17 +233,41 @@ export class ChessBoard {
     return to && this.highlighted() ? gridIndex(to, this.orientation()) : null;
   });
 
-  /** The fill of each square the user colored, by grid index. */
+  /** The fill of each square the user tinted, by grid index. X-marked squares aren't tinted. */
   protected readonly markedFills = computed(() => {
     const fills = new Map<number, string>();
     const drawing = this.drawing();
     for (const square of drawing?.squares ?? []) {
       const index = gridIndex(square, this.orientation());
-      if (drawing && index !== null) {
+      if (drawing && index !== null && squareMark(drawing, square) === 'fill') {
         fills.set(index, DRAWING_COLORS[squareColor(drawing, square)].fill);
       }
     }
     return fills;
+  });
+
+  /** The X over each square the user marked with one, drawn over the pieces. */
+  protected readonly crosses = computed<RenderedCross[]>(() => {
+    const drawing = this.drawing();
+    const crosses: RenderedCross[] = [];
+    for (const square of drawing?.squares ?? []) {
+      if (!drawing || squareMark(drawing, square) !== 'cross') {
+        continue;
+      }
+      const geometry = squareCrossGeometry(square);
+      // From black's side the board is rotated 180°, so mirror every point.
+      const orient = (point: Point) => (this.orientation() === 'black' ? flipPoint(point) : point);
+      crosses.push({
+        lines: geometry.lines.map(([a, b]) => {
+          const from = orient(a);
+          const to = orient(b);
+          return { x1: from.x, y1: from.y, x2: to.x, y2: to.y };
+        }),
+        strokeWidth: geometry.strokeWidth,
+        color: DRAWING_COLORS[squareColor(drawing, square)].arrow,
+      });
+    }
+    return crosses;
   });
 
   protected readonly ariaLabel = computed(() => {
@@ -218,14 +284,14 @@ export class ChessBoard {
   /** The user's arrows, plus a preview of the one being dragged. */
   protected readonly drawnArrows = computed<DrawnArrow[]>(() => {
     const arrows = (this.drawing()?.arrows ?? []).map((a) => ({
-      ...this.renderArrow(a.from, a.to),
+      ...this.renderArrow(a.from, a.to, drawnArrowStyle(a)),
       color: DRAWING_COLORS[drawnArrowColor(a)].arrow,
     }));
     const from = this.dragFrom();
     const over = this.dragOver();
     if (from && over && from !== over) {
       arrows.push({
-        ...this.renderArrow(from, over),
+        ...this.renderArrow(from, over, this.drawArrowStyle()),
         color: DRAWING_COLORS[this.drawColor()].arrow,
       });
     }
@@ -296,8 +362,8 @@ export class ChessBoard {
     // Released where it started: a click, which colors the square. Otherwise an arrow.
     this.drawingChange.emit(
       to === from
-        ? toggleSquare(drawing, from, this.drawColor())
-        : toggleArrow(drawing, from, to, this.drawColor()),
+        ? toggleSquare(drawing, from, this.drawColor(), this.drawSquareMark())
+        : toggleArrow(drawing, from, to, this.drawColor(), this.drawArrowStyle()),
     );
   }
 
@@ -320,16 +386,19 @@ export class ChessBoard {
     );
   }
 
-  private renderArrow(from: string, to: string): RenderedArrow {
-    const geometry = moveArrowGeometry(from, to);
+  private renderArrow(from: string, to: string, style?: ArrowStyle): RenderedArrow {
+    const geometry = moveArrowGeometry(from, to, style);
     // From black's side the board is rotated 180°, so mirror every arrow point.
     const orient = (point: Point) =>
       this.orientation() === 'black' ? flipPoint(point) : point;
+    // The viewBox is 8x8, so board units are already the SVG's own units.
     return {
       shaftFrom: orient(geometry.shaftFrom),
       shaftTo: orient(geometry.shaftTo),
       headPoints: geometry.head.map(orient).map((point) => `${point.x},${point.y}`).join(' '),
       strokeWidth: geometry.strokeWidth,
+      dashArray: geometry.dash.length > 0 ? geometry.dash.join(' ') : null,
+      lineCap: geometry.dash.length > 0 ? 'butt' : 'round',
     };
   }
 

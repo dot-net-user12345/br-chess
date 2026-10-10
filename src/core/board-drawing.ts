@@ -28,20 +28,59 @@ export const DRAWING_COLOR_ORDER: readonly DrawingColor[] = [
   'yellow',
 ];
 
+/**
+ * How an arrow's shaft is drawn: `solid` is the full-width line, `dashed` a
+ * thinner broken one for a lighter, secondary mark in the same colors.
+ */
+export type ArrowStyle = 'solid' | 'dashed';
+
+/** The style an arrow has when none is recorded — every arrow drawn before styles existed. */
+export const DEFAULT_ARROW_STYLE: ArrowStyle = 'solid';
+
+/** Each arrow style's name, for the style picker. */
+export const ARROW_STYLES: Readonly<Record<ArrowStyle, { readonly label: string }>> = {
+  solid: { label: 'Solid' },
+  dashed: { label: 'Thin dashed' },
+};
+
+export const ARROW_STYLE_ORDER: readonly ArrowStyle[] = ['solid', 'dashed'];
+
+/**
+ * How a marked square is drawn: `fill` tints the whole square, `cross` lays an
+ * X over it — both in the chosen color.
+ */
+export type SquareMark = 'fill' | 'cross';
+
+/** The mark a square has when none is recorded — every square marked before marks existed. */
+export const DEFAULT_SQUARE_MARK: SquareMark = 'fill';
+
+/** Each square mark's name, for the mark picker. */
+export const SQUARE_MARKS: Readonly<Record<SquareMark, { readonly label: string }>> = {
+  fill: { label: 'Fill' },
+  cross: { label: 'X' },
+};
+
+export const SQUARE_MARK_ORDER: readonly SquareMark[] = ['fill', 'cross'];
+
 /** A user-drawn arrow between two squares, e.g. `{ from: 'e2', to: 'e4' }`. */
 export interface BoardArrow {
   readonly from: string;
   readonly to: string;
   /** Absent for the default purple. */
   readonly color?: DrawingColor;
+  /** Absent for the default solid shaft. */
+  readonly style?: ArrowStyle;
 }
 
-/** What the user has drawn on one move's board: colored squares and arrows. */
+/** What the user has drawn on one move's board: marked squares and arrows. */
 export interface BoardDrawing {
+  /** Every marked square, whether it's tinted or crossed with an X. */
   readonly squares: readonly string[];
   readonly arrows: readonly BoardArrow[];
   /** Each colored square's color, where it isn't the default purple. */
   readonly squareColors?: Readonly<Record<string, DrawingColor>>;
+  /** Each marked square's mark, where it isn't the default fill. */
+  readonly squareMarks?: Readonly<Record<string, SquareMark>>;
 }
 
 export const EMPTY_DRAWING: BoardDrawing = { squares: [], arrows: [] };
@@ -55,50 +94,78 @@ export function squareColor(drawing: BoardDrawing, square: string): DrawingColor
   return drawing.squareColors?.[square] ?? DEFAULT_DRAWING_COLOR;
 }
 
+/** The mark a marked square is drawn with. */
+export function squareMark(drawing: BoardDrawing, square: string): SquareMark {
+  return drawing.squareMarks?.[square] ?? DEFAULT_SQUARE_MARK;
+}
+
 /** The color an arrow is drawn in. */
 export function arrowColor(arrow: BoardArrow): DrawingColor {
   return arrow.color ?? DEFAULT_DRAWING_COLOR;
 }
 
+/** The shaft style an arrow is drawn with. */
+export function arrowStyle(arrow: BoardArrow): ArrowStyle {
+  return arrow.style ?? DEFAULT_ARROW_STYLE;
+}
+
 /**
- * Colors `square` in `color`. Clears it when it's already that color, and
- * recolors it when it's another.
+ * Marks `square` in `color` with `mark`. Clears it when it already carries that
+ * exact mark, and re-marks it when it differs in either color or mark.
  */
 export function toggleSquare(
   drawing: BoardDrawing,
   square: string,
   color: DrawingColor = DEFAULT_DRAWING_COLOR,
+  mark: SquareMark = DEFAULT_SQUARE_MARK,
 ): BoardDrawing {
   const marked = drawing.squares.includes(square);
-  const { [square]: _previous, ...otherColors } = drawing.squareColors ?? {};
-  if (marked && squareColor(drawing, square) === color) {
-    return withSquareColors(
-      { ...drawing, squares: drawing.squares.filter((s) => s !== square) },
-      otherColors,
+  const { [square]: _previousColor, ...otherColors } = drawing.squareColors ?? {};
+  const { [square]: _previousMark, ...otherMarks } = drawing.squareMarks ?? {};
+  if (marked && squareColor(drawing, square) === color && squareMark(drawing, square) === mark) {
+    return withSquareMarks(
+      withSquareColors(
+        { ...drawing, squares: drawing.squares.filter((s) => s !== square) },
+        otherColors,
+      ),
+      otherMarks,
     );
   }
-  return withSquareColors(
-    { ...drawing, squares: marked ? drawing.squares : [...drawing.squares, square] },
-    color === DEFAULT_DRAWING_COLOR ? otherColors : { ...otherColors, [square]: color },
+  // The default color and mark are left out, so a square marked the plain way
+  // keeps the spelling it had before either option existed.
+  return withSquareMarks(
+    withSquareColors(
+      { ...drawing, squares: marked ? drawing.squares : [...drawing.squares, square] },
+      color === DEFAULT_DRAWING_COLOR ? otherColors : { ...otherColors, [square]: color },
+    ),
+    mark === DEFAULT_SQUARE_MARK ? otherMarks : { ...otherMarks, [square]: mark },
   );
 }
 
 /**
- * Draws the arrow in `color`. Removes it when that arrow is already drawn in
- * that color, and recolors it when it's drawn in another.
+ * Draws the arrow in `color` and `style`. Removes it when that arrow is already
+ * drawn exactly that way, and restyles it when it differs in either.
  */
 export function toggleArrow(
   drawing: BoardDrawing,
   from: string,
   to: string,
   color: DrawingColor = DEFAULT_DRAWING_COLOR,
+  style: ArrowStyle = DEFAULT_ARROW_STYLE,
 ): BoardDrawing {
   const existing = drawing.arrows.find((a) => a.from === from && a.to === to);
   const others = drawing.arrows.filter((a) => a !== existing);
-  if (existing && arrowColor(existing) === color) {
+  if (existing && arrowColor(existing) === color && arrowStyle(existing) === style) {
     return { ...drawing, arrows: others };
   }
-  const arrow: BoardArrow = color === DEFAULT_DRAWING_COLOR ? { from, to } : { from, to, color };
+  // Default color and style are left out, so an arrow drawn the plain way keeps
+  // the spelling it had before either option existed.
+  const arrow: BoardArrow = {
+    from,
+    to,
+    ...(color === DEFAULT_DRAWING_COLOR ? {} : { color }),
+    ...(style === DEFAULT_ARROW_STYLE ? {} : { style }),
+  };
   return { ...drawing, arrows: [...others, arrow] };
 }
 
@@ -109,6 +176,15 @@ function withSquareColors(
 ): BoardDrawing {
   const { squareColors: _dropped, ...rest } = drawing;
   return Object.keys(squareColors).length > 0 ? { ...rest, squareColors } : rest;
+}
+
+/** Sets the square-mark map, leaving the field out entirely when it's empty. */
+function withSquareMarks(
+  drawing: BoardDrawing,
+  squareMarks: Record<string, SquareMark>,
+): BoardDrawing {
+  const { squareMarks: _dropped, ...rest } = drawing;
+  return Object.keys(squareMarks).length > 0 ? { ...rest, squareMarks } : rest;
 }
 
 /**
@@ -122,12 +198,17 @@ export function drawingKey(drawing: BoardDrawing | null | undefined): string {
   // Default-colored marks keep their pre-color spelling, so images already
   // rendered for them are still found.
   const suffix = (color: DrawingColor) => (color === DEFAULT_DRAWING_COLOR ? '' : `:${color}`);
+  const styleSuffix = (style: ArrowStyle) => (style === DEFAULT_ARROW_STYLE ? '' : `~${style}`);
+  const markSuffix = (mark: SquareMark) => (mark === DEFAULT_SQUARE_MARK ? '' : `~${mark}`);
   const squares = drawing.squares
-    .map((square) => `${square}${suffix(squareColor(drawing, square))}`)
+    .map(
+      (square) =>
+        `${square}${suffix(squareColor(drawing, square))}${markSuffix(squareMark(drawing, square))}`,
+    )
     .sort()
     .join(',');
   const arrows = drawing.arrows
-    .map((a) => `${a.from}${a.to}${suffix(arrowColor(a))}`)
+    .map((a) => `${a.from}${a.to}${suffix(arrowColor(a))}${styleSuffix(arrowStyle(a))}`)
     .sort()
     .join(',');
   return `${squares}/${arrows}`;

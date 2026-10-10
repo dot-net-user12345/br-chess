@@ -1,3 +1,4 @@
+import { ArrowStyle, DEFAULT_ARROW_STYLE } from './board-drawing';
 import { BoardOrientation, PieceCode } from './chess-models';
 
 /** Maps each FEN piece code to its bundled SVG asset basename. */
@@ -63,12 +64,30 @@ export interface MoveArrow {
   readonly shaftTo: Point;
   readonly head: readonly [Point, Point, Point];
   readonly strokeWidth: number;
+  /**
+   * Dash/gap lengths for the shaft, in board units; empty for an unbroken one.
+   * Scale each entry the same way as the stroke width.
+   */
+  readonly dash: readonly number[];
 }
 
-// Arrow proportions, as fractions of one square.
-const ARROW_HEAD_LENGTH = 0.4;
-const ARROW_HEAD_WIDTH = 0.44;
-const ARROW_STROKE_WIDTH = 0.16;
+// Arrow proportions, as fractions of one square, per shaft style. The dashed
+// arrow is slimmer in every part, so it reads as a lighter, secondary mark
+// beside a solid one of the same color.
+const ARROW_PROPORTIONS: Readonly<
+  Record<
+    ArrowStyle,
+    {
+      readonly headLength: number;
+      readonly headWidth: number;
+      readonly strokeWidth: number;
+      readonly dash: readonly number[];
+    }
+  >
+> = {
+  solid: { headLength: 0.4, headWidth: 0.44, strokeWidth: 0.16, dash: [] },
+  dashed: { headLength: 0.28, headWidth: 0.26, strokeWidth: 0.07, dash: [0.2, 0.13] },
+};
 
 /** Center of an algebraic square (e.g. `e4`) in board units, a1 bottom-left. */
 export function squareCenter(square: string): Point {
@@ -91,7 +110,12 @@ export function flipPoint(point: Point): Point {
  * SVG board and the canvas image renderer so both draw an identical arrow; each
  * caller scales the units to its own pixel/viewBox size.
  */
-export function moveArrowGeometry(from: string, to: string): MoveArrow {
+export function moveArrowGeometry(
+  from: string,
+  to: string,
+  style: ArrowStyle = DEFAULT_ARROW_STYLE,
+): MoveArrow {
+  const { headLength, headWidth, strokeWidth, dash } = ARROW_PROPORTIONS[style];
   const a = squareCenter(from);
   const b = squareCenter(to);
   const angle = Math.atan2(b.y - a.y, b.x - a.x);
@@ -100,19 +124,53 @@ export function moveArrowGeometry(from: string, to: string): MoveArrow {
   return {
     shaftFrom: a,
     // Stop the shaft where the head begins so a round line cap won't poke through it.
-    shaftTo: { x: b.x - ARROW_HEAD_LENGTH * 0.85 * cos, y: b.y - ARROW_HEAD_LENGTH * 0.85 * sin },
+    shaftTo: { x: b.x - headLength * 0.85 * cos, y: b.y - headLength * 0.85 * sin },
     head: [
       b,
       {
-        x: b.x - ARROW_HEAD_LENGTH * cos + (ARROW_HEAD_WIDTH / 2) * sin,
-        y: b.y - ARROW_HEAD_LENGTH * sin - (ARROW_HEAD_WIDTH / 2) * cos,
+        x: b.x - headLength * cos + (headWidth / 2) * sin,
+        y: b.y - headLength * sin - (headWidth / 2) * cos,
       },
       {
-        x: b.x - ARROW_HEAD_LENGTH * cos - (ARROW_HEAD_WIDTH / 2) * sin,
-        y: b.y - ARROW_HEAD_LENGTH * sin + (ARROW_HEAD_WIDTH / 2) * cos,
+        x: b.x - headLength * cos - (headWidth / 2) * sin,
+        y: b.y - headLength * sin + (headWidth / 2) * cos,
       },
     ],
-    strokeWidth: ARROW_STROKE_WIDTH,
+    strokeWidth,
+    dash,
+  };
+}
+
+/** The two strokes of an X over one square, in board units. */
+export interface SquareCross {
+  readonly lines: readonly [readonly [Point, Point], readonly [Point, Point]];
+  readonly strokeWidth: number;
+}
+
+// Cross proportions, as fractions of one square: how far each arm stops short
+// of the square's corner, and how thick the strokes are.
+const CROSS_INSET = 0.22;
+const CROSS_STROKE_WIDTH = 0.11;
+
+/**
+ * The X drawn over a square, in board units. Shared by the live SVG board and
+ * the canvas image renderer so both draw an identical cross.
+ */
+export function squareCrossGeometry(square: string): SquareCross {
+  const { x, y } = squareCenter(square);
+  const reach = 0.5 - CROSS_INSET;
+  return {
+    lines: [
+      [
+        { x: x - reach, y: y - reach },
+        { x: x + reach, y: y + reach },
+      ],
+      [
+        { x: x - reach, y: y + reach },
+        { x: x + reach, y: y - reach },
+      ],
+    ],
+    strokeWidth: CROSS_STROKE_WIDTH,
   };
 }
 

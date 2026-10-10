@@ -4,17 +4,22 @@ import {
   ArrowStyle,
   DEFAULT_ARROW_STYLE,
   DEFAULT_DRAWING_COLOR,
+  DEFAULT_SQUARE_MARK,
   DRAWING_COLORS,
   DrawingColor,
+  SQUARE_MARKS,
+  SquareMark,
 } from '../../core/board-drawing';
 
 const COLOR_KEY = 'br-chess-drawing-color';
 const ARROW_STYLE_KEY = 'br-chess-drawing-arrow-style';
+const SQUARE_MARK_KEY = 'br-chess-drawing-square-mark';
 
 /**
- * How the right mouse button draws on the large board view: the color, and the
- * shaft style of new arrows. Shared app-wide and kept in local storage, so the
- * choices survive closing the dialog and reloading the page.
+ * How the right mouse button draws on the large board view: the color, the
+ * shaft style of new arrows, and the mark a clicked square gets. Shared
+ * app-wide and kept in local storage, so the choices survive closing the
+ * dialog and reloading the page.
  */
 @Injectable({ providedIn: 'root' })
 export class DrawingPreference {
@@ -26,9 +31,14 @@ export class DrawingPreference {
     read(ARROW_STYLE_KEY, ARROW_STYLES, DEFAULT_ARROW_STYLE),
   );
 
+  readonly squareMark = signal<SquareMark>(
+    read(SQUARE_MARK_KEY, SQUARE_MARKS, DEFAULT_SQUARE_MARK),
+  );
+
   constructor() {
     effect(() => store(COLOR_KEY, this.color()));
     effect(() => store(ARROW_STYLE_KEY, this.arrowStyle()));
+    effect(() => store(SQUARE_MARK_KEY, this.squareMark()));
   }
 }
 

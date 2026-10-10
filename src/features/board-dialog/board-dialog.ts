@@ -18,13 +18,17 @@ import { ChessService } from '../../core/chess-service';
 import { BoardOrientation } from '../../core/chess-models';
 import { UploadedImage } from '../../core/workspace-models';
 import {
+  ARROW_STYLE_ORDER,
+  ARROW_STYLES,
   BoardDrawing,
   DRAWING_COLOR_ORDER,
   DRAWING_COLORS,
   EMPTY_DRAWING,
   isEmptyDrawing,
+  SQUARE_MARK_ORDER,
+  SQUARE_MARKS,
 } from '../../core/board-drawing';
-import { DrawingColorPreference } from './drawing-color-preference';
+import { DrawingPreference } from './drawing-preference';
 import { ChessBoard } from '../chess-board/chess-board';
 import { imageFilesIn } from '../../shared/image-drop';
 import { MoveImages } from './move-images';
@@ -177,7 +181,9 @@ export interface BoardDialogData {
             [orientation]="orientation()"
             [drawing]="currentDrawing()"
             [drawable]="canDraw"
-            [drawColor]="drawColor.color()"
+            [drawColor]="drawPref.color()"
+            [drawArrowStyle]="drawPref.arrowStyle()"
+            [drawSquareMark]="drawPref.squareMark()"
             (drawingChange)="onDraw($event)"
           />
         </div>
@@ -214,13 +220,14 @@ export interface BoardDialogData {
                 Drawing
               </h3>
               <p class="board-dialog__drawing-hint">
-                Right-click a square to color it; right-drag between squares to draw an arrow.
+                Right-click a square to mark it; right-drag between squares to draw an arrow.
               </p>
+              <p id="board-dialog-color-label" class="board-dialog__drawing-label">Color</p>
               <mat-radio-group
                 class="board-dialog__colors"
-                aria-label="Drawing color"
-                [value]="drawColor.color()"
-                (change)="drawColor.color.set($event.value)"
+                aria-labelledby="board-dialog-color-label"
+                [value]="drawPref.color()"
+                (change)="drawPref.color.set($event.value)"
               >
                 @for (color of drawingColors; track color) {
                   <mat-radio-button [value]="color" class="board-dialog__color">
@@ -230,6 +237,55 @@ export interface BoardDialogData {
                       aria-hidden="true"
                     ></span>
                     {{ drawingPalette[color].label }}
+                  </mat-radio-button>
+                }
+              </mat-radio-group>
+              <p id="board-dialog-arrow-label" class="board-dialog__drawing-label">Arrow</p>
+              <mat-radio-group
+                class="board-dialog__colors"
+                aria-labelledby="board-dialog-arrow-label"
+                [value]="drawPref.arrowStyle()"
+                (change)="drawPref.arrowStyle.set($event.value)"
+              >
+                @for (style of arrowStyles; track style) {
+                  <mat-radio-button [value]="style" class="board-dialog__color">
+                    <span
+                      class="board-dialog__line"
+                      [class.board-dialog__line--dashed]="style === 'dashed'"
+                      [style.border-top-color]="drawingPalette[drawPref.color()].arrow"
+                      aria-hidden="true"
+                    ></span>
+                    {{ arrowStyleLabels[style].label }}
+                  </mat-radio-button>
+                }
+              </mat-radio-group>
+              <p id="board-dialog-square-label" class="board-dialog__drawing-label">Square</p>
+              <mat-radio-group
+                class="board-dialog__colors"
+                aria-labelledby="board-dialog-square-label"
+                [value]="drawPref.squareMark()"
+                (change)="drawPref.squareMark.set($event.value)"
+              >
+                @for (mark of squareMarks; track mark) {
+                  <mat-radio-button [value]="mark" class="board-dialog__color">
+                    @if (mark === 'cross') {
+                      <svg
+                        class="board-dialog__mark"
+                        viewBox="0 0 10 10"
+                        aria-hidden="true"
+                        [attr.stroke]="drawingPalette[drawPref.color()].arrow"
+                      >
+                        <line x1="1.5" y1="1.5" x2="8.5" y2="8.5" stroke-width="1.6" />
+                        <line x1="1.5" y1="8.5" x2="8.5" y2="1.5" stroke-width="1.6" />
+                      </svg>
+                    } @else {
+                      <span
+                        class="board-dialog__mark board-dialog__mark--fill"
+                        [style.background]="drawingPalette[drawPref.color()].fill"
+                        aria-hidden="true"
+                      ></span>
+                    }
+                    {{ squareMarkLabels[mark].label }}
                   </mat-radio-button>
                 }
               </mat-radio-group>
@@ -356,6 +412,35 @@ export interface BoardDialogData {
       column-gap: 0.25rem;
     }
 
+    /* Preview of a square mark, in whichever color is selected. */
+    .board-dialog__mark {
+      display: inline-block;
+      width: 0.875rem;
+      height: 0.875rem;
+      margin-right: 0.25rem;
+      vertical-align: -0.125rem;
+      stroke-linecap: round;
+    }
+
+    .board-dialog__mark--fill {
+      border: 1px solid var(--mat-sys-outline);
+      border-radius: 0.125rem;
+    }
+
+    /* Preview of an arrow's shaft, in whichever color is selected. */
+    .board-dialog__line {
+      display: inline-block;
+      width: 1.25rem;
+      margin-right: 0.25rem;
+      border-top: 0.1875rem solid currentColor;
+      vertical-align: 0.1875rem;
+    }
+
+    .board-dialog__line--dashed {
+      border-top-width: 0.0625rem;
+      border-top-style: dashed;
+    }
+
     .board-dialog__swatch {
       display: inline-block;
       width: 0.875rem;
@@ -364,6 +449,12 @@ export interface BoardDialogData {
       border-radius: 50%;
       border: 1px solid var(--mat-sys-outline);
       vertical-align: -0.125rem;
+    }
+
+    .board-dialog__drawing-label {
+      margin: 0;
+      font: var(--mat-sys-label-medium);
+      color: var(--mat-sys-on-surface-variant);
     }
 
     .board-dialog__drawing-hint,
@@ -462,10 +553,14 @@ export class BoardDialog {
   /** Whether the opener stores drawings, so the board can be drawn on. */
   protected readonly canDraw = this.data.onDrawingsChange !== undefined;
 
-  /** The color the right mouse button draws in, remembered across dialogs. */
-  protected readonly drawColor = inject(DrawingColorPreference);
+  /** How the right mouse button draws (color and arrow style), remembered across dialogs. */
+  protected readonly drawPref = inject(DrawingPreference);
   protected readonly drawingColors = DRAWING_COLOR_ORDER;
   protected readonly drawingPalette = DRAWING_COLORS;
+  protected readonly arrowStyles = ARROW_STYLE_ORDER;
+  protected readonly arrowStyleLabels = ARROW_STYLES;
+  protected readonly squareMarks = SQUARE_MARK_ORDER;
+  protected readonly squareMarkLabels = SQUARE_MARKS;
 
   /** Every move's drawing as last saved. */
   private readonly savedDrawings = signal<Record<number, BoardDrawing>>({

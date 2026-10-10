@@ -1,11 +1,13 @@
 import {
   arrowColor,
+  arrowStyle,
   drawingKey,
   EMPTY_DRAWING,
   gridIndex,
   isEmptyDrawing,
   squareAt,
   squareColor,
+  squareMark,
   toggleArrow,
   toggleSquare,
 } from './board-drawing';
@@ -79,5 +81,51 @@ describe('board drawing', () => {
     // So images rendered before colors existed keep their key.
     expect(drawingKey(purple)).toBe('e4/g1f3');
     expect(drawingKey(toggleSquare(purple, 'e4', 'green'))).toBe('e4:green/g1f3');
+  });
+
+  it('marks a square with an X, keeping it apart from a tinted one', () => {
+    const crossed = toggleSquare(EMPTY_DRAWING, 'e4', 'red', 'cross');
+    expect(crossed.squares).toEqual(['e4']);
+    expect(squareMark(crossed, 'e4')).toBe('cross');
+    expect(crossed.squareMarks).toEqual({ e4: 'cross' });
+
+    // Same square and color, other mark: re-marked, not cleared.
+    const tinted = toggleSquare(crossed, 'e4', 'red');
+    expect(tinted.squares).toEqual(['e4']);
+    expect(squareMark(tinted, 'e4')).toBe('fill');
+    // No leftover mark map once nothing non-default is marked.
+    expect(tinted.squareMarks).toBeUndefined();
+
+    // Marked again exactly as it is: cleared, maps and all.
+    const cleared = toggleSquare(crossed, 'e4', 'red', 'cross');
+    expect(cleared.squares).toEqual([]);
+    expect(cleared.squareColors).toBeUndefined();
+    expect(cleared.squareMarks).toBeUndefined();
+
+    // An X keys apart from a tint, so each renders its own image.
+    expect(drawingKey(toggleSquare(EMPTY_DRAWING, 'e4', 'purple', 'cross'))).toBe('e4~cross/');
+    expect(drawingKey(toggleSquare(EMPTY_DRAWING, 'e4', 'red', 'cross'))).toBe('e4:red~cross/');
+  });
+
+  it('restyles an arrow between solid and thin dashed, in any color', () => {
+    const dashed = toggleArrow(EMPTY_DRAWING, 'g1', 'f3', 'red', 'dashed');
+    expect(dashed.arrows).toEqual([{ from: 'g1', to: 'f3', color: 'red', style: 'dashed' }]);
+    expect(arrowStyle(dashed.arrows[0])).toBe('dashed');
+
+    // Same squares and color, other style: the one arrow is restyled, not removed.
+    const solid = toggleArrow(dashed, 'g1', 'f3', 'red');
+    expect(solid.arrows).toHaveLength(1);
+    expect(arrowStyle(solid.arrows[0])).toBe('solid');
+    expect(solid.arrows[0].style).toBeUndefined();
+
+    // Drawn again exactly as it is: removed.
+    expect(toggleArrow(solid, 'g1', 'f3', 'red').arrows).toEqual([]);
+    expect(toggleArrow(dashed, 'g1', 'f3', 'red', 'dashed').arrows).toEqual([]);
+
+    // A dashed arrow keys apart from the solid one, so each renders its own image.
+    expect(drawingKey(toggleArrow(EMPTY_DRAWING, 'g1', 'f3', 'purple', 'dashed'))).toBe(
+      '/g1f3~dashed',
+    );
+    expect(drawingKey(solid)).toBe('/g1f3:red');
   });
 });

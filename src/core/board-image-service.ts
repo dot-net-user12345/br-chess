@@ -14,15 +14,19 @@ import {
   MOVE_ARROW_COLOR,
   pieceAssetPath,
   rankLabels,
+  squareCrossGeometry,
 } from './board-assets';
 import { BoardOrientation, GamePosition } from './chess-models';
 import {
   arrowColor,
+  arrowStyle,
+  ArrowStyle,
   BoardDrawing,
   DRAWING_COLORS,
   drawingKey,
   gridIndex,
   squareColor,
+  squareMark,
 } from './board-drawing';
 
 /**
@@ -145,11 +149,12 @@ export class BoardImageService {
     if (!ctx) {
       throw new Error('Could not acquire a 2D canvas context to render the board.');
     }
-    // Fill of each grid cell (row by row, as the viewer sees them) the user colored.
+    // Fill of each grid cell (row by row, as the viewer sees them) the user
+    // tinted; squares marked with an X are crossed after the pieces instead.
     const marked = new Map<number, string>();
     for (const square of drawing?.squares ?? []) {
       const index = gridIndex(square, orientation);
-      if (drawing && index !== null) {
+      if (drawing && index !== null && squareMark(drawing, square) === 'fill') {
         marked.set(index, DRAWING_COLORS[squareColor(drawing, square)].fill);
       }
     }
@@ -172,11 +177,23 @@ export class BoardImageService {
       }
     }
     this.drawCoordinates(ctx, orientation);
+    for (const square of drawing?.squares ?? []) {
+      if (drawing && squareMark(drawing, square) === 'cross') {
+        this.drawCross(ctx, square, DRAWING_COLORS[squareColor(drawing, square)].arrow, black);
+      }
+    }
     if (position.from && position.to) {
       this.drawArrow(ctx, position.from, position.to, highlighted ? DIVERGENT_MOVE_COLOR : MOVE_ARROW_COLOR, black);
     }
     for (const arrow of drawing?.arrows ?? []) {
-      this.drawArrow(ctx, arrow.from, arrow.to, DRAWING_COLORS[arrowColor(arrow)].arrow, black);
+      this.drawArrow(
+        ctx,
+        arrow.from,
+        arrow.to,
+        DRAWING_COLORS[arrowColor(arrow)].arrow,
+        black,
+        arrowStyle(arrow),
+      );
     }
     if (highlighted) {
       this.drawHighlightBorder(ctx);
@@ -222,9 +239,10 @@ export class BoardImageService {
     to: string,
     color: string,
     black: boolean,
+    style?: ArrowStyle,
   ): void {
     // Geometry is in board units (1 unit = 1 square); scale up to pixels.
-    const arrow = moveArrowGeometry(from, to);
+    const arrow = moveArrowGeometry(from, to, style);
     const s = RENDER_SQUARE;
     // From black's side the board is rotated 180°, so mirror every arrow point.
     const at = (point: { x: number; y: number }) => (black ? flipPoint(point) : point);
@@ -236,8 +254,10 @@ export class BoardImageService {
     ctx.strokeStyle = color;
     ctx.fillStyle = color;
     ctx.lineWidth = arrow.strokeWidth * s;
-    ctx.lineCap = 'round';
+    // Dashes keep square ends so they stay distinct, matching the live board.
+    ctx.lineCap = arrow.dash.length > 0 ? 'butt' : 'round';
     ctx.lineJoin = 'round';
+    ctx.setLineDash(arrow.dash.map((length) => length * s));
 
     ctx.beginPath();
     ctx.moveTo(shaftFrom.x * s, shaftFrom.y * s);
@@ -250,6 +270,32 @@ export class BoardImageService {
     ctx.lineTo(head[2].x * s, head[2].y * s);
     ctx.closePath();
     ctx.fill();
+    ctx.restore();
+  }
+
+  /** Lays an X over a square, in board units scaled up to pixels. */
+  private drawCross(
+    ctx: CanvasRenderingContext2D,
+    square: string,
+    color: string,
+    black: boolean,
+  ): void {
+    const cross = squareCrossGeometry(square);
+    const s = RENDER_SQUARE;
+    // From black's side the board is rotated 180°, so mirror every point.
+    const at = (point: { x: number; y: number }) => (black ? flipPoint(point) : point);
+    ctx.save();
+    ctx.strokeStyle = color;
+    ctx.lineWidth = cross.strokeWidth * s;
+    ctx.lineCap = 'round';
+    for (const [from, to] of cross.lines) {
+      const a = at(from);
+      const b = at(to);
+      ctx.beginPath();
+      ctx.moveTo(a.x * s, a.y * s);
+      ctx.lineTo(b.x * s, b.y * s);
+      ctx.stroke();
+    }
     ctx.restore();
   }
 
