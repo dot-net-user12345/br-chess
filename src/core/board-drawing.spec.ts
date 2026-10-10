@@ -107,7 +107,7 @@ describe('board drawing', () => {
     expect(drawingKey(toggleSquare(EMPTY_DRAWING, 'e4', 'red', 'cross'))).toBe('e4:red~cross/');
   });
 
-  it('restyles an arrow between solid and thin dashed, in any color', () => {
+  it('restyles a line between an arrow and a dashed link, in any color', () => {
     const dashed = toggleArrow(EMPTY_DRAWING, 'g1', 'f3', 'red', 'dashed');
     expect(dashed.arrows).toEqual([{ from: 'g1', to: 'f3', color: 'red', style: 'dashed' }]);
     expect(arrowStyle(dashed.arrows[0])).toBe('dashed');
@@ -122,7 +122,7 @@ describe('board drawing', () => {
     expect(toggleArrow(solid, 'g1', 'f3', 'red').arrows).toEqual([]);
     expect(toggleArrow(dashed, 'g1', 'f3', 'red', 'dashed').arrows).toEqual([]);
 
-    // A dashed arrow keys apart from the solid one, so each renders its own image.
+    // A dashed link keys apart from the arrow, so each renders its own image.
     expect(drawingKey(toggleArrow(EMPTY_DRAWING, 'g1', 'f3', 'purple', 'dashed'))).toBe(
       '/g1f3~dashed',
     );

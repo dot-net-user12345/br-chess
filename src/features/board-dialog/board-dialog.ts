@@ -220,7 +220,7 @@ export interface BoardDialogData {
                 Drawing
               </h3>
               <p class="board-dialog__drawing-hint">
-                Right-click a square to mark it; right-drag between squares to draw an arrow.
+                Right-click a square to mark it; right-drag between squares to draw a line.
               </p>
               <p id="board-dialog-color-label" class="board-dialog__drawing-label">Color</p>
               <mat-radio-group
@@ -240,7 +240,7 @@ export interface BoardDialogData {
                   </mat-radio-button>
                 }
               </mat-radio-group>
-              <p id="board-dialog-arrow-label" class="board-dialog__drawing-label">Arrow</p>
+              <p id="board-dialog-arrow-label" class="board-dialog__drawing-label">Line</p>
               <mat-radio-group
                 class="board-dialog__colors"
                 aria-labelledby="board-dialog-arrow-label"
@@ -249,12 +249,25 @@ export interface BoardDialogData {
               >
                 @for (style of arrowStyles; track style) {
                   <mat-radio-button [value]="style" class="board-dialog__color">
-                    <span
+                    <!-- The line as it will be drawn, in whichever color is selected. -->
+                    <svg
                       class="board-dialog__line"
-                      [class.board-dialog__line--dashed]="style === 'dashed'"
-                      [style.border-top-color]="drawingPalette[drawPref.color()].arrow"
+                      viewBox="0 0 24 10"
                       aria-hidden="true"
-                    ></span>
+                      [attr.stroke]="drawingPalette[drawPref.color()].arrow"
+                      [attr.fill]="drawingPalette[drawPref.color()].arrow"
+                    >
+                      @if (style === 'dashed') {
+                        <line x1="4.6" y1="5" x2="19.4" y2="5" stroke-width="1.1" stroke-dasharray="3 2" />
+                        <circle cx="3" cy="5" r="2.4" fill="none" stroke-width="0.9" />
+                        <circle cx="3" cy="5" r="1.1" stroke="none" />
+                        <circle cx="21" cy="5" r="2.4" fill="none" stroke-width="0.9" />
+                        <circle cx="21" cy="5" r="1.1" stroke="none" />
+                      } @else {
+                        <line x1="2" y1="5" x2="15.6" y2="5" stroke-width="2.6" stroke-linecap="round" />
+                        <polygon points="22,5 15,1.6 15,8.4" stroke="none" />
+                      }
+                    </svg>
                     {{ arrowStyleLabels[style].label }}
                   </mat-radio-button>
                 }
@@ -427,18 +440,13 @@ export interface BoardDialogData {
       border-radius: 0.125rem;
     }
 
-    /* Preview of an arrow's shaft, in whichever color is selected. */
+    /* Preview of a line, drawn the way the board draws it. */
     .board-dialog__line {
       display: inline-block;
-      width: 1.25rem;
+      width: 1.75rem;
+      height: 0.875rem;
       margin-right: 0.25rem;
-      border-top: 0.1875rem solid currentColor;
-      vertical-align: 0.1875rem;
-    }
-
-    .board-dialog__line--dashed {
-      border-top-width: 0.0625rem;
-      border-top-style: dashed;
+      vertical-align: -0.125rem;
     }
 
     .board-dialog__swatch {

@@ -29,18 +29,19 @@ export const DRAWING_COLOR_ORDER: readonly DrawingColor[] = [
 ];
 
 /**
- * How an arrow's shaft is drawn: `solid` is the full-width line, `dashed` a
- * thinner broken one for a lighter, secondary mark in the same colors.
+ * How a line between two squares is drawn: `solid` is the full-width arrow,
+ * `dashed` a thinner broken line with no head, ringed at both ends instead —
+ * a lighter, secondary mark that links two squares without pointing either way.
  */
 export type ArrowStyle = 'solid' | 'dashed';
 
-/** The style an arrow has when none is recorded — every arrow drawn before styles existed. */
+/** The style a line has when none is recorded — every arrow drawn before styles existed. */
 export const DEFAULT_ARROW_STYLE: ArrowStyle = 'solid';
 
-/** Each arrow style's name, for the style picker. */
+/** Each line style's name, for the style picker. */
 export const ARROW_STYLES: Readonly<Record<ArrowStyle, { readonly label: string }>> = {
-  solid: { label: 'Solid' },
-  dashed: { label: 'Thin dashed' },
+  solid: { label: 'Arrow' },
+  dashed: { label: 'Dashed link' },
 };
 
 export const ARROW_STYLE_ORDER: readonly ArrowStyle[] = ['solid', 'dashed'];

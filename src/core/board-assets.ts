@@ -58,23 +58,39 @@ export interface Point {
   readonly y: number;
 }
 
-/** Move-arrow geometry, expressed in board units (1 unit = 1 square). */
+/**
+ * A radio-button end marker — an outer ring with a filled dot inside it — that
+ * caps a line in place of an arrowhead. Sizes in board units.
+ */
+export interface LineMarker {
+  readonly ringRadius: number;
+  readonly ringWidth: number;
+  readonly dotRadius: number;
+}
+
+/** Drawn-line geometry, expressed in board units (1 unit = 1 square). */
 export interface MoveArrow {
   readonly shaftFrom: Point;
   readonly shaftTo: Point;
-  readonly head: readonly [Point, Point, Point];
+  /** The arrowhead's three corners; empty when the line has no head. */
+  readonly head: readonly Point[];
   readonly strokeWidth: number;
   /**
    * Dash/gap lengths for the shaft, in board units; empty for an unbroken one.
    * Scale each entry the same way as the stroke width.
    */
   readonly dash: readonly number[];
+  /** Points to cap with {@link marker}; empty when the line ends in a head. */
+  readonly markers: readonly Point[];
+  /** How each end marker is drawn; null for a line that has none. */
+  readonly marker: LineMarker | null;
 }
 
-// Arrow proportions, as fractions of one square, per shaft style. The dashed
-// arrow is slimmer in every part, so it reads as a lighter, secondary mark
-// beside a solid one of the same color.
-const ARROW_PROPORTIONS: Readonly<
+// Line proportions, as fractions of one square, per style. The solid line is an
+// arrow: a thick shaft into a head. The dashed one is slimmer and headless,
+// ringed at both ends instead, so it links two squares without pointing either
+// way and reads as a lighter, secondary mark beside an arrow of the same color.
+const LINE_PROPORTIONS: Readonly<
   Record<
     ArrowStyle,
     {
@@ -82,11 +98,18 @@ const ARROW_PROPORTIONS: Readonly<
       readonly headWidth: number;
       readonly strokeWidth: number;
       readonly dash: readonly number[];
+      readonly marker: LineMarker | null;
     }
   >
 > = {
-  solid: { headLength: 0.4, headWidth: 0.44, strokeWidth: 0.16, dash: [] },
-  dashed: { headLength: 0.28, headWidth: 0.26, strokeWidth: 0.07, dash: [0.2, 0.13] },
+  solid: { headLength: 0.4, headWidth: 0.44, strokeWidth: 0.16, dash: [], marker: null },
+  dashed: {
+    headLength: 0,
+    headWidth: 0,
+    strokeWidth: 0.07,
+    dash: [0.2, 0.13],
+    marker: { ringRadius: 0.13, ringWidth: 0.045, dotRadius: 0.055 },
+  },
 };
 
 /** Center of an algebraic square (e.g. `e4`) in board units, a1 bottom-left. */
@@ -115,12 +138,26 @@ export function moveArrowGeometry(
   to: string,
   style: ArrowStyle = DEFAULT_ARROW_STYLE,
 ): MoveArrow {
-  const { headLength, headWidth, strokeWidth, dash } = ARROW_PROPORTIONS[style];
+  const { headLength, headWidth, strokeWidth, dash, marker } = LINE_PROPORTIONS[style];
   const a = squareCenter(from);
   const b = squareCenter(to);
   const angle = Math.atan2(b.y - a.y, b.x - a.x);
   const cos = Math.cos(angle);
   const sin = Math.sin(angle);
+  if (marker) {
+    // Headless: the line runs from marker to marker, stopping clear of both
+    // rings so the dashes never run into them.
+    const gap = marker.ringRadius + marker.ringWidth / 2 + strokeWidth;
+    return {
+      shaftFrom: { x: a.x + gap * cos, y: a.y + gap * sin },
+      shaftTo: { x: b.x - gap * cos, y: b.y - gap * sin },
+      head: [],
+      strokeWidth,
+      dash,
+      markers: [a, b],
+      marker,
+    };
+  }
   return {
     shaftFrom: a,
     // Stop the shaft where the head begins so a round line cap won't poke through it.
@@ -138,6 +175,8 @@ export function moveArrowGeometry(
     ],
     strokeWidth,
     dash,
+    markers: [],
+    marker: null,
   };
 }
 

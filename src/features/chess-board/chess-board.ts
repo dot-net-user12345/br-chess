@@ -56,12 +56,18 @@ interface RenderedSquare {
 interface RenderedArrow {
   readonly shaftFrom: { readonly x: number; readonly y: number };
   readonly shaftTo: { readonly x: number; readonly y: number };
+  /** '' when the line is headless and ringed at both ends instead. */
   readonly headPoints: string;
   readonly strokeWidth: number;
   /** `stroke-dasharray` for a broken shaft; null when the shaft is unbroken. */
   readonly dashArray: string | null;
   /** Dashes keep square ends so they stay distinct; a solid shaft is rounded. */
   readonly lineCap: 'round' | 'butt';
+  /** Centers of the ringed end markers; empty for an arrow. */
+  readonly markers: readonly { readonly cx: number; readonly cy: number }[];
+  readonly ringRadius: number;
+  readonly ringWidth: number;
+  readonly dotRadius: number;
 }
 
 /** A user-drawn arrow, ready to render in its own color. */
@@ -94,9 +100,10 @@ const PIECE_NAMES: Record<string, string> = {
  * Renders a single chess position (from a FEN) as an 8x8 grid of piece images,
  * labeled with its rank and file coordinates, with an optional move arrow from
  * the `from` square to the `to` square, and
- * any user drawing (marked squares and arrows) laid over it. When `drawable`,
+ * any user drawing (marked squares and lines) laid over it. When `drawable`,
  * right-clicking a square marks it — tinted or crossed with an X — and
- * right-dragging draws an arrow.
+ * right-dragging draws a line between two squares, either an arrow or a
+ * headless dashed link ringed at both ends.
  */
 @Component({
   selector: 'app-chess-board',
@@ -175,7 +182,26 @@ const PIECE_NAMES: Record<string, string> = {
             [attr.stroke-dasharray]="drawn.dashArray"
             [attr.stroke-linecap]="drawn.lineCap"
           />
-          <polygon [attr.points]="drawn.headPoints" [attr.fill]="drawn.color" />
+          @if (drawn.headPoints) {
+            <polygon [attr.points]="drawn.headPoints" [attr.fill]="drawn.color" />
+          }
+          <!-- Headless lines end in a ring with a dot inside it, at both ends. -->
+          @for (marker of drawn.markers; track $index) {
+            <circle
+              [attr.cx]="marker.cx"
+              [attr.cy]="marker.cy"
+              [attr.r]="drawn.ringRadius"
+              fill="none"
+              [attr.stroke]="drawn.color"
+              [attr.stroke-width]="drawn.ringWidth"
+            />
+            <circle
+              [attr.cx]="marker.cx"
+              [attr.cy]="marker.cy"
+              [attr.r]="drawn.dotRadius"
+              [attr.fill]="drawn.color"
+            />
+          }
         }
       </svg>
     }
@@ -399,6 +425,10 @@ export class ChessBoard {
       strokeWidth: geometry.strokeWidth,
       dashArray: geometry.dash.length > 0 ? geometry.dash.join(' ') : null,
       lineCap: geometry.dash.length > 0 ? 'butt' : 'round',
+      markers: geometry.markers.map(orient).map((point) => ({ cx: point.x, cy: point.y })),
+      ringRadius: geometry.marker?.ringRadius ?? 0,
+      ringWidth: geometry.marker?.ringWidth ?? 0,
+      dotRadius: geometry.marker?.dotRadius ?? 0,
     };
   }
 

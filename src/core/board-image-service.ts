@@ -102,8 +102,9 @@ export class BoardImageService {
       // Only appended when something is drawn, so plain renders keep their keys.
       (drawn ? `|draw:${drawn}` : '') +
       // Bumped whenever the render itself changes, so already-uploaded images at
-      // the old appearance are re-rendered instead of reused.
-      '|v3-coords';
+      // the old appearance are re-rendered instead of reused. v4: the dashed
+      // line lost its arrowhead for a ringed point at each end.
+      '|v4-line-ends';
     const existing = this.urlByKey.get(key);
     if (existing) {
       return existing;
@@ -232,7 +233,10 @@ export class BoardImageService {
     ctx.restore();
   }
 
-  /** Draws a colored arrow with a triangular head from the `from` to the `to` square. */
+  /**
+   * Draws a colored line between two squares: an arrow with a triangular head,
+   * or, for the dashed style, a headless line ringed at both ends.
+   */
   private drawArrow(
     ctx: CanvasRenderingContext2D,
     from: string,
@@ -264,12 +268,29 @@ export class BoardImageService {
     ctx.lineTo(shaftTo.x * s, shaftTo.y * s);
     ctx.stroke();
 
-    ctx.beginPath();
-    ctx.moveTo(head[0].x * s, head[0].y * s);
-    ctx.lineTo(head[1].x * s, head[1].y * s);
-    ctx.lineTo(head[2].x * s, head[2].y * s);
-    ctx.closePath();
-    ctx.fill();
+    if (head.length === 3) {
+      ctx.beginPath();
+      ctx.moveTo(head[0].x * s, head[0].y * s);
+      ctx.lineTo(head[1].x * s, head[1].y * s);
+      ctx.lineTo(head[2].x * s, head[2].y * s);
+      ctx.closePath();
+      ctx.fill();
+    }
+    // A headless line ends in a ring with a dot inside it, at both ends. The
+    // rings are solid whatever the shaft does, so the dash pattern comes off.
+    if (arrow.marker) {
+      const { ringRadius, ringWidth, dotRadius } = arrow.marker;
+      ctx.setLineDash([]);
+      ctx.lineWidth = ringWidth * s;
+      for (const point of arrow.markers.map(at)) {
+        ctx.beginPath();
+        ctx.arc(point.x * s, point.y * s, ringRadius * s, 0, 2 * Math.PI);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.arc(point.x * s, point.y * s, dotRadius * s, 0, 2 * Math.PI);
+        ctx.fill();
+      }
+    }
     ctx.restore();
   }
 
