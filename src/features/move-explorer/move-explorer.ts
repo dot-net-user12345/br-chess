@@ -27,6 +27,8 @@ import { BoardOrientation, GamePosition, PieceCode } from '../../core/chess-mode
 import { ChessService } from '../../core/chess-service';
 import { findMatchingSpan, MoveQuery, parseMoveQuery } from '../../core/line-search';
 import { analyzeMoves, SelectedMove } from '../../core/move-analysis';
+import { sharedPlacements } from '../../core/shared-placements';
+import { EMPTY_DRAWING, toggleSquare } from '../../core/board-drawing';
 import { BoardDrawing, UploadedImage } from '../../core/workspace-models';
 import { BoardDialog, BoardDialogTile } from '../board-dialog/board-dialog';
 import { ChessBoard } from '../chess-board/chess-board';
@@ -384,6 +386,65 @@ export class MoveExplorer {
     const summary = `Showing ${shown} of ${total} ${total === 1 ? 'line' : 'lines'}.`;
     return [...problems, summary].join(' ');
   });
+
+  /**
+   * Shared-position tool: one move, named by its number, its SAN and the side
+   * that plays it. Studies what the lines playing it have in common.
+   */
+  protected readonly sharedNumberControl = new FormControl('', { nonNullable: true });
+  protected readonly sharedMoveControl = new FormControl('', { nonNullable: true });
+  protected readonly sharedColorControl = new FormControl<'white' | 'black'>('white', {
+    nonNullable: true,
+  });
+  private readonly sharedNumber = toSignal(this.sharedNumberControl.valueChanges, {
+    initialValue: '',
+  });
+  private readonly sharedMove = toSignal(this.sharedMoveControl.valueChanges, { initialValue: '' });
+  private readonly sharedColor = toSignal(this.sharedColorControl.valueChanges, {
+    initialValue: 'white' as const,
+  });
+
+  /** Whether anything is typed into the tool, which is what its Clear button keys off. */
+  protected readonly sharedFilled = computed(
+    () => this.sharedNumber().trim().length > 0 || this.sharedMove().trim().length > 0,
+  );
+
+  /** The move being studied, or null until the number and the move are both valid. */
+  private readonly sharedQuery = computed(() => {
+    const moveNumber = Number(this.sharedNumber().trim());
+    const san = this.sharedMove().trim();
+    if (!Number.isInteger(moveNumber) || moveNumber < 1 || san.length === 0) {
+      return null;
+    }
+    return { moveNumber, san, color: this.sharedColor() };
+  });
+
+  /**
+   * What the lines playing that move share and what is theirs alone, recomputed
+   * as the inputs change. Null while the tool has nothing valid to work on.
+   */
+  protected readonly shared = computed(() => {
+    const query = this.sharedQuery();
+    return query ? sharedPlacements(query, this.lines()) : null;
+  });
+
+  /** The studied move's board, with every square unique to those lines marked. */
+  protected readonly sharedDrawing = computed<BoardDrawing | null>(() => {
+    const result = this.shared();
+    if (!result || result.unique.length === 0) {
+      return null;
+    }
+    return result.unique.reduce(
+      (drawing, placement) => toggleSquare(drawing, placement.square, 'green'),
+      EMPTY_DRAWING,
+    );
+  });
+
+  protected clearShared(): void {
+    this.sharedNumberControl.setValue('');
+    this.sharedMoveControl.setValue('');
+    this.sharedColorControl.setValue('white');
+  }
 
   /** The pinned-board strip, scrolled to keep a freshly pinned board in view. */
   private readonly strip = viewChild<ElementRef<HTMLElement>>('strip');

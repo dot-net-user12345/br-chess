@@ -1,3 +1,4 @@
+import { FILES, PIECE_NAMES, pieceName, placements } from './board-position';
 import { GamePosition, PieceCode } from './chess-models';
 
 /** A line as the analyzer sees it: its name and every position from the start. */
@@ -64,7 +65,6 @@ const POSITION_CLAUSE_LIMIT = 2;
 /** Most plies of a shared opening to spell out before trailing off. */
 const OPENING_PLY_LIMIT = 8;
 
-const FILES = 'abcdefgh';
 const RANK_NAMES = ['1st', '2nd', '3rd', '4th', '5th', '6th', '7th', '8th'];
 
 /** Where each piece starts, so a piece that has not moved can be passed over. */
@@ -80,15 +80,6 @@ const INITIAL_SQUARES: ReadonlyMap<string, PieceCode> = new Map([
     piece as PieceCode,
   ]),
 ]);
-
-const PIECE_NAMES: Readonly<Record<string, string>> = {
-  K: 'king',
-  Q: 'queen',
-  R: 'rook',
-  B: 'bishop',
-  N: 'knight',
-  P: 'pawn',
-};
 
 /**
  * What a set of selected moves have in common, as a sentence or two.
@@ -445,12 +436,6 @@ function pieceOf(san: string): string {
   return PIECE_NAMES[san[0]] ?? 'pawn';
 }
 
-/** `black pawn` — a FEN letter spelled out with its color. */
-function pieceName(piece: PieceCode): string {
-  const white = piece === piece.toUpperCase();
-  return `${white ? 'white' : 'black'} ${PIECE_NAMES[piece.toUpperCase()]}`;
-}
-
 function article(noun: string): string {
   return `${/^[aeiou]/.test(noun) ? 'an' : 'a'} ${noun}`;
 }
@@ -459,23 +444,3 @@ function titleCase(text: string | null): string {
   return text ? text[0].toUpperCase() + text.slice(1) : '';
 }
 
-/** Every occupied square of a FEN's board, as `e4` paired with its piece letter. */
-function placements(fen: string): ReadonlyMap<string, PieceCode> {
-  const squares = new Map<string, PieceCode>();
-  fen
-    .split(' ', 1)[0]
-    .split('/')
-    .forEach((rank, index) => {
-      let file = 0;
-      for (const char of rank) {
-        const empty = Number(char);
-        if (Number.isInteger(empty)) {
-          file += empty;
-        } else {
-          squares.set(`${FILES[file]}${8 - index}`, char as PieceCode);
-          file++;
-        }
-      }
-    });
-  return squares;
-}

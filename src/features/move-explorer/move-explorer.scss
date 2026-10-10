@@ -11,15 +11,19 @@
 .explorer {
   // Tall enough for the compact filter fields.
   --bar-height: 3.5rem;
-  // Below the two filter bars, the pinned strip keeps 27% of the remaining
+  // Below the three filter bars, the pinned strip keeps 27% of the remaining
   // height and the move columns take whatever is left — which is about 70%,
-  // less the pattern summary's row whenever that is on show.
-  --content-height: calc(100% - 2 * var(--bar-height));
+  // less the shared-position and pattern rows whenever those are on show.
+  --content-height: calc(100% - 3 * var(--bar-height));
   height: 100%;
   display: grid;
+  // Three bars auto-place into the first three rows; everything after them
+  // takes its row explicitly, so the rows that come and go can't shift it.
   grid-template-rows:
     var(--bar-height)
     var(--bar-height)
+    var(--bar-height)
+    auto
     minmax(0, 1fr)
     auto
     calc(var(--content-height) * 0.27);
@@ -75,6 +79,11 @@
       flex-basis: 6rem;
       min-width: 5rem;
     }
+
+    &--number {
+      flex-basis: 7rem;
+      min-width: 6rem;
+    }
   }
 
   &__filter-icon {
@@ -84,6 +93,7 @@
   // One scroller for every column: sideways past the lines, down through a long
   // line, with all columns scrolling together so move numbers stay aligned.
   &__lines {
+    grid-row: 5;
     display: flex;
     align-items: flex-start;
     gap: 0.75rem;
@@ -93,7 +103,7 @@
 
   &__strip {
     // Pinned to its own row, so it stays put whether or not the summary shows.
-    grid-row: 5;
+    grid-row: 7;
     // The boards are sized by this section's height, so it scrolls sideways only.
     overflow-x: auto;
     overflow-y: hidden;
@@ -117,7 +127,7 @@
 
   // The pattern summary for the pinned moves, with its dismiss button beside it.
   &__analysis {
-    grid-row: 4;
+    grid-row: 6;
     display: flex;
     gap: 0.5rem;
     padding: 0.75rem;
@@ -137,6 +147,75 @@
   &__analysis-text {
     flex: 1;
     margin: 0;
+  }
+}
+
+// The shared-position result: the pieces only the matching lines have in place.
+.shared {
+  grid-row: 4;
+  // Never more than a third of the explorer, so the columns keep their room.
+  max-height: 33%;
+  overflow-y: auto;
+  padding: 0.75rem;
+  border-radius: var(--mat-sys-corner-medium);
+  background: var(--mat-sys-surface-container);
+
+  &__summary {
+    margin: 0;
+    font: var(--mat-sys-title-small);
+  }
+
+  &__body {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    margin-top: 0.5rem;
+  }
+
+  &__text {
+    flex: 1 1 auto;
+  }
+
+  &__none {
+    margin: 0;
+    font: var(--mat-sys-body-medium);
+  }
+
+  &__label,
+  &__none,
+  &__preview-caption {
+    color: var(--mat-sys-on-surface-variant);
+  }
+
+  &__label {
+    margin: 0.5rem 0 0.125rem;
+    font: var(--mat-sys-label-medium);
+
+    &:first-child {
+      margin-top: 0;
+    }
+  }
+
+  &__list {
+    margin: 0;
+    padding-left: 1.25rem;
+    font: var(--mat-sys-body-medium);
+
+    // The lines are context for the result above them, not the result itself.
+    &--lines {
+      color: var(--mat-sys-on-surface-variant);
+    }
+  }
+
+  // Small enough to sit beside the list without crowding it out.
+  &__preview {
+    flex: 0 0 11rem;
+    margin: 0;
+  }
+
+  &__preview-caption {
+    margin-top: 0.25rem;
+    font: var(--mat-sys-body-small);
   }
 }
 

@@ -121,6 +121,102 @@
     </button>
   </div>
 
+  <!-- Shared position: what the lines playing one move have that no other line has. -->
+  <div class="explorer__bar explorer__bar--position" role="group" aria-labelledby="explorer-shared-label">
+    <span id="explorer-shared-label" class="explorer__bar-label">Shared position</span>
+    <mat-form-field class="explorer__filter explorer__filter--number" appearance="outline" subscriptSizing="dynamic">
+      <mat-label>Move #</mat-label>
+      <input
+        matInput
+        type="number"
+        min="1"
+        step="1"
+        autocomplete="off"
+        aria-describedby="explorer-shared-status"
+        [formControl]="sharedNumberControl"
+        (keydown.escape)="clearShared()"
+      />
+    </mat-form-field>
+    <mat-form-field class="explorer__filter explorer__filter--square" appearance="outline" subscriptSizing="dynamic">
+      <mat-label>Move</mat-label>
+      <input
+        matInput
+        type="text"
+        autocomplete="off"
+        spellcheck="false"
+        aria-describedby="explorer-shared-status"
+        [formControl]="sharedMoveControl"
+        (keydown.escape)="clearShared()"
+      />
+    </mat-form-field>
+    <mat-form-field class="explorer__filter explorer__filter--select" appearance="outline" subscriptSizing="dynamic">
+      <mat-label>Color</mat-label>
+      <mat-select [formControl]="sharedColorControl" aria-describedby="explorer-shared-status">
+        <mat-option value="white">White</mat-option>
+        <mat-option value="black">Black</mat-option>
+      </mat-select>
+    </mat-form-field>
+    <button matButton type="button" (click)="clearShared()" [disabled]="!sharedFilled()">
+      <mat-icon>close</mat-icon>
+      Clear
+    </button>
+  </div>
+
+  <!-- The tool's result: the pieces only these lines have in place at that move. -->
+  <!-- Always in the document, so the inputs' description target exists and the
+       live region is already there when a result lands in it. -->
+  <section
+    class="shared"
+    id="explorer-shared-status"
+    aria-labelledby="explorer-shared-heading"
+    aria-live="polite"
+    [hidden]="!shared()"
+  >
+    @if (shared(); as result) {
+      <h3 id="explorer-shared-heading" class="shared__summary">{{ result.summary }}</h3>
+      @if (result.matching.length > 0) {
+        <div class="shared__body">
+          <div class="shared__text">
+            @if (result.unique.length > 0) {
+              <p class="shared__label">Unique to these lines</p>
+              <ul class="shared__list">
+                @for (placement of result.unique; track placement.square) {
+                  <li class="shared__item">{{ placement.text }}</li>
+                }
+              </ul>
+            } @else {
+              <p class="shared__none">
+                Nothing in that position belongs to these lines alone — every piece they share
+                stands on the same square in some other line at that point too.
+              </p>
+            }
+            <p class="shared__label">
+              {{ result.matching.length === 1 ? 'Line' : 'Lines' }} playing {{ result.label }}
+            </p>
+            <ul class="shared__list shared__list--lines">
+              @for (line of result.matching; track $index) {
+                <li class="shared__item">{{ line }}</li>
+              }
+            </ul>
+          </div>
+          @if (sharedDrawing(); as drawing) {
+            <figure class="shared__preview">
+              <app-chess-board
+                [fen]="result.fen"
+                [caption]="'Position after ' + result.label + ', with the squares unique to these lines marked'"
+                [orientation]="orientation()"
+                [drawing]="drawing"
+              />
+              <figcaption class="shared__preview-caption">
+                After {{ result.label }}, in {{ result.matching[0] }}
+              </figcaption>
+            </figure>
+          }
+        </div>
+      }
+    }
+  </section>
+
   <!-- Scrolls on both axes: sideways past the line columns, down through a long line. -->
   <div class="explorer__lines">
     @if (columns().length === 0) {

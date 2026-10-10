@@ -167,6 +167,69 @@ describe('MoveExplorer', () => {
     expect(explorer.filterStatus()).toContain('Move filter: not a move yet.');
   });
 
+  it('reports what only the lines playing one move have in place', () => {
+    TestBed.configureTestingModule({
+      imports: [MoveExplorer],
+      providers: [provideNoopAnimations()],
+    });
+    const chess = TestBed.inject(ChessService);
+    const line = (id: string, pgn: string): MoveExplorerLine => ({
+      id,
+      label: id,
+      pgn,
+      positions: chess.parsePgn(pgn).positions,
+      captions: {},
+      focusPlies: [],
+      moveImages: {},
+      drawings: {},
+    });
+    const fixture = TestBed.createComponent(MoveExplorer);
+    fixture.componentRef.setInput('lines', [
+      line('A', '1. e4 e5 2. d4 d5 3. Nf3 Nc6'),
+      line('B', '1. e4 e5 2. d4 d6 3. Nf3 Nc6'),
+      line('C', '1. e4 e5 2. d4 d5 3. Bc4 Nc6'),
+    ]);
+    fixture.detectChanges();
+    const explorer = fixture.componentInstance as unknown as {
+      sharedNumberControl: { setValue(v: string): void };
+      sharedMoveControl: { setValue(v: string): void };
+      sharedColorControl: { setValue(v: 'white' | 'black'): void };
+      shared(): { label: string; matching: readonly string[] } | null;
+      sharedDrawing(): { squares: readonly string[] } | null;
+      clearShared(): void;
+    };
+    const panel = () => fixture.nativeElement.querySelector('.shared') as HTMLElement;
+
+    // Nothing to study yet: the panel is in the document but hidden.
+    expect(panel().hidden).toBe(true);
+
+    explorer.sharedNumberControl.setValue('3');
+    explorer.sharedMoveControl.setValue('nf3');
+    explorer.sharedColorControl.setValue('white');
+    fixture.detectChanges();
+
+    expect(panel().hidden).toBe(false);
+    expect(explorer.shared()?.label).toBe('3. Nf3');
+    expect(explorer.shared()?.matching).toEqual(['A', 'B']);
+    const listed = [...panel().querySelectorAll('.shared__list')[0].children].map((item) =>
+      item.textContent?.trim(),
+    );
+    expect(listed).toEqual(['White bishop on f1', 'White knight on f3']);
+    // Those squares are marked on the preview board beside the list.
+    expect(explorer.sharedDrawing()?.squares).toEqual(['f1', 'f3']);
+    expect(panel().querySelector('app-chess-board')).not.toBeNull();
+
+    // A move no line plays says so, and nothing is marked.
+    explorer.sharedMoveControl.setValue('Qh5');
+    fixture.detectChanges();
+    expect(panel().textContent).toContain('No line plays 3. Qh5.');
+    expect(explorer.sharedDrawing()).toBeNull();
+
+    explorer.clearShared();
+    fixture.detectChanges();
+    expect(panel().hidden).toBe(true);
+  });
+
   it('filters to the lines reaching a board with a given piece on a given square', () => {
     TestBed.configureTestingModule({
       imports: [MoveExplorer],

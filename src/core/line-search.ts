@@ -134,6 +134,15 @@ function matchesAt(positions: readonly GamePosition[], query: MoveQuery, start: 
 }
 
 /**
+ * Whether a line's move is the one the user typed, as forgivingly as the
+ * search field reads it: `na6` is `Na6`, and check and annotation marks on
+ * either side are ignored.
+ */
+export function isSameMove(typed: string, san: string): boolean {
+  return new Set(sanCandidates(typed)).has(bareSan(san));
+}
+
+/**
  * Reduces pasted PGN to bare move text: headers, comments, variations, glyphs
  * and result tokens all go, leaving single-spaced moves and move numbers.
  */
