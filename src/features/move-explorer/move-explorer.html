@@ -149,13 +149,18 @@
         (keydown.escape)="clearShared()"
       />
     </mat-form-field>
-    <mat-form-field class="explorer__filter explorer__filter--select" appearance="outline" subscriptSizing="dynamic">
-      <mat-label>Color</mat-label>
-      <mat-select [formControl]="sharedColorControl" aria-describedby="explorer-shared-status">
-        <mat-option value="white">White</mat-option>
-        <mat-option value="black">Black</mat-option>
-      </mat-select>
-    </mat-form-field>
+    <!-- A binary choice, so a toggle rather than a dropdown: no overlay to
+         mis-position, and the side in force is always on screen. -->
+    <mat-button-toggle-group
+      class="explorer__colors"
+      [formControl]="sharedColorControl"
+      aria-label="Side that plays the move"
+      aria-describedby="explorer-shared-status"
+      hideSingleSelectionIndicator
+    >
+      <mat-button-toggle value="white">White</mat-button-toggle>
+      <mat-button-toggle value="black">Black</mat-button-toggle>
+    </mat-button-toggle-group>
     <button matButton type="button" (click)="clearShared()" [disabled]="!sharedFilled()">
       <mat-icon>close</mat-icon>
       Clear
@@ -172,8 +177,10 @@
     aria-live="polite"
     [hidden]="!shared()"
   >
+    <!-- The heading is always rendered, so the section's aria-labelledby never
+         points at a missing element. -->
+    <h3 id="explorer-shared-heading" class="shared__summary">{{ shared()?.summary }}</h3>
     @if (shared(); as result) {
-      <h3 id="explorer-shared-heading" class="shared__summary">{{ result.summary }}</h3>
       @if (result.matching.length > 0) {
         <div class="shared__body">
           <div class="shared__text">

@@ -15,6 +15,7 @@ import {
 import { toSignal } from '@angular/core/rxjs-interop';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
+import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatDialog } from '@angular/material/dialog';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -119,6 +120,7 @@ interface PinnedGroup {
   imports: [
     ReactiveFormsModule,
     MatButtonModule,
+    MatButtonToggleModule,
     MatDividerModule,
     MatFormFieldModule,
     MatIconModule,

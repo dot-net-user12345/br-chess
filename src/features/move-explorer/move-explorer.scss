@@ -80,10 +80,16 @@
       min-width: 5rem;
     }
 
+    // A move number is one or two digits, like a square.
     &--number {
       flex-basis: 7rem;
-      min-width: 6rem;
     }
+  }
+
+  // The White/Black toggle sits in the bar beside the fields; its default
+  // height already fits the bar, so it only needs to keep its width.
+  &__colors {
+    flex: 0 0 auto;
   }
 
   &__filter-icon {

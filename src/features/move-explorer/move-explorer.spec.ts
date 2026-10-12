@@ -193,7 +193,7 @@ describe('MoveExplorer', () => {
     const explorer = fixture.componentInstance as unknown as {
       sharedNumberControl: { setValue(v: string): void };
       sharedMoveControl: { setValue(v: string): void };
-      sharedColorControl: { setValue(v: 'white' | 'black'): void };
+      sharedColorControl: { setValue(v: 'white' | 'black'): void; value: string };
       shared(): { label: string; matching: readonly string[] } | null;
       sharedDrawing(): { squares: readonly string[] } | null;
       clearShared(): void;
@@ -219,7 +219,20 @@ describe('MoveExplorer', () => {
     expect(explorer.sharedDrawing()?.squares).toEqual(['f1', 'f3']);
     expect(panel().querySelector('app-chess-board')).not.toBeNull();
 
+    // Clicking Black switches the side the tool studies: 3... Nc6, which all
+    // three lines play, rather than White's third move.
+    explorer.sharedMoveControl.setValue('Nc6');
+    const black = [...fixture.nativeElement.querySelectorAll('mat-button-toggle')]
+      .find((toggle: HTMLElement) => toggle.textContent?.trim() === 'Black')
+      ?.querySelector('button') as HTMLElement;
+    black.click();
+    fixture.detectChanges();
+
+    expect(explorer.shared()?.label).toBe('3… Nc6');
+    expect(explorer.shared()?.matching).toEqual(['A', 'B', 'C']);
+
     // A move no line plays says so, and nothing is marked.
+    explorer.sharedColorControl.setValue('white');
     explorer.sharedMoveControl.setValue('Qh5');
     fixture.detectChanges();
     expect(panel().textContent).toContain('No line plays 3. Qh5.');
