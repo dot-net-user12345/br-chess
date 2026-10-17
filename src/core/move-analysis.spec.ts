@@ -37,7 +37,7 @@ describe('analyzeMoves', () => {
     expect(analyzeMoves([at(9, 1), at(0, 99)], sicilian).summary).toBe('');
   });
 
-  it('names the piece and color when every move is the same kind', () => {
+  it('leaves the mover, the timing and the moves’ own squares unsaid', () => {
     // 5. Nc3 in the three lines that play it.
     const selected = [
       at(0, plyOf(sicilian[0], 'Nc3')),
@@ -45,39 +45,56 @@ describe('analyzeMoves', () => {
       at(2, plyOf(sicilian[2], 'Nc3')),
     ];
     const { summary } = analyzeMoves(selected, sicilian);
-    expect(summary).toContain('All 3 selected moves are White knight moves');
-    expect(summary).toContain('land on c3');
+    expect(summary).not.toContain('selected moves are');
+    expect(summary).not.toContain('White knight moves');
+    expect(summary).not.toContain('on move');
+    expect(summary).not.toContain('between moves');
+    expect(summary).not.toContain('land on');
   });
 
-  it('reports a shared destination square across different pieces', () => {
-    // Both recaptures on d4, one by a knight and one by a pawn.
-    const selected = [at(0, plyOf(sicilian[0], 'Nxd4')), at(3, plyOf(sicilian[3], 'cxd4'))];
+  it('spends the summary on the board every move reaches', () => {
+    const selected = [
+      at(0, plyOf(sicilian[0], 'Nc3')),
+      at(1, plyOf(sicilian[1], 'Nc3')),
+      at(2, plyOf(sicilian[2], 'Nc3')),
+    ];
     const { summary } = analyzeMoves(selected, sicilian);
-    expect(summary).toContain('Both selected moves');
-    expect(summary).toContain('capture');
-    expect(summary).toContain('land on d4');
+    expect(summary).toContain('In every resulting position there are');
+    expect(summary).toContain('a black knight on f6');
+    expect(summary).toContain('a black pawn on d6');
+  });
+
+  it('names a repeated piece once and lists its squares', () => {
+    const selected = [
+      at(0, plyOf(sicilian[0], 'Nc3')),
+      at(1, plyOf(sicilian[1], 'Nc3')),
+      at(2, plyOf(sicilian[2], 'Nc3')),
+    ];
+    const { summary } = analyzeMoves(selected, sicilian);
+    expect(summary).toContain('white knights on c3 and d4');
+    expect(summary).not.toContain('a white knight on c3, a white knight on d4');
+  });
+
+  it('agrees the verb with the clause nearest it', () => {
+    const plural = [
+      at(0, plyOf(sicilian[0], 'Nc3')),
+      at(1, plyOf(sicilian[1], 'Nc3')),
+      at(2, plyOf(sicilian[2], 'Nc3')),
+    ];
+    expect(analyzeMoves(plural, sicilian).summary).toContain('there are white knights');
+    const single = [at(1, plyOf(sicilian[1], 'g6')), at(3, plyOf(sicilian[3], 'g6'))];
+    expect(analyzeMoves(single, sicilian).summary).toContain('there is a black pawn on g6');
+  });
+
+  it('still says what the moves do', () => {
+    const captures = [at(0, plyOf(sicilian[0], 'Nxd4')), at(3, plyOf(sicilian[3], 'cxd4'))];
+    expect(analyzeMoves(captures, sicilian).summary).toContain('Both selected moves capture.');
   });
 
   it('calls out castling when every move castles', () => {
     const selected = [at(1, plyOf(sicilian[1], 'O-O')), at(3, plyOf(sicilian[3], 'O-O'))];
     const { summary } = analyzeMoves(selected, sicilian);
     expect(summary).toContain('castle short');
-  });
-
-  it('reports a narrow stretch of the game', () => {
-    const selected = [
-      at(0, plyOf(sicilian[0], 'Be3')),
-      at(1, plyOf(sicilian[1], 'Be3')),
-      at(2, plyOf(sicilian[2], 'Bg5')),
-    ];
-    const { summary } = analyzeMoves(selected, sicilian);
-    expect(summary).toContain('on move 6');
-  });
-
-  it('omits timing when the moves are spread across the game', () => {
-    const selected = [at(0, 1), at(0, plyOf(sicilian[0], 'Be7'))];
-    const { summary } = analyzeMoves(selected, sicilian);
-    expect(summary).not.toContain('between moves');
   });
 
   it('names the shared opening when the moves span several lines', () => {
@@ -94,6 +111,7 @@ describe('analyzeMoves', () => {
     const selected = [at(0, plyOf(sicilian[0], 'e5')), at(0, plyOf(sicilian[0], 'a6'))];
     const { summary } = analyzeMoves(selected, sicilian);
     expect(summary).toContain('All of them come from Najdorf.');
+    expect(summary).toContain('black pawns on a6 and d6');
   });
 
   it('suppresses facts that are true of the whole file anyway', () => {
@@ -108,7 +126,7 @@ describe('analyzeMoves', () => {
     // Both lines reach a board with Black's bishop on g7, which only they do.
     const selected = [at(1, plyOf(sicilian[1], 'Bg7')), at(3, plyOf(sicilian[3], 'Bg7'))];
     const { summary } = analyzeMoves(selected, sicilian);
-    expect(summary).toContain('g7');
+    expect(summary).toContain('a black bishop on g7');
   });
 
   it('prefers the exact square over the file and wing it implies', () => {
@@ -128,11 +146,12 @@ describe('analyzeMoves', () => {
     expect(findings.every((finding) => !finding.kind.startsWith('on-b1'))).toBe(true);
   });
 
-  it('does not restate the square just moved to as a position fact', () => {
+  it('reports the piece standing on the square just moved to', () => {
+    // The summary no longer names the destination, so the placement carries it.
     const selected = [at(1, plyOf(sicilian[1], 'Bg7')), at(3, plyOf(sicilian[3], 'Bg7'))];
     const { summary, findings } = analyzeMoves(selected, sicilian);
-    expect(summary).toContain('land on g7');
-    expect(findings.every((finding) => finding.kind !== 'on-g7')).toBe(true);
+    expect(summary).toContain('a black bishop on g7');
+    expect(findings.some((finding) => finding.kind === 'on-g7')).toBe(true);
   });
 
   it('leaves out the squares castling fixes anyway', () => {
@@ -142,12 +161,15 @@ describe('analyzeMoves', () => {
     expect(findings.every((finding) => finding.category !== 'destination')).toBe(true);
   });
 
-  it('lands in the center but on a wing', () => {
-    // Different squares on one wing, so the wing is the most the moves share.
+  it('falls back to the wing when the squares themselves differ', () => {
+    // Behind the summary: different squares on one wing, so the wing is the
+    // most the moves share, phrased `land in the center` but `on the kingside`.
     const center = [at(0, plyOf(sicilian[0], 'd6')), at(0, plyOf(sicilian[0], 'e5'))];
-    expect(analyzeMoves(center, sicilian).summary).toContain('land in the center');
+    const centerTexts = analyzeMoves(center, sicilian).findings.map((finding) => finding.text);
+    expect(centerTexts).toContain('land in the center');
     const wing = [at(1, plyOf(sicilian[1], 'Bg7')), at(1, plyOf(sicilian[1], 'f3'))];
-    expect(analyzeMoves(wing, sicilian).summary).toContain('land on the kingside');
+    const wingTexts = analyzeMoves(wing, sicilian).findings.map((finding) => finding.text);
+    expect(wingTexts).toContain('land on the kingside');
   });
 
   it('ends a truncated opening on the ellipsis rather than a period', () => {

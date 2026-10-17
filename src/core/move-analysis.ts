@@ -59,9 +59,13 @@ const WEIGHT: Readonly<Record<FindingCategory, number>> = {
   opening: 1,
 };
 
-/** Most clauses to spend on the moves themselves, and on the resulting positions. */
-const MOVE_CLAUSE_LIMIT = 3;
-const POSITION_CLAUSE_LIMIT = 2;
+/** Most clauses to spend on what the moves do, and on the resulting positions. */
+const ACTION_CLAUSE_LIMIT = 3;
+/**
+ * The placements are the summary's point, so they get most of its room: the
+ * moves' own squares go unsaid, and the board they reach is what is left.
+ */
+const POSITION_CLAUSE_LIMIT = 6;
 /** Most plies of a shared opening to spell out before trailing off. */
 const OPENING_PLY_LIMIT = 8;
 
@@ -140,24 +144,20 @@ function commonFeatures(moves: readonly GamePosition[], rate: (key: string) => n
   }
 
   const kinds = new Set(common.map((feature) => feature.kind));
-  const landed = common
-    .find((feature) => feature.kind === 'to-square')
-    ?.key.slice('to-square:'.length);
   return common
-    .filter((feature) => !isRedundant(feature, kinds, landed))
+    .filter((feature) => !isRedundant(feature, kinds))
     .map((feature) => ({ ...feature, score: 1 - rate(feature.key) }));
 }
 
 /**
  * Whether a fact says nothing beyond another one in the same set: landing on d5
- * already says the move lands on the d-file, mate is check, castling fixes its
- * own squares, and the piece standing on the square just moved to is the move.
+ * already says the move lands on the d-file, mate is check, and castling fixes
+ * its own squares.
+ *
+ * The piece standing on the square just moved to is not redundant: the summary
+ * no longer names the destination, so that placement is where it gets said.
  */
-function isRedundant(
-  feature: Feature,
-  kinds: ReadonlySet<string>,
-  landed: string | undefined,
-): boolean {
+function isRedundant(feature: Feature, kinds: ReadonlySet<string>): boolean {
   if (feature.kind === 'check' && kinds.has('mate')) {
     return true;
   }
@@ -165,9 +165,6 @@ function isRedundant(
     feature.category === 'destination' &&
     (kinds.has('castle-short') || kinds.has('castle-long'))
   ) {
-    return true;
-  }
-  if (landed && feature.kind === `on-${landed}`) {
     return true;
   }
   for (const side of ['to', 'from']) {
@@ -372,44 +369,36 @@ function openingText(sans: readonly string[]): string {
   return sans.map((san, index) => (index % 2 === 0 ? `${index / 2 + 1}.${san}` : san)).join(' ');
 }
 
-/** Turns the findings into a short paragraph, spending each sentence on one kind of fact. */
+/**
+ * Turns the findings into a short paragraph, spending each sentence on one kind
+ * of fact.
+ *
+ * Who moved what, when, and from and to where is left out on purpose: whoever
+ * picked the moves can already see all of that. What they cannot see at a
+ * glance is the board every one of them reaches, so that is what is reported.
+ */
 function buildSummary(count: number, findings: readonly Finding[]): string {
-  const pick = (category: FindingCategory) => findings.find((f) => f.category === category);
   const all = (category: FindingCategory) => findings.filter((f) => f.category === category);
-
   const lead = count === 2 ? 'Both selected moves' : `All ${count} selected moves`;
-  const piece = pick('mover-piece');
-  const color = pick('mover-color');
-  const timing = pick('timing');
 
   const sentences: string[] = [];
-  const mover = piece && color ? `${color.text} ${piece.text}` : piece ? piece.text : '';
-  if (mover) {
-    const when = timing ? `, played ${timing.text}` : '';
-    sentences.push(`${lead} are ${mover} moves${when}.`);
-  } else if (color || timing) {
-    const by = color ? ` by ${color.text}` : '';
-    const when = timing ? ` ${timing.text}` : '';
-    sentences.push(`${lead} are played${by}${when}.`);
-  }
-
-  const clauses = [...all('action'), ...all('destination')]
-    .slice(0, MOVE_CLAUSE_LIMIT)
+  const actions = all('action')
+    .slice(0, ACTION_CLAUSE_LIMIT)
     .map((finding) => finding.text);
-  if (clauses.length > 0) {
-    const them = count === 2 ? 'They both' : 'They all';
-    const subject = sentences.length > 0 ? them : lead;
-    sentences.push(`${subject} ${joinClauses(clauses)}.`);
+  if (actions.length > 0) {
+    sentences.push(`${lead} ${joinClauses(actions)}.`);
   }
 
-  const pieces = all('position')
-    .slice(0, POSITION_CLAUSE_LIMIT)
-    .map((finding) => finding.text);
-  if (pieces.length > 0) {
-    sentences.push(`In every resulting position there is ${joinClauses(pieces)}.`);
+  const groups = placementGroups(all('position').slice(0, POSITION_CLAUSE_LIMIT));
+  if (groups.length > 0) {
+    // English agrees with the nearest subject: `there are white knights on c3
+    // and d4, and a black pawn on d6`.
+    const verb = groups[0].squares.length > 1 ? 'are' : 'is';
+    const clauses = groups.map(placementText);
+    sentences.push(`In every resulting position there ${verb} ${joinClauses(clauses)}.`);
   }
 
-  const origin = pick('opening');
+  const origin = findings.find((finding) => finding.category === 'opening');
   if (origin) {
     sentences.push(origin.text);
   }
@@ -418,6 +407,40 @@ function buildSummary(count: number, findings: readonly Finding[]): string {
     return `These ${count} moves have no striking pattern in common.`;
   }
   return sentences.join(' ');
+}
+
+/** The squares one kind of piece stands on, so a repeated piece is named once. */
+interface PlacementGroup {
+  readonly piece: PieceCode;
+  readonly squares: string[];
+}
+
+/**
+ * Placement findings gathered by piece, keeping the order they came in so the
+ * most telling one still leads: three white knights become one clause, not three.
+ */
+function placementGroups(findings: readonly Finding[]): PlacementGroup[] {
+  const groups = new Map<PieceCode, PlacementGroup>();
+  for (const finding of findings) {
+    // `on-c3:N` — the kind carries the square and the key its occupant.
+    const square = finding.kind.slice('on-'.length);
+    const piece = finding.key.slice(finding.key.indexOf(':') + 1) as PieceCode;
+    const group = groups.get(piece);
+    if (group) {
+      group.squares.push(square);
+    } else {
+      groups.set(piece, { piece, squares: [square] });
+    }
+  }
+  return [...groups.values()];
+}
+
+/** `a white knight on c3`, or `white knights on c3 and d4` once there are two. */
+function placementText({ piece, squares }: PlacementGroup): string {
+  const name = pieceName(piece);
+  return squares.length === 1
+    ? `${article(name)} on ${squares[0]}`
+    : `${name}s on ${joinClauses(squares)}`;
 }
 
 /** `a, b and c` — a clause list as it reads in a sentence. */
