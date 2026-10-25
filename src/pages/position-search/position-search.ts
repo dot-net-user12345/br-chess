@@ -4,23 +4,32 @@ import {
   Component,
   computed,
   DestroyRef,
+  effect,
+  ElementRef,
   inject,
   linkedSignal,
   signal,
+  viewChild,
 } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
 import { MatButtonModule } from '@angular/material/button';
+import { MatDividerModule } from '@angular/material/divider';
 import { MatIconModule } from '@angular/material/icon';
+import { MatMenuModule, MatMenuTrigger } from '@angular/material/menu';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatDialog } from '@angular/material/dialog';
-import { BoardDrawing, PgnEntry, UploadedImage } from '../../core/workspace-models';
+import { BoardDrawing, NodeId, PgnEntry, UploadedImage } from '../../core/workspace-models';
 import { BoardOrientation, GamePosition } from '../../core/chess-models';
 import { ChessService } from '../../core/chess-service';
-import { matchesPattern, PositionPattern } from '../../core/position-pattern';
+import { matchesPattern, patternToFen, PositionPattern } from '../../core/position-pattern';
 import { WorkspaceStore } from '../../core/workspace-store';
 import { ImageAttachments } from '../../shared/image-attachments';
 import { BoardDialog, BoardDialogTile } from '../../features/board-dialog/board-dialog';
 import { ChessBoard } from '../../features/chess-board/chess-board';
+import {
+  FileScopeDialog,
+  FileScopeDialogData,
+} from '../../features/file-scope-dialog/file-scope-dialog';
 import { LineMove, LineMoves } from '../../features/line-moves/line-moves';
 import { PositionFilterBar } from '../../features/position-filter-dialog/position-filter-bar';
 
@@ -59,6 +68,20 @@ const PEEK_DELAY_MS = 1000;
 /** Grace period to move the pointer from a move onto its preview. */
 const PEEK_HIDE_MS = 200;
 
+/** Where the files left out of the search are remembered, in this browser only. */
+const EXCLUDED_KEY = 'br-chess-position-search-excluded';
+
+/** Where the user's order of the results is remembered, for the latest filter only. */
+const ORDER_KEY = 'br-chess-position-search-order';
+
+/** A display order of the results, and the filter it was made for. */
+interface SavedOrder {
+  /** The filter's key when the order was made: side and pattern. */
+  readonly filter: string;
+  /** Result keys, first to last. */
+  readonly keys: readonly string[];
+}
+
 /**
  * Searches every PGN grid file of one orientation for the moves whose board
  * has the position filter's pieces in place, and shows those boards across the
@@ -71,7 +94,9 @@ const PEEK_HIDE_MS = 200;
     NgTemplateOutlet,
     MatButtonModule,
     MatButtonToggleModule,
+    MatDividerModule,
     MatIconModule,
+    MatMenuModule,
     OverlayModule,
     ChessBoard,
     LineMoves,
@@ -94,12 +119,30 @@ export class PositionSearch {
 
   protected readonly active = computed(() => Object.keys(this.pattern()).length > 0);
 
-  /** Every valid line of every file of the chosen orientation, by file path then line order. */
+  /**
+   * Files left out of the search, picked in the Files dialog. The left-out
+   * ones are kept rather than the searched ones, so a new file is searched.
+   */
+  protected readonly excluded = signal<ReadonlySet<NodeId>>(readExcluded());
+
+  /** `3 of 10`-style count for the Files button; '' while every file is searched. */
+  protected readonly scopeCount = computed(() => {
+    const files = this.store.pgnGridFiles();
+    const excluded = this.excluded();
+    const searched = files.filter((file) => !excluded.has(file.id)).length;
+    return searched === files.length ? '' : `${searched} of ${files.length}`;
+  });
+
+  /** Every valid line of every searched file of the chosen orientation, by file path then line order. */
   private readonly lines = computed<SearchLine[]>(() => {
     const orientation = this.orientation();
+    const excluded = this.excluded();
     return this.store
       .pgnGridFiles()
-      .filter((file) => (file.content.orientation ?? 'white') === orientation)
+      .filter(
+        (file) =>
+          !excluded.has(file.id) && (file.content.orientation ?? 'white') === orientation,
+      )
       .map((file) => ({ file, path: this.store.pathOf(file.id) }))
       .sort((a, b) => a.path.localeCompare(b.path))
       .flatMap(({ file, path }) =>
@@ -156,18 +199,54 @@ export class PositionSearch {
     });
   });
 
-  /** Every matching move, line after line, each with the line it belongs to. */
-  protected readonly results = computed(() =>
-    this.groups().flatMap((group) => group.tiles.map((tile) => ({ group, tile }))),
+  /** The filter as one string, which a saved order is kept against; '' when there is none. */
+  private readonly filterKey = computed(() =>
+    this.active() ? `${this.orientation()}|${patternToFen(this.pattern())}` : '',
   );
+
+  /** The user's order of the results, for the one filter it was made for. */
+  private readonly savedOrder = signal<SavedOrder | null>(readOrder());
+
+  /** Whether the results are shown in an order the user chose. */
+  protected readonly reordered = computed(() => {
+    const order = this.savedOrder();
+    return !!order && order.filter === this.filterKey();
+  });
+
+  /**
+   * Every matching move, each with the line it belongs to: line after line,
+   * unless the user has reordered them for this filter. A move the saved order
+   * doesn't know — from a file added or checked since — goes after the rest.
+   */
+  protected readonly results = computed(() => {
+    const results = this.groups().flatMap((group) =>
+      group.tiles.map((tile) => ({ group, tile })),
+    );
+    const order = this.savedOrder();
+    if (!order || !this.reordered()) {
+      return results;
+    }
+    const rank = new Map(order.keys.map((key, i) => [key, i]));
+    const at = (key: string) => rank.get(key) ?? Number.MAX_SAFE_INTEGER;
+    return [...results].sort((a, b) => at(a.tile.key) - at(b.tile.key));
+  });
 
   /** A grid of small boards, or the boards drawn large. */
   protected readonly view = signal<'grid' | 'large'>('grid');
   /** Drawn large: one move at a time, or every move in a row that scrolls sideways. */
   protected readonly largeMode = signal<'single' | 'row'>('single');
 
-  /** The move shown one at a time; back to the first whenever the results change. */
-  protected readonly index = linkedSignal({ source: this.results, computation: () => 0 });
+  /**
+   * The move shown one at a time. It stays on the same move when the results
+   * are reordered or redrawn, and goes back to the first when that move is gone.
+   */
+  protected readonly index = linkedSignal<{ tile: ResultTile }[], number>({
+    source: this.results,
+    computation: (results, previous) => {
+      const key = previous?.source[previous.value]?.tile.key;
+      return Math.max(0, results.findIndex((result) => result.tile.key === key));
+    },
+  });
   protected readonly current = computed(() => this.results()[this.index()] ?? null);
 
   protected prev(): void {
@@ -208,7 +287,14 @@ export class PositionSearch {
   private peekTimer: ReturnType<typeof setTimeout> | undefined;
   private hideTimer: ReturnType<typeof setTimeout> | undefined;
 
+  /** Cursor-anchored trigger for the reorder menu, and where in the results it was opened. */
+  private readonly contextTrigger = viewChild<ElementRef<HTMLElement>>('contextTrigger');
+  private readonly contextMenu = viewChild(MatMenuTrigger);
+  protected readonly menuIndex = signal(-1);
+
   constructor() {
+    effect(() => writeExcluded(this.excluded()));
+    effect(() => writeOrder(this.savedOrder()));
     inject(DestroyRef).onDestroy(() => {
       clearTimeout(this.peekTimer);
       clearTimeout(this.hideTimer);
@@ -241,6 +327,67 @@ export class PositionSearch {
     clearTimeout(this.peekTimer);
     clearTimeout(this.hideTimer);
     this.peek.set(null);
+  }
+
+  /** Opens the reorder menu at the pointer, or under the board from the keyboard. */
+  protected onContextMenu(event: MouseEvent, key: string): void {
+    event.preventDefault();
+    this.hidePeek();
+    this.menuIndex.set(this.results().findIndex((result) => result.tile.key === key));
+    const trigger = this.contextMenu();
+    const el = this.contextTrigger()?.nativeElement;
+    if (!trigger || !el) {
+      return;
+    }
+    // The context-menu key and Shift+F10 report no pointer position.
+    let x = event.clientX;
+    let y = event.clientY;
+    if (x === 0 && y === 0 && event.currentTarget instanceof HTMLElement) {
+      const rect = event.currentTarget.getBoundingClientRect();
+      x = rect.left;
+      y = rect.bottom;
+    }
+    el.style.left = `${x}px`;
+    el.style.top = `${y}px`;
+    trigger.openMenu();
+  }
+
+  /** Whether the menu's move can go one place earlier (-1) or later (1). */
+  protected canMove(delta: -1 | 1): boolean {
+    const to = this.menuIndex() + delta;
+    return this.menuIndex() >= 0 && to >= 0 && to < this.results().length;
+  }
+
+  /** Swaps the menu's move with its neighbor, and saves the order for this filter. */
+  protected move(delta: -1 | 1): void {
+    if (!this.canMove(delta)) {
+      return;
+    }
+    const keys = this.results().map((result) => result.tile.key);
+    const from = this.menuIndex();
+    const to = from + delta;
+    [keys[from], keys[to]] = [keys[to], keys[from]];
+    this.savedOrder.set({ filter: this.filterKey(), keys });
+  }
+
+  protected restoreOrder(): void {
+    this.savedOrder.set(null);
+  }
+
+  /** Opens the checklist of folders and files to search; Apply puts it in force. */
+  protected openScope(): void {
+    this.dialog
+      .open<FileScopeDialog, FileScopeDialogData, ReadonlySet<NodeId>>(FileScopeDialog, {
+        data: { excluded: this.excluded() },
+        width: '32rem',
+        maxWidth: '95vw',
+      })
+      .afterClosed()
+      .subscribe((excluded) => {
+        if (excluded) {
+          this.excluded.set(excluded);
+        }
+      });
   }
 
   /** Opens the move in the large view, its line's moves beside the board. */
@@ -305,6 +452,56 @@ export class PositionSearch {
     if (await this.attachments.ensureSignedIn()) {
       await this.store.saveFile(file.id);
     }
+  }
+}
+
+/** The files left out last time; none when nothing is stored or storage is unavailable. */
+function readExcluded(): ReadonlySet<NodeId> {
+  try {
+    const ids: unknown = JSON.parse(localStorage.getItem(EXCLUDED_KEY) ?? '[]');
+    return new Set(Array.isArray(ids) ? ids.filter((id) => typeof id === 'string') : []);
+  } catch {
+    return new Set();
+  }
+}
+
+/** The order saved for the latest filter; none when nothing usable is stored. */
+function readOrder(): SavedOrder | null {
+  try {
+    const order: unknown = JSON.parse(localStorage.getItem(ORDER_KEY) ?? 'null');
+    if (
+      order &&
+      typeof order === 'object' &&
+      'filter' in order &&
+      typeof order.filter === 'string' &&
+      'keys' in order &&
+      Array.isArray(order.keys)
+    ) {
+      return { filter: order.filter, keys: order.keys.filter((key) => typeof key === 'string') };
+    }
+  } catch {
+    // Unreadable or unavailable: the results show in their usual order.
+  }
+  return null;
+}
+
+function writeOrder(order: SavedOrder | null): void {
+  try {
+    if (order) {
+      localStorage.setItem(ORDER_KEY, JSON.stringify(order));
+    } else {
+      localStorage.removeItem(ORDER_KEY);
+    }
+  } catch {
+    // Storage can be unavailable (private mode, blocked); the order then lasts the visit.
+  }
+}
+
+function writeExcluded(excluded: ReadonlySet<NodeId>): void {
+  try {
+    localStorage.setItem(EXCLUDED_KEY, JSON.stringify([...excluded]));
+  } catch {
+    // Storage can be unavailable (private mode, blocked); the choice then lasts the visit.
   }
 }
 

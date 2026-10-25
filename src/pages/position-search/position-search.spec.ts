@@ -33,6 +33,7 @@ describe('PositionSearch', () => {
   }
 
   function setup() {
+    localStorage.clear();
     const files = [
       file('London', 'white', ['1. d4 Nf6 2. Bf4 g6 3. e3 Bg7', '1. d4 d5 2. Nf3 Nf6']),
       file('Italian', 'white', ['1. e4 e5 2. Nf3 Nc6 3. Bc4']),
@@ -60,6 +61,13 @@ describe('PositionSearch', () => {
       orientation: { set(side: BoardOrientation): void };
       groups(): { line: { title: string }; tiles: { ply: number; caption: string }[] }[];
       status(): string;
+      excluded: { set(ids: ReadonlySet<string>): void };
+      scopeCount(): string;
+      results(): { tile: { key: string } }[];
+      menuIndex: { set(index: number): void };
+      move(delta: -1 | 1): void;
+      reordered(): boolean;
+      restoreOrder(): void;
       view: { set(view: 'grid' | 'large'): void };
       largeMode: { set(mode: 'single' | 'row'): void };
       open(group: unknown, ply: number): void;
@@ -84,6 +92,42 @@ describe('PositionSearch', () => {
     // Black's files are searched only when Black is chosen.
     page.orientation.set('black');
     expect(page.groups().map((g) => g.line.title)).toEqual(['Caro › Line 1']);
+  });
+
+  it('leaves unchecked files out of the search, and remembers them', () => {
+    const { page } = setup();
+    page.pattern.set({ f3: 'N' });
+    page.excluded.set(new Set(['Italian']));
+    expect(page.groups().map((g) => g.line.title)).toEqual(['London › Line 2']);
+    expect(page.scopeCount()).toBe('2 of 3');
+    TestBed.tick();
+    expect(JSON.parse(localStorage.getItem('br-chess-position-search-excluded') ?? '')).toEqual([
+      'Italian',
+    ]);
+  });
+
+  it('reorders the moves for the latest filter, and remembers that order', () => {
+    const { page } = setup();
+    const lines = () => page.results().map((r) => r.tile.key.split(':')[0]);
+    page.pattern.set({ f3: 'N' });
+    expect(lines()).toEqual(['Italian', 'London']);
+
+    // London's move one place backward, toward the start.
+    page.menuIndex.set(1);
+    page.move(-1);
+    expect(lines()).toEqual(['London', 'Italian']);
+    expect(page.reordered()).toBe(true);
+    TestBed.tick();
+    expect(localStorage.getItem('br-chess-position-search-order')).toContain('white|');
+
+    // Another filter shows its usual order; the first filter's order comes back with it.
+    page.pattern.set({ f3: 'N', e4: 'P' });
+    expect(page.reordered()).toBe(false);
+    page.pattern.set({ f3: 'N' });
+    expect(lines()).toEqual(['London', 'Italian']);
+
+    page.restoreOrder();
+    expect(lines()).toEqual(['Italian', 'London']);
   });
 
   it('shows the boards large, one at a time or all in a row', () => {

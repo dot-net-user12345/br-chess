@@ -10,6 +10,13 @@
       <mat-button-toggle value="white">White</mat-button-toggle>
       <mat-button-toggle value="black">Black</mat-button-toggle>
     </mat-button-toggle-group>
+    <button matButton="outlined" type="button" aria-haspopup="dialog" (click)="openScope()">
+      <mat-icon>folder_open</mat-icon>
+      Files
+      @if (scopeCount()) {
+        <span>({{ scopeCount() }})</span>
+      }
+    </button>
     <app-position-filter-bar [(pattern)]="pattern" [orientation]="orientation()" />
     <span class="search__spacer"></span>
     <mat-button-toggle-group
@@ -113,6 +120,7 @@
     [attr.aria-label]="'View ' + result.tile.ariaLabel + ' with its line'"
     [attr.aria-describedby]="peek()?.tile?.key === result.tile.key ? 'position-peek' : null"
     (click)="open(result.group, result.tile.ply)"
+    (contextmenu)="onContextMenu($event, result.tile.key)"
     (mouseenter)="startPeek(result.group, result.tile, origin)"
     (mouseleave)="endPeek()"
     (focus)="startPeek(result.group, result.tile, origin)"
@@ -132,6 +140,25 @@
     <span class="search__caption">{{ result.tile.caption }}</span>
   </button>
 </ng-template>
+
+<!-- Zero-size, cursor-anchored element the reorder menu opens from. -->
+<div #contextTrigger class="search__context-trigger" [matMenuTriggerFor]="orderMenu"></div>
+<!-- Forward is toward the end of the results, backward toward the start. -->
+<mat-menu #orderMenu>
+  <button mat-menu-item type="button" [disabled]="!canMove(1)" (click)="move(1)">
+    <mat-icon>arrow_forward</mat-icon>
+    <span>Move forward</span>
+  </button>
+  <button mat-menu-item type="button" [disabled]="!canMove(-1)" (click)="move(-1)">
+    <mat-icon>arrow_back</mat-icon>
+    <span>Move backward</span>
+  </button>
+  <mat-divider />
+  <button mat-menu-item type="button" [disabled]="!reordered()" (click)="restoreOrder()">
+    <mat-icon>restart_alt</mat-icon>
+    <span>Restore original order</span>
+  </button>
+</mat-menu>
 
 @if (peek(); as peek) {
   <ng-template
