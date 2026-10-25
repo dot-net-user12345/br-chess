@@ -36,6 +36,11 @@ body {
   border-radius: var(--mat-sys-corner-large);
 }
 
+/* The position filter covers the whole screen, so its corners stay square. */
+.position-filter-dialog-panel .mat-mdc-dialog-surface {
+  border-radius: 0;
+}
+
 /* The editor's tab group fills the page, so its body wrapper has to stretch to
    the leftover height and let each tab scroll inside itself — otherwise the
    wrapper sizes to its content and the move explorer has no height to divide.

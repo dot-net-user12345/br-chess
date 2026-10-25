@@ -89,40 +89,31 @@
     }
   </div>
 
-  <!-- Position filter: lines reaching a board with this piece on this square. -->
-  <div class="explorer__bar explorer__bar--position" role="group" aria-labelledby="explorer-position-label">
-    <span id="explorer-position-label" class="explorer__bar-label">Filter by position</span>
-    <mat-form-field class="explorer__filter explorer__filter--select" appearance="outline" subscriptSizing="dynamic">
-      <mat-label>Color</mat-label>
-      <mat-select [formControl]="pieceColorControl" aria-describedby="explorer-filter-status">
-        <mat-option value="">Any</mat-option>
-        <mat-option value="white">White</mat-option>
-        <mat-option value="black">Black</mat-option>
-      </mat-select>
-    </mat-form-field>
-    <mat-form-field class="explorer__filter explorer__filter--select" appearance="outline" subscriptSizing="dynamic">
-      <mat-label>Piece</mat-label>
-      <mat-select [formControl]="pieceTypeControl" aria-describedby="explorer-filter-status">
-        <mat-option value="">Any</mat-option>
-        @for (type of pieceTypes; track type.value) {
-          <mat-option [value]="type.value">{{ type.label }}</mat-option>
-        }
-      </mat-select>
-    </mat-form-field>
-    <mat-form-field class="explorer__filter explorer__filter--square" appearance="outline" subscriptSizing="dynamic">
-      <mat-label>Square</mat-label>
-      <input
-        matInput
-        type="text"
-        autocomplete="off"
-        spellcheck="false"
-        maxlength="2"
-        aria-describedby="explorer-filter-status"
-        [attr.aria-invalid]="squareInvalid()"
-        [formControl]="squareControl"
-        (keydown.escape)="squareControl.setValue('')"
-      />
-    </mat-form-field>
+  <!-- Position filter: lines with a move whose board has these pieces in place,
+       built on a board in its own dialog. -->
+  <div class="explorer__bar explorer__bar--position" role="group" aria-label="Position filter">
+    <button
+      matButton="outlined"
+      type="button"
+      aria-haspopup="dialog"
+      (click)="openPositionFilter()"
+    >
+      <mat-icon>grid_on</mat-icon>
+      Filter by position
+    </button>
+    @if (positionFilter()) {
+      <code class="explorer__position-fen">{{ positionFen() }}</code>
+      <!-- A button, so the explanation is reachable by keyboard as well as hover. -->
+      <button
+        matIconButton
+        type="button"
+        class="explorer__position-help"
+        aria-label="About this FEN"
+        matTooltip="Only the board part of a FEN: the pieces you placed, rank 8 first. It needn't be a legal position — it can have no kings, or several — since it only lists the squares a move's board must match."
+      >
+        <mat-icon>help_outline</mat-icon>
+      </button>
+    }
     <button
       matButton
       type="button"

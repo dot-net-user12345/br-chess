@@ -70,11 +70,6 @@
       min-width: 8rem;
     }
 
-    &--select {
-      flex-basis: 9rem;
-      min-width: 7rem;
-    }
-
     &--square {
       flex-basis: 6rem;
       min-width: 5rem;
@@ -90,6 +85,23 @@
   // height already fits the bar, so it only needs to keep its width.
   &__colors {
     flex: 0 0 auto;
+  }
+
+  // Selectable, so it can be copied out; never wrapped mid-rank.
+  &__position-fen {
+    flex: 0 1 auto;
+    min-width: 0;
+    overflow-x: auto;
+    white-space: nowrap;
+    font: var(--mat-sys-body-medium);
+    font-family: ui-monospace, monospace;
+    user-select: all;
+  }
+
+  &__position-help {
+    flex: 0 0 auto;
+    margin-left: -0.5rem;
+    color: var(--mat-sys-on-surface-variant);
   }
 
   &__filter-icon {

@@ -23,23 +23,21 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatMenuModule, MatMenuTrigger } from '@angular/material/menu';
-import { MatSelectModule } from '@angular/material/select';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { BoardOrientation, GamePosition, PieceCode } from '../../core/chess-models';
+import { BoardOrientation, GamePosition } from '../../core/chess-models';
 import { ChessService } from '../../core/chess-service';
 import { findMatchingSpan, MoveQuery, parseMoveQuery } from '../../core/line-search';
 import { analyzeMoves, SelectedMove } from '../../core/move-analysis';
+import { matchesPattern, patternToFen, PositionPattern } from '../../core/position-pattern';
 import { sharedPlacements } from '../../core/shared-placements';
 import { EMPTY_DRAWING, toggleSquare } from '../../core/board-drawing';
 import { BoardDrawing, UploadedImage } from '../../core/workspace-models';
 import { BoardDialog, BoardDialogTile } from '../board-dialog/board-dialog';
 import { ChessBoard } from '../chess-board/chess-board';
-
-/** Piece types the position filter offers, as FEN letters (White's spelling). */
-type PieceType = 'K' | 'Q' | 'R' | 'B' | 'N' | 'P';
-
-/** A square in algebraic notation, e.g. `e4`. */
-const SQUARE_PATTERN = /^[a-h][1-8]$/;
+import {
+  PositionFilterDialog,
+  PositionFilterDialogData,
+} from '../position-filter-dialog/position-filter-dialog';
 
 /** One line the explorer lists as a column of clickable moves. */
 export interface MoveExplorerLine {
@@ -127,7 +125,6 @@ interface PinnedGroup {
     MatIconModule,
     MatInputModule,
     MatMenuModule,
-    MatSelectModule,
     MatTooltipModule,
     ChessBoard,
   ],
@@ -256,84 +253,27 @@ export class MoveExplorer {
     return this.matchedKeys().has(key);
   }
 
-  /** Position filter: which side's piece, which piece, and the square it must stand on. */
-  protected readonly pieceColorControl = new FormControl<'white' | 'black' | ''>('', {
-    nonNullable: true,
-  });
-  protected readonly pieceTypeControl = new FormControl<PieceType | ''>('', { nonNullable: true });
-  protected readonly squareControl = new FormControl('', { nonNullable: true });
-  private readonly pieceColor = toSignal(this.pieceColorControl.valueChanges, {
-    initialValue: '' as const,
-  });
-  private readonly pieceType = toSignal(this.pieceTypeControl.valueChanges, {
-    initialValue: '' as const,
-  });
-  private readonly squareText = toSignal(this.squareControl.valueChanges, { initialValue: '' });
+  /** Position filter: the pieces a board must have in place, built in its dialog. */
+  protected readonly positionPattern = signal<PositionPattern>({});
 
-  protected readonly pieceTypes: readonly { value: PieceType; label: string }[] = [
-    { value: 'K', label: 'King (K)' },
-    { value: 'Q', label: 'Queen (Q)' },
-    { value: 'R', label: 'Rook (R)' },
-    { value: 'B', label: 'Bishop (B)' },
-    { value: 'N', label: 'Knight (N)' },
-    { value: 'P', label: 'Pawn (P)' },
-  ];
+  /** Whether the position filter has any pieces, which is when it filters at all. */
+  protected readonly positionFilter = computed(() => Object.keys(this.positionPattern()).length > 0);
+
+  /** The position filter as the board part of a FEN, e.g. `8/8/8/8/8/5N2/8/8`. */
+  protected readonly positionFen = computed(() => patternToFen(this.positionPattern()));
 
   /**
-   * The position filter: the square a matching board must have a piece on,
-   * and, when chosen, that piece's color and type. `null` while every input is
-   * empty, or what's missing or wrong while the square isn't a square yet.
-   */
-  protected readonly positionFilter = computed<
-    | { square: string; color: 'white' | 'black' | null; type: PieceType | null }
-    | { problem: string }
-    | null
-  >(() => {
-    const color = this.pieceColor();
-    const type = this.pieceType();
-    const square = this.squareText().trim().toLowerCase();
-    if (!color && !type && !square) {
-      return null;
-    }
-    if (!SQUARE_PATTERN.test(square)) {
-      return { problem: 'Position filter: enter a square like e4.' };
-    }
-    return { square, color: color || null, type: type || null };
-  });
-
-  protected readonly squareInvalid = computed(() => {
-    const square = this.squareText().trim();
-    return square.length > 0 && !SQUARE_PATTERN.test(square.toLowerCase());
-  });
-
-  /**
-   * For each line (by index), the plies whose board has the position filter's
-   * piece on its square, or null when the position filter isn't in effect.
+   * For each line (by index), the plies whose board has every piece of the
+   * position filter on its square, or null when the position filter is empty.
    */
   private readonly positionMatches = computed<(readonly number[])[] | null>(() => {
-    const filter = this.positionFilter();
-    if (!filter || !('square' in filter)) {
+    const pattern = this.positionPattern();
+    if (!this.positionFilter()) {
       return null;
     }
-    // fenToSquares rows run rank 8 first, files a first.
-    const row = 8 - Number(filter.square[1]);
-    const col = filter.square.charCodeAt(0) - 'a'.charCodeAt(0);
-    const fits = (piece: PieceCode | null | undefined): boolean => {
-      if (!piece) {
-        return false;
-      }
-      const white = piece === piece.toUpperCase();
-      return (
-        (!filter.color || filter.color === (white ? 'white' : 'black')) &&
-        (!filter.type || filter.type === piece.toUpperCase())
-      );
-    };
     return this.lines().map((line) =>
       line.positions
-        .filter(
-          (position) =>
-            position.ply > 0 && fits(this.chess.fenToSquares(position.fen)[row]?.[col]),
-        )
+        .filter((position) => position.ply > 0 && matchesPattern(position.fen, pattern))
         .map((position) => position.ply),
     );
   });
@@ -351,10 +291,31 @@ export class MoveExplorer {
     return this.positionKeys().has(key);
   }
 
+  /** Opens the board to build the position filter on; Apply puts it in force. */
+  protected openPositionFilter(): void {
+    const data: PositionFilterDialogData = {
+      pattern: this.positionPattern(),
+      orientation: this.orientation(),
+    };
+    this.dialog
+      .open<PositionFilterDialog, PositionFilterDialogData, PositionPattern>(PositionFilterDialog, {
+        data,
+        panelClass: 'position-filter-dialog-panel',
+        width: '100vw',
+        height: '100dvh',
+        maxWidth: '100vw',
+        maxHeight: '100dvh',
+      })
+      .afterClosed()
+      .subscribe((pattern) => {
+        if (pattern) {
+          this.positionPattern.set(pattern);
+        }
+      });
+  }
+
   protected clearPositionFilter(): void {
-    this.pieceColorControl.setValue('');
-    this.pieceTypeControl.setValue('');
-    this.squareControl.setValue('');
+    this.positionPattern.set({});
   }
 
   /**
@@ -386,7 +347,6 @@ export class MoveExplorer {
     const problems = [
       pgn && 'error' in pgn ? 'PGN filter: not a valid PGN yet.' : '',
       move && 'error' in move ? 'Move filter: not a move yet.' : '',
-      position && 'problem' in position ? position.problem : '',
     ].filter(Boolean);
     const shown = this.visibleColumns().length;
     const total = this.columns().length;

@@ -1,0 +1,85 @@
+<h2 mat-dialog-title>Filter by position</h2>
+
+<div class="filter">
+  <p id="position-filter-help" class="filter__help">
+    Drag pieces onto the board, or select a piece and then a square. Drag a piece off the board, or
+    select a square that holds one with no piece selected, to remove it. Lines are shown when any of
+    their moves has every placed piece on its square.
+  </p>
+
+  <div class="filter__body">
+    <div class="filter__board" role="group" aria-label="Board" aria-describedby="position-filter-help">
+      @for (square of squares(); track square.square) {
+        <button
+          type="button"
+          class="filter__square"
+          [class.filter__square--light]="square.light"
+          [attr.data-square]="square.square"
+          [attr.aria-label]="square.label"
+          (click)="onSquareClick($event, square.square)"
+          (pointerdown)="onPointerDown($event, square.piece, square.square)"
+          (pointermove)="onPointerMove($event)"
+          (pointerup)="onSquarePointerUp($event, square.square)"
+          (pointercancel)="onPointerCancel()"
+        >
+          @if (square.rankLabel) {
+            <span class="filter__coord filter__coord--rank" aria-hidden="true">{{ square.rankLabel }}</span>
+          }
+          @if (square.fileLabel) {
+            <span class="filter__coord filter__coord--file" aria-hidden="true">{{ square.fileLabel }}</span>
+          }
+          @if (square.piece; as piece) {
+            <img [ngSrc]="asset(piece)" width="45" height="45" alt="" draggable="false" />
+          }
+        </button>
+      }
+    </div>
+
+    <div class="filter__palette">
+      @for (side of palette; track side.label) {
+        <div class="filter__side" role="group" [attr.aria-label]="side.label">
+          <h3 class="filter__side-title" aria-hidden="true">{{ side.label }}</h3>
+          @for (piece of side.pieces; track piece) {
+            <button
+              type="button"
+              class="filter__piece"
+              [attr.aria-label]="name(piece)"
+              [attr.aria-pressed]="selected() === piece"
+              (click)="onPaletteClick($event, piece)"
+              (pointerdown)="onPointerDown($event, piece, null)"
+              (pointermove)="onPointerMove($event)"
+              (pointerup)="onPalettePointerUp($event, piece)"
+              (pointercancel)="onPointerCancel()"
+            >
+              <img [ngSrc]="asset(piece)" width="45" height="45" alt="" draggable="false" />
+            </button>
+          }
+        </div>
+      }
+    </div>
+  </div>
+
+  <p class="filter__summary" aria-live="polite">{{ summary() }}</p>
+</div>
+
+<mat-dialog-actions align="end">
+  <button matButton type="button" (click)="clear()">
+    <mat-icon>layers_clear</mat-icon>
+    Clear board
+  </button>
+  <span class="filter__spacer"></span>
+  <button matButton type="button" mat-dialog-close>Cancel</button>
+  <button matButton="filled" type="button" (click)="apply()">Apply</button>
+</mat-dialog-actions>
+
+@if (ghost(); as ghost) {
+  <img
+    class="filter__ghost"
+    [ngSrc]="asset(ghost.piece)"
+    width="45"
+    height="45"
+    alt=""
+    [style.left.px]="ghost.x"
+    [style.top.px]="ghost.y"
+  />
+}

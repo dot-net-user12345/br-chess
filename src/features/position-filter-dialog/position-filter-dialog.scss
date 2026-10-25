@@ -1,0 +1,163 @@
+// Fills the fullscreen dialog: title, then the board and palette taking what's
+// left, then the actions.
+:host {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.filter {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 0 1.5rem;
+  overflow: auto;
+
+  &__help,
+  &__summary {
+    margin: 0;
+    font: var(--mat-sys-body-medium);
+    color: var(--mat-sys-on-surface-variant);
+  }
+
+  &__summary {
+    font: var(--mat-sys-body-large);
+    color: var(--mat-sys-on-surface);
+  }
+
+  // The board beside the palette; the palette drops below it on a narrow screen.
+  &__body {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    justify-content: center;
+    gap: 1.5rem;
+  }
+
+  // As large as the screen allows, leaving room for the palette, text and actions.
+  &__board {
+    display: grid;
+    grid-template-columns: repeat(8, minmax(0, 1fr));
+    grid-template-rows: repeat(8, minmax(0, 1fr));
+    aspect-ratio: 1;
+    width: min(100%, calc(100dvh - 16rem), calc(100vw - 18rem));
+    min-width: min(100%, 18rem);
+    container-type: inline-size;
+    border: 1px solid var(--mat-sys-outline-variant);
+    border-radius: var(--mat-sys-corner-small);
+    overflow: hidden;
+  }
+
+  &__square {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    border: 0;
+    background-color: #b58863;
+    cursor: pointer;
+    // A drag on a piece moves the piece, not the page.
+    touch-action: none;
+    user-select: none;
+
+    &--light {
+      background-color: #f0d9b5;
+    }
+
+    // A dark ring inside a light one, so focus shows on either square color.
+    &:focus-visible {
+      outline: 3px solid #000;
+      outline-offset: -3px;
+      box-shadow: inset 0 0 0 6px #fff;
+    }
+  }
+
+  // Rank number or file letter, as on the app's other boards.
+  &__coord {
+    position: absolute;
+    font-size: 3cqw;
+    line-height: 1;
+    font-weight: 700;
+    color: rgba(0, 0, 0, 0.7);
+    pointer-events: none;
+
+    &--rank {
+      top: 0.75cqw;
+      left: 0.75cqw;
+    }
+
+    &--file {
+      right: 0.75cqw;
+      bottom: 0.75cqw;
+    }
+  }
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    pointer-events: none;
+  }
+
+  // White's pieces in one column, Black's in the next.
+  &__palette {
+    display: flex;
+    gap: 1rem;
+  }
+
+  &__side {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  &__side-title {
+    margin: 0;
+    font: var(--mat-sys-label-large);
+    color: var(--mat-sys-on-surface-variant);
+  }
+
+  // On a light square's color in either theme, so both sides' pieces stand out.
+  &__piece {
+    width: 3.5rem;
+    height: 3.5rem;
+    padding: 0.25rem;
+    border: 1px solid var(--mat-sys-outline);
+    border-radius: var(--mat-sys-corner-small);
+    background-color: #f0d9b5;
+    cursor: grab;
+    touch-action: none;
+    user-select: none;
+
+    // A thick border rather than an outline, so it still shows while focused.
+    &[aria-pressed='true'] {
+      border: 4px solid var(--mat-sys-primary);
+      padding: calc(0.25rem - 3px);
+    }
+
+    &:focus-visible {
+      outline: 3px solid var(--mat-sys-on-surface);
+      outline-offset: 2px;
+    }
+  }
+
+  &__spacer {
+    flex: 1;
+  }
+
+  // The piece under the pointer during a drag, centered on it.
+  &__ghost {
+    position: fixed;
+    z-index: 1;
+    width: 3.5rem;
+    height: 3.5rem;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+  }
+}

@@ -243,7 +243,7 @@ describe('MoveExplorer', () => {
     expect(panel().hidden).toBe(true);
   });
 
-  it('filters to the lines reaching a board with a given piece on a given square', () => {
+  it('filters to the lines with a move whose board has every placed piece on its square', () => {
     TestBed.configureTestingModule({
       imports: [MoveExplorer],
       providers: [provideNoopAnimations()],
@@ -267,39 +267,34 @@ describe('MoveExplorer', () => {
     ]);
     fixture.detectChanges();
     const explorer = fixture.componentInstance as unknown as {
-      pieceColorControl: { setValue(v: string): void };
-      pieceTypeControl: { setValue(v: string): void };
-      squareControl: { setValue(v: string): void };
+      positionPattern: { set(pattern: Record<string, string>): void };
+      positionFen(): string;
       visibleColumns(): { label: string }[];
       isPositionMatch(key: string): boolean;
-      filterStatus(): string;
+      clearPositionFilter(): void;
     };
     const labels = () => explorer.visibleColumns().map((c) => c.label);
 
     // A white bishop on f4: only line A, from 2. Bf4 (ply 3) onwards.
-    explorer.pieceColorControl.setValue('white');
-    explorer.pieceTypeControl.setValue('B');
-    explorer.squareControl.setValue('F4');
+    explorer.positionPattern.set({ f4: 'B' });
     expect(labels()).toEqual(['A']);
     expect(explorer.isPositionMatch('0:3')).toBe(true);
     expect(explorer.isPositionMatch('0:4')).toBe(true);
     expect(explorer.isPositionMatch('0:2')).toBe(false);
 
-    // Any piece of either color on f3: lines B and C.
-    explorer.pieceColorControl.setValue('');
-    explorer.pieceTypeControl.setValue('');
-    explorer.squareControl.setValue('f3');
+    // A white knight on f3: lines B and C.
+    explorer.positionPattern.set({ f3: 'N' });
     expect(labels()).toEqual(['B', 'C']);
 
-    // A black knight on f6: lines A and B.
-    explorer.pieceColorControl.setValue('black');
-    explorer.pieceTypeControl.setValue('N');
-    explorer.squareControl.setValue('f6');
-    expect(labels()).toEqual(['A', 'B']);
+    // Every piece has to be in place on the same move: a white knight on f3 and
+    // a black knight on f6 together are line B's alone, from 2… Nf6 (ply 4).
+    explorer.positionPattern.set({ f3: 'N', f6: 'n' });
+    expect(labels()).toEqual(['B']);
+    expect(explorer.isPositionMatch('1:4')).toBe(true);
+    expect(explorer.isPositionMatch('1:3')).toBe(false);
+    expect(explorer.positionFen()).toBe('8/8/5n2/8/8/5N2/8/8');
 
-    // Not a square yet: nothing is filtered, and the status says why.
-    explorer.squareControl.setValue('f');
+    explorer.clearPositionFilter();
     expect(labels()).toEqual(['A', 'B', 'C']);
-    expect(explorer.filterStatus()).toContain('enter a square like e4');
   });
 });
