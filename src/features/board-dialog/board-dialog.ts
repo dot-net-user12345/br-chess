@@ -9,7 +9,8 @@ import {
 import { Clipboard } from '@angular/cdk/clipboard';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
-import { MAT_DIALOG_DATA, MatDialogModule } from '@angular/material/dialog';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { MAT_DIALOG_DATA, MatDialog, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
@@ -35,6 +36,7 @@ import {
 import { PIECE_OUTLINES } from '../../core/board-assets';
 import { DrawingPreference } from './drawing-preference';
 import { ChessBoard } from '../chess-board/chess-board';
+import { ConfirmDialog, ConfirmDialogData } from '../confirm-dialog/confirm-dialog';
 import { imageFilesIn } from '../../shared/image-drop';
 import { MoveImages } from './move-images';
 import { LineMove, LineMoves } from '../line-moves/line-moves';
@@ -175,7 +177,7 @@ export interface BoardDialogData {
           <mat-icon>{{ copied() === 'pgn' ? 'check' : 'content_copy' }}</mat-icon>
           {{ copied() === 'pgn' ? 'Copied' : 'Copy PGN' }}
         </button>
-        <button matIconButton mat-dialog-close type="button" aria-label="Close">
+        <button matIconButton type="button" aria-label="Close" (click)="requestClose()">
           <mat-icon>close</mat-icon>
         </button>
       </div>
@@ -658,6 +660,10 @@ export interface BoardDialogData {
 })
 export class BoardDialog {
   private readonly data = inject<BoardDialogData>(MAT_DIALOG_DATA);
+  private readonly dialogRef = inject(MatDialogRef<BoardDialog>);
+  private readonly dialog = inject(MatDialog);
+  /** Whether the discard warning is already up, so a second Escape doesn't stack another. */
+  private confirming = false;
 
   /** Whether the opener stores focus points, so the toggle has somewhere to save to. */
   protected readonly canFocus = this.data.onFocusChange !== undefined;
@@ -764,6 +770,65 @@ export class BoardDialog {
   constructor() {
     // Seed the field for the starting position.
     this.captionControl.setValue(this.savedCaption(), { emitEvent: false });
+    // Every way out — the close button, Escape, a click outside — goes through
+    // requestClose, so unsaved work is never dropped without a warning.
+    this.dialogRef.disableClose = true;
+    this.dialogRef
+      .backdropClick()
+      .pipe(takeUntilDestroyed())
+      .subscribe(() => this.requestClose());
+    this.dialogRef
+      .keydownEvents()
+      .pipe(takeUntilDestroyed())
+      .subscribe((event) => {
+        if (event.key === 'Escape' && !event.defaultPrevented) {
+          event.preventDefault();
+          this.requestClose();
+        }
+      });
+  }
+
+  /** Whether a caption is being typed that differs from the one saved. */
+  private hasUnsavedCaption(): boolean {
+    return this.showInput() && this.captionControl.value.trim() !== this.savedCaption();
+  }
+
+  /**
+   * Closes the dialog, first asking whether to discard any unsaved drawing or
+   * caption. Keeping them leaves the dialog open to save.
+   */
+  protected requestClose(): void {
+    if (this.confirming) {
+      return;
+    }
+    const drawings = this.hasUnsavedDrawings();
+    const caption = this.hasUnsavedCaption();
+    if (!drawings && !caption) {
+      this.dialogRef.close();
+      return;
+    }
+    const message =
+      drawings && caption
+        ? 'Your drawing and caption changes aren’t saved. Close anyway and lose them?'
+        : drawings
+          ? 'Your drawing changes aren’t saved. Close anyway and lose them?'
+          : 'Your caption isn’t saved. Close anyway and lose it?';
+    const data: ConfirmDialogData = {
+      title: 'Discard unsaved changes?',
+      message,
+      confirmLabel: 'Discard',
+      cancelLabel: 'Keep editing',
+    };
+    this.confirming = true;
+    this.dialog
+      .open(ConfirmDialog, { data, autoFocus: 'first-tabbable' })
+      .afterClosed()
+      .subscribe((discard) => {
+        this.confirming = false;
+        if (discard) {
+          this.dialogRef.close();
+        }
+      });
   }
 
   protected prev(): void {
