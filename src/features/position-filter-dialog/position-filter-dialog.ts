@@ -12,8 +12,13 @@ import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/materia
 import { MatIconModule } from '@angular/material/icon';
 import { pieceAssetPath } from '../../core/board-assets';
 import { FILES, pieceName } from '../../core/board-position';
-import { BoardOrientation, PieceCode } from '../../core/chess-models';
-import { describePattern, PositionPattern } from '../../core/position-pattern';
+import { BoardOrientation } from '../../core/chess-models';
+import {
+  describePattern,
+  EMPTY_MARK,
+  PatternMark,
+  PositionPattern,
+} from '../../core/position-pattern';
 
 /** What the dialog opens with: the pattern in force, and the side to view from. */
 export interface PositionFilterDialogData {
@@ -23,13 +28,13 @@ export interface PositionFilterDialogData {
 
 interface PaletteSide {
   readonly label: string;
-  readonly pieces: readonly PieceCode[];
+  readonly pieces: readonly PatternMark[];
 }
 
 interface BoardSquare {
   readonly square: string;
   readonly light: boolean;
-  readonly piece: PieceCode | null;
+  readonly piece: PatternMark | null;
   readonly label: string;
   /** Rank number to print, on the left file only; empty elsewhere. */
   readonly rankLabel: string;
@@ -39,7 +44,7 @@ interface BoardSquare {
 
 /** A press on a piece that may become a drag: where it came from, and whether it has moved yet. */
 interface PendingDrag {
-  readonly piece: PieceCode;
+  readonly piece: PatternMark;
   /** The square it was picked up from; null for a piece taken from the palette. */
   readonly source: string | null;
   readonly startX: number;
@@ -70,13 +75,15 @@ export class PositionFilterDialog {
   protected readonly palette: readonly PaletteSide[] = [
     { label: 'White pieces', pieces: ['K', 'Q', 'R', 'B', 'N', 'P'] },
     { label: 'Black pieces', pieces: ['k', 'q', 'r', 'b', 'n', 'p'] },
+    // Dropped like a piece, an X asks for the square to be empty.
+    { label: 'Empty square', pieces: [EMPTY_MARK] },
   ];
 
   protected readonly pattern = signal<PositionPattern>({ ...this.data.pattern });
   /** The palette piece the next selected square receives; null when none is picked. */
-  protected readonly selected = signal<PieceCode | null>(null);
+  protected readonly selected = signal<PatternMark | null>(null);
   /** The piece following the pointer while a drag is under way. */
-  protected readonly ghost = signal<{ piece: PieceCode; x: number; y: number } | null>(null);
+  protected readonly ghost = signal<{ piece: PatternMark; x: number; y: number } | null>(null);
 
   private drag: PendingDrag | null = null;
 
@@ -98,7 +105,7 @@ export class PositionFilterDialog {
           // a1 is dark: a light square's file index and rank sum to an even number.
           light: (FILES.indexOf(file) + rank) % 2 === 0,
           piece,
-          label: piece ? `${square}, ${pieceName(piece)}` : `${square}, empty`,
+          label: piece ? `${square}, ${this.name(piece).toLowerCase()}` : `${square}, not in the filter`,
           rankLabel: col === 0 ? String(rank) : '',
           fileLabel: row === 7 ? file : '',
         };
@@ -106,17 +113,22 @@ export class PositionFilterDialog {
     );
   });
 
-  protected asset(piece: PieceCode): string {
-    return pieceAssetPath(piece);
+  protected isEmptyMark(mark: PatternMark): boolean {
+    return mark === EMPTY_MARK;
   }
 
-  protected name(piece: PieceCode): string {
-    const name = pieceName(piece);
+  /** A piece's image; the X for an empty square is drawn, not an image. */
+  protected asset(piece: PatternMark): string {
+    return piece === EMPTY_MARK ? '' : pieceAssetPath(piece);
+  }
+
+  protected name(piece: PatternMark): string {
+    const name = piece === EMPTY_MARK ? 'must be empty' : pieceName(piece);
     return `${name[0].toUpperCase()}${name.slice(1)}`;
   }
 
   /** Picks a palette piece for the next square, or puts it back when picked already. */
-  protected choose(piece: PieceCode): void {
+  protected choose(piece: PatternMark): void {
     this.selected.update((current) => (current === piece ? null : piece));
   }
 
@@ -131,7 +143,7 @@ export class PositionFilterDialog {
   }
 
   /** Keyboard presses arrive as clicks with no pointer detail; pointer taps are handled on release. */
-  protected onPaletteClick(event: MouseEvent, piece: PieceCode): void {
+  protected onPaletteClick(event: MouseEvent, piece: PatternMark): void {
     if (event.detail === 0) {
       this.choose(piece);
     }
@@ -143,7 +155,7 @@ export class PositionFilterDialog {
     }
   }
 
-  protected onPointerDown(event: PointerEvent, piece: PieceCode | null, source: string | null): void {
+  protected onPointerDown(event: PointerEvent, piece: PatternMark | null, source: string | null): void {
     if (event.button !== 0) {
       return;
     }
@@ -179,7 +191,7 @@ export class PositionFilterDialog {
   }
 
   /** A press on a palette piece that never moved is a tap, and picks the piece. */
-  protected onPalettePointerUp(event: PointerEvent, piece: PieceCode): void {
+  protected onPalettePointerUp(event: PointerEvent, piece: PatternMark): void {
     if (event.button === 0 && !this.endDrag(event)) {
       this.choose(piece);
     }
@@ -225,7 +237,7 @@ export class PositionFilterDialog {
     this.dialogRef.close(this.pattern());
   }
 
-  private place(square: string, piece: PieceCode | null): void {
+  private place(square: string, piece: PatternMark | null): void {
     this.pattern.update((pattern) => {
       const next = { ...pattern };
       if (piece) {

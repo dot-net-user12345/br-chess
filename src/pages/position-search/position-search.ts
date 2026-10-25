@@ -42,6 +42,8 @@ interface ResultTile {
   readonly fen: string;
   readonly from: string | null;
   readonly to: string | null;
+  /** The user's colored squares and arrows for this move, if any. */
+  readonly drawing: BoardDrawing | null;
   readonly caption: string;
   readonly ariaLabel: string;
 }
@@ -53,7 +55,7 @@ interface ResultGroup {
 }
 
 /** How long the pointer or focus rests on a move before its line is previewed. */
-const PEEK_DELAY_MS = 2000;
+const PEEK_DELAY_MS = 1000;
 /** Grace period to move the pointer from a move onto its preview. */
 const PEEK_HIDE_MS = 200;
 
@@ -143,6 +145,7 @@ export class PositionSearch {
             fen: position.fen,
             from: position.from,
             to: position.to,
+            drawing: line.entry.drawings?.[position.ply] ?? null,
             caption,
             ariaLabel: `${caption}, ${line.title}`,
           });

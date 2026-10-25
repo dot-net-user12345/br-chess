@@ -18,7 +18,7 @@ describe('PositionFilterDialog', () => {
     const fixture = TestBed.createComponent(PositionFilterDialog);
     fixture.detectChanges();
     const dialog = fixture.componentInstance as unknown as {
-      choose(piece: PieceCode): void;
+      choose(piece: PieceCode | 'x'): void;
       activate(square: string): void;
       clear(): void;
       apply(): void;
@@ -34,7 +34,7 @@ describe('PositionFilterDialog', () => {
     const squares = fixture.nativeElement.querySelectorAll('[data-square]');
     expect(squares.length).toBe(64);
     expect(squares[0].dataset.square).toBe('a8');
-    expect(square('e4').getAttribute('aria-label')).toBe('e4, empty');
+    expect(square('e4').getAttribute('aria-label')).toBe('e4, not in the filter');
   });
 
   it('places the selected piece on a square, and removes it again', () => {
@@ -51,6 +51,18 @@ describe('PositionFilterDialog', () => {
     dialog.activate('e4');
     dialog.apply();
     expect(close).toHaveBeenCalledWith({});
+  });
+
+  it('marks a square that must be empty with an X', () => {
+    const { fixture, dialog, close, square } = setup();
+    dialog.choose('x');
+    dialog.activate('e4');
+    fixture.detectChanges();
+    expect(square('e4').getAttribute('aria-label')).toBe('e4, must be empty');
+    expect(square('e4').querySelector('.filter__cross')).not.toBeNull();
+    expect(dialog.summary()).toBe('e4 empty');
+    dialog.apply();
+    expect(close).toHaveBeenCalledWith({ e4: 'x' });
   });
 
   it('clears the board', () => {

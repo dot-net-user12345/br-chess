@@ -22,7 +22,12 @@ describe('PositionSearch', () => {
       updatedAt: '',
       content: {
         orientation,
-        entries: pgns.map((pgn, i) => ({ id: `${id}-${i}`, pgn })),
+        entries: pgns.map((pgn, i) => ({
+          id: `${id}-${i}`,
+          pgn,
+          // Every line has e4 marked at its third move.
+          drawings: { 3: { squares: ['e4'], arrows: [] } },
+        })),
       },
     } as PgnGridFileNode;
   }
@@ -73,6 +78,8 @@ describe('PositionSearch', () => {
     expect(page.groups().map((g) => g.tiles.map((t) => t.caption))).toEqual([['2. Nf3'], ['2. Nf3']]);
     expect(page.status()).toBe('2 moves in 2 lines of your White files.');
     expect(fixture.nativeElement.querySelectorAll('.search__button').length).toBe(2);
+    // The move's own drawing comes with it: 2. Nf3 is ply 3, where e4 is marked.
+    expect(fixture.nativeElement.querySelectorAll('.square--marked').length).toBe(2);
 
     // Black's files are searched only when Black is chosen.
     page.orientation.set('black');

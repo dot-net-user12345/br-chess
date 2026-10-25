@@ -2,9 +2,10 @@
 
 <div class="filter">
   <p id="position-filter-help" class="filter__help">
-    Drag pieces onto the board, or select a piece and then a square. Drag a piece off the board, or
-    select a square that holds one with no piece selected, to remove it. Lines are shown when any of
-    their moves has every placed piece on its square.
+    Drag pieces onto the board, or select a piece and then a square. Drop an X on a square that must
+    be empty. Drag a piece or X off the board, or select its square with nothing selected, to remove
+    it. Lines are shown when any of their moves has every placed piece on its square and nothing on
+    its X squares.
   </p>
 
   <div class="filter__body">
@@ -29,7 +30,14 @@
             <span class="filter__coord filter__coord--file" aria-hidden="true">{{ square.fileLabel }}</span>
           }
           @if (square.piece; as piece) {
-            <img [ngSrc]="asset(piece)" width="45" height="45" alt="" draggable="false" />
+            @if (isEmptyMark(piece)) {
+              <svg class="filter__cross" viewBox="0 0 10 10" aria-hidden="true">
+                <line x1="2" y1="2" x2="8" y2="8" />
+                <line x1="2" y1="8" x2="8" y2="2" />
+              </svg>
+            } @else {
+              <img [ngSrc]="asset(piece)" width="45" height="45" alt="" draggable="false" />
+            }
           }
         </button>
       }
@@ -51,7 +59,14 @@
               (pointerup)="onPalettePointerUp($event, piece)"
               (pointercancel)="onPointerCancel()"
             >
-              <img [ngSrc]="asset(piece)" width="45" height="45" alt="" draggable="false" />
+              @if (isEmptyMark(piece)) {
+                <svg class="filter__cross" viewBox="0 0 10 10" aria-hidden="true">
+                  <line x1="2" y1="2" x2="8" y2="8" />
+                  <line x1="2" y1="8" x2="8" y2="2" />
+                </svg>
+              } @else {
+                <img [ngSrc]="asset(piece)" width="45" height="45" alt="" draggable="false" />
+              }
             </button>
           }
         </div>
@@ -73,13 +88,26 @@
 </mat-dialog-actions>
 
 @if (ghost(); as ghost) {
-  <img
-    class="filter__ghost"
-    [ngSrc]="asset(ghost.piece)"
-    width="45"
-    height="45"
-    alt=""
-    [style.left.px]="ghost.x"
-    [style.top.px]="ghost.y"
-  />
+  @if (isEmptyMark(ghost.piece)) {
+    <svg
+      class="filter__ghost filter__cross"
+      viewBox="0 0 10 10"
+      aria-hidden="true"
+      [style.left.px]="ghost.x"
+      [style.top.px]="ghost.y"
+    >
+      <line x1="2" y1="2" x2="8" y2="8" />
+      <line x1="2" y1="8" x2="8" y2="2" />
+    </svg>
+  } @else {
+    <img
+      class="filter__ghost"
+      [ngSrc]="asset(ghost.piece)"
+      width="45"
+      height="45"
+      alt=""
+      [style.left.px]="ghost.x"
+      [style.top.px]="ghost.y"
+    />
+  }
 }

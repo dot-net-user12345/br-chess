@@ -29,7 +29,7 @@ import { PositionFilterDialog, PositionFilterDialogData } from './position-filte
         type="button"
         class="position-filter-bar__help"
         aria-label="About this FEN"
-        matTooltip="Only the board part of a FEN: the pieces you placed, rank 8 first. It needn't be a legal position — it can have no kings, or several — since it only lists the squares a move's board must match."
+        matTooltip="Only the board part of a FEN: the pieces you placed, rank 8 first, with x for a square that must be empty. It needn't be a legal position — it can have no kings, or several — since it only lists the squares a move's board must match."
       >
         <mat-icon>help_outline</mat-icon>
       </button>
