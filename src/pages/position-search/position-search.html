@@ -17,7 +17,31 @@
         <span>({{ scopeCount() }})</span>
       }
     </button>
-    <app-position-filter-bar [(pattern)]="pattern" [orientation]="orientation()" />
+    <!-- One filter at a time: applying either clears the other. -->
+    <app-position-filter-bar
+      [pattern]="pattern()"
+      (patternChange)="setPattern($event)"
+      [orientation]="orientation()"
+    />
+    <mat-form-field class="search__pgn" appearance="outline" subscriptSizing="dynamic">
+      <mat-label>Filter by PGN</mat-label>
+      <input
+        matInput
+        type="text"
+        autocomplete="off"
+        spellcheck="false"
+        [attr.aria-invalid]="pgnInvalid()"
+        [formControl]="pgnControl"
+        (keydown.escape)="clearPgn()"
+      />
+      @if (pgnFilter()) {
+        <button matIconButton matSuffix type="button" (click)="clearPgn()" aria-label="Clear PGN filter">
+          <mat-icon>close</mat-icon>
+        </button>
+      } @else {
+        <mat-icon matSuffix class="search__pgn-icon">filter_list</mat-icon>
+      }
+    </mat-form-field>
     <span class="search__spacer"></span>
     <mat-button-toggle-group
       aria-label="Board size"

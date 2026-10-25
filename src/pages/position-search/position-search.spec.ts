@@ -68,6 +68,8 @@ describe('PositionSearch', () => {
       move(delta: -1 | 1): void;
       reordered(): boolean;
       restoreOrder(): void;
+      pgnControl: { setValue(text: string): void; value: string };
+      setPattern(pattern: Record<string, string>): void;
       view: { set(view: 'grid' | 'large'): void };
       largeMode: { set(mode: 'single' | 'row'): void };
       open(group: unknown, ply: number): void;
@@ -128,6 +130,33 @@ describe('PositionSearch', () => {
 
     page.restoreOrder();
     expect(lines()).toEqual(['Italian', 'London']);
+  });
+
+  it('filters by PGN to the board each line reaches after those moves', () => {
+    const { page } = setup();
+    page.pgnControl.setValue('1. d4');
+    expect(page.groups().map((g) => g.line.title)).toEqual(['London › Line 1', 'London › Line 2']);
+    expect(page.groups().map((g) => g.tiles.map((t) => t.caption))).toEqual([['1. d4'], ['1. d4']]);
+
+    page.pgnControl.setValue('1. d4 Nf6');
+    expect(page.groups().map((g) => g.tiles.map((t) => t.caption))).toEqual([['1… Nf6']]);
+
+    page.pgnControl.setValue('1. d4 Qq9');
+    expect(page.groups()).toEqual([]);
+    expect(page.status()).toBe('PGN filter: not a valid PGN yet.');
+  });
+
+  it('keeps one filter at a time, each clearing the other', () => {
+    const { page } = setup();
+    page.setPattern({ f3: 'N' });
+    page.pgnControl.setValue('1. e4');
+    // Typing a PGN put the position aside.
+    expect(page.groups().map((g) => g.line.title)).toEqual(['Italian › Line 1']);
+
+    // Applying a position clears the PGN.
+    page.setPattern({ f3: 'N' });
+    expect(page.pgnControl.value).toBe('');
+    expect(page.groups().map((g) => g.line.title)).toEqual(['Italian › Line 1', 'London › Line 2']);
   });
 
   it('shows the boards large, one at a time or all in a row', () => {

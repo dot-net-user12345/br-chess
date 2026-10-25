@@ -1,3 +1,5 @@
+@use '@angular/material' as mat;
+
 .search {
   // Room for a large board's caption, the bars above it and the page's padding.
   --large-board: min(calc(100dvh - 17rem), 100%);
@@ -25,6 +27,17 @@
 
   &__spacer {
     flex: 1;
+  }
+
+  // Compact, to sit in the bar beside the other controls.
+  &__pgn {
+    @include mat.form-field-density(-4);
+    flex: 0 1 18rem;
+    min-width: 12rem;
+  }
+
+  &__pgn-icon {
+    color: var(--mat-sys-on-surface-variant);
   }
 
   &__status,

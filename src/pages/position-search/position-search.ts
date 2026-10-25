@@ -12,9 +12,13 @@ import {
   viewChild,
 } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
+import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
+import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDividerModule } from '@angular/material/divider';
+import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
+import { MatInputModule } from '@angular/material/input';
 import { MatMenuModule, MatMenuTrigger } from '@angular/material/menu';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatDialog } from '@angular/material/dialog';
@@ -44,7 +48,7 @@ interface SearchLine {
   readonly entry: PgnEntry;
 }
 
-/** A move whose board has the filter's pieces in place. */
+/** A move the filter matched: one whose board has its pieces in place, or that ends its PGN. */
 interface ResultTile {
   readonly key: string;
   readonly ply: number;
@@ -76,26 +80,30 @@ const ORDER_KEY = 'br-chess-position-search-order';
 
 /** A display order of the results, and the filter it was made for. */
 interface SavedOrder {
-  /** The filter's key when the order was made: side and pattern. */
+  /** The filter's key when the order was made: side, and pattern or PGN. */
   readonly filter: string;
   /** Result keys, first to last. */
   readonly keys: readonly string[];
 }
 
 /**
- * Searches every PGN grid file of one orientation for the moves whose board
- * has the position filter's pieces in place, and shows those boards across the
- * whole page. A board opens the large view beside its line's moves; resting on
- * one previews the line.
+ * Searches every PGN grid file of one orientation and shows the matching
+ * boards across the whole page. Two filters, one at a time: by position, the
+ * moves whose board has the filter's pieces in place; by PGN, the board each
+ * line reaches after opening with those moves. A board opens the large view
+ * beside its line's moves; resting on one previews the line.
  */
 @Component({
   selector: 'app-position-search',
   imports: [
     NgTemplateOutlet,
+    ReactiveFormsModule,
     MatButtonModule,
     MatButtonToggleModule,
     MatDividerModule,
+    MatFormFieldModule,
     MatIconModule,
+    MatInputModule,
     MatMenuModule,
     OverlayModule,
     ChessBoard,
@@ -117,7 +125,41 @@ export class PositionSearch {
   /** Only files viewed from this side are searched, and every board is drawn from it. */
   protected readonly orientation = signal<BoardOrientation>('white');
 
-  protected readonly active = computed(() => Object.keys(this.pattern()).length > 0);
+  /** Lines that open with these moves; the other filter, used instead of a position. */
+  protected readonly pgnControl = new FormControl('', { nonNullable: true });
+  private readonly pgnText = toSignal(this.pgnControl.valueChanges, { initialValue: '' });
+
+  /**
+   * The PGN filter's moves as SAN, `null` when the field is empty, or an error
+   * while what's typed isn't a PGN with at least one move.
+   */
+  protected readonly pgnFilter = computed<{ sans: readonly string[] } | { error: string } | null>(
+    () => {
+      const text = this.pgnText().trim();
+      if (text.length === 0) {
+        return null;
+      }
+      const result = this.chess.parsePgn(text);
+      const sans = result.positions.flatMap((position) => (position.san ? [position.san] : []));
+      return result.valid && sans.length > 0 ? { sans } : { error: 'Not a valid PGN yet.' };
+    },
+  );
+
+  protected readonly pgnInvalid = computed(() => {
+    const filter = this.pgnFilter();
+    return filter !== null && 'error' in filter;
+  });
+
+  /** The PGN filter's moves while it is in force; null otherwise. */
+  private readonly pgnSans = computed(() => {
+    const filter = this.pgnFilter();
+    return filter && 'sans' in filter ? filter.sans : null;
+  });
+
+  /** Whether either filter is in force. */
+  protected readonly active = computed(
+    () => this.pgnSans() !== null || Object.keys(this.pattern()).length > 0,
+  );
 
   /**
    * Files left out of the search, picked in the Files dialog. The left-out
@@ -166,43 +208,48 @@ export class PositionSearch {
   });
 
   /**
-   * The lines with a matching move, each with the moves where the filter's
-   * pieces come into place — the first of each run of matching moves, so a
-   * position held for many moves shows once rather than at every move.
+   * The lines with a matching move. By PGN, each line that opens with its
+   * moves, at the board after the last of them. By position, each line's moves
+   * where the filter's pieces come into place — the first of each run of
+   * matching moves, so a position held for many moves shows once rather than
+   * at every move.
    */
   protected readonly groups = computed<ResultGroup[]>(() => {
+    const sans = this.pgnSans();
     const pattern = this.pattern();
     if (!this.active()) {
       return [];
     }
     return this.lines().flatMap((line) => {
       const tiles: ResultTile[] = [];
-      let previous = false;
-      for (const position of line.positions) {
-        const matches = position.ply > 0 && matchesPattern(position.fen, pattern);
-        if (matches && !previous) {
-          const caption = moveLabel(position);
-          tiles.push({
-            key: `${line.fileId}:${line.entryId}:${position.ply}`,
-            ply: position.ply,
-            fen: position.fen,
-            from: position.from,
-            to: position.to,
-            drawing: line.entry.drawings?.[position.ply] ?? null,
-            caption,
-            ariaLabel: `${caption}, ${line.title}`,
-          });
+      if (sans) {
+        // Positions run from the starting board, so move i is position i + 1.
+        if (sans.every((san, i) => line.positions[i + 1]?.san === san)) {
+          tiles.push(resultTile(line, line.positions[sans.length]));
         }
-        previous = matches;
+      } else {
+        let previous = false;
+        for (const position of line.positions) {
+          const matches = position.ply > 0 && matchesPattern(position.fen, pattern);
+          if (matches && !previous) {
+            tiles.push(resultTile(line, position));
+          }
+          previous = matches;
+        }
       }
       return tiles.length > 0 ? [{ key: `${line.fileId}:${line.entryId}`, line, tiles }] : [];
     });
   });
 
   /** The filter as one string, which a saved order is kept against; '' when there is none. */
-  private readonly filterKey = computed(() =>
-    this.active() ? `${this.orientation()}|${patternToFen(this.pattern())}` : '',
-  );
+  private readonly filterKey = computed(() => {
+    if (!this.active()) {
+      return '';
+    }
+    const sans = this.pgnSans();
+    const filter = sans ? `pgn:${sans.join(' ')}` : patternToFen(this.pattern());
+    return `${this.orientation()}|${filter}`;
+  });
 
   /** The user's order of the results, for the one filter it was made for. */
   private readonly savedOrder = signal<SavedOrder | null>(readOrder());
@@ -259,13 +306,18 @@ export class PositionSearch {
 
   protected readonly status = computed(() => {
     const side = this.orientation() === 'white' ? 'White' : 'Black';
+    if (this.pgnInvalid()) {
+      return 'PGN filter: not a valid PGN yet.';
+    }
     if (!this.active()) {
-      return `Place pieces with Filter by position to find the moves in your ${side} files that reach them.`;
+      return `Place pieces with Filter by position, or type moves into Filter by PGN, to find them in your ${side} files.`;
     }
     const groups = this.groups();
     const moves = groups.reduce((sum, group) => sum + group.tiles.length, 0);
     if (moves === 0) {
-      return `No move in your ${side} files has those pieces in place.`;
+      return this.pgnSans()
+        ? `No line in your ${side} files opens with those moves.`
+        : `No move in your ${side} files has those pieces in place.`;
     }
     const plural = (count: number, word: string) => `${count} ${word}${count === 1 ? '' : 's'}`;
     return `${plural(moves, 'move')} in ${plural(groups.length, 'line')} of your ${side} files.`;
@@ -293,6 +345,12 @@ export class PositionSearch {
   protected readonly menuIndex = signal(-1);
 
   constructor() {
+    // The two filters are one at a time: typing a PGN puts the position aside.
+    this.pgnControl.valueChanges.pipe(takeUntilDestroyed()).subscribe((text) => {
+      if (text.trim().length > 0) {
+        this.pattern.set({});
+      }
+    });
     effect(() => writeExcluded(this.excluded()));
     effect(() => writeOrder(this.savedOrder()));
     inject(DestroyRef).onDestroy(() => {
@@ -327,6 +385,18 @@ export class PositionSearch {
     clearTimeout(this.peekTimer);
     clearTimeout(this.hideTimer);
     this.peek.set(null);
+  }
+
+  /** Applies a position from the filter dialog, which clears the PGN filter. */
+  protected setPattern(pattern: PositionPattern): void {
+    this.pattern.set(pattern);
+    if (Object.keys(pattern).length > 0) {
+      this.pgnControl.setValue('');
+    }
+  }
+
+  protected clearPgn(): void {
+    this.pgnControl.setValue('');
   }
 
   /** Opens the reorder menu at the pointer, or under the board from the keyboard. */
@@ -503,6 +573,21 @@ function writeExcluded(excluded: ReadonlySet<NodeId>): void {
   } catch {
     // Storage can be unavailable (private mode, blocked); the choice then lasts the visit.
   }
+}
+
+/** One matching move of a line, as a board on the page. */
+function resultTile(line: SearchLine, position: GamePosition): ResultTile {
+  const caption = moveLabel(position);
+  return {
+    key: `${line.fileId}:${line.entryId}:${position.ply}`,
+    ply: position.ply,
+    fen: position.fen,
+    from: position.from,
+    to: position.to,
+    drawing: line.entry.drawings?.[position.ply] ?? null,
+    caption,
+    ariaLabel: `${caption}, ${line.title}`,
+  };
 }
 
 /** `5. Qd2` for White, `5… O-O` for Black — how the app captions a move. */
