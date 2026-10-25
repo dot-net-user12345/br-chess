@@ -9,6 +9,7 @@ import {
 import { Clipboard } from '@angular/cdk/clipboard';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
+import { MatCheckboxModule } from '@angular/material/checkbox';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MAT_DIALOG_DATA, MatDialog, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -91,6 +92,7 @@ export interface BoardDialogData {
     MatFormFieldModule,
     MatInputModule,
     MatRadioModule,
+    MatCheckboxModule,
     ReactiveFormsModule,
     ChessBoard,
     MoveImages,
@@ -322,6 +324,13 @@ export interface BoardDialogData {
                     {{ drawPref.arrowStyle() === 'solid' ? 'Blank for none' : 'Arrows only' }}
                   </mat-hint>
                 </mat-form-field>
+                <mat-checkbox
+                  [checked]="drawPref.autoIncrement()"
+                  [disabled]="drawPref.arrowStyle() !== 'solid'"
+                  (change)="drawPref.setAutoIncrement($event.checked)"
+                >
+                  Auto-increment
+                </mat-checkbox>
               </div>
               <div class="board-dialog__option board-dialog__option--wide">
               <p id="board-dialog-square-label" class="board-dialog__drawing-label">Square</p>
@@ -904,7 +913,19 @@ export class BoardDialog {
   /** Records a right-click or right-drag on the board as an unsaved edit. */
   protected onDraw(drawing: BoardDrawing): void {
     const ply = this.current().ply;
+    const before = this.currentDrawing()?.arrows ?? [];
     this.draftDrawings.update((drafts) => ({ ...drafts, [ply]: drawing }));
+    // A new arrow carrying the number moves it on, when auto-increment is on;
+    // removing an arrow, or drawing anything else, leaves it alone.
+    const label = this.drawPref.arrowLabel();
+    const numbered = drawing.arrows.some(
+      (arrow) =>
+        arrow.label === label &&
+        !before.some((b) => b.from === arrow.from && b.to === arrow.to && b.label === label),
+    );
+    if (label && numbered) {
+      this.drawPref.advanceArrowLabel();
+    }
   }
 
   /** Clears the current move's drawing (as an unsaved edit, like any other). */

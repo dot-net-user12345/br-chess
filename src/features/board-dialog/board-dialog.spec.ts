@@ -5,6 +5,7 @@ import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { ChessService } from '../../core/chess-service';
 import { BoardDrawing } from '../../core/workspace-models';
 import { ConfirmDialog } from '../confirm-dialog/confirm-dialog';
+import { DrawingPreference } from './drawing-preference';
 import { BoardDialog, BoardDialogData } from './board-dialog';
 
 describe('BoardDialog closing', () => {
@@ -71,6 +72,41 @@ describe('BoardDialog closing', () => {
     again.close(true);
     await firstValueFrom(again.afterClosed());
     expect(closed).toHaveBeenCalled();
+  });
+
+  it('moves the arrow number on with each arrow drawn, while auto-increment is on', () => {
+    const { dialog } = setup();
+    const pref = TestBed.inject(DrawingPreference);
+    pref.arrowLabel.set('');
+    pref.setAutoIncrement(true);
+    // Turned on with no number, it starts at 1.
+    expect(pref.arrowLabel()).toBe('1');
+
+    dialog.onDraw({ squares: [], arrows: [{ from: 'g1', to: 'f3', label: '1' }] });
+    expect(pref.arrowLabel()).toBe('2');
+    dialog.onDraw({
+      squares: [],
+      arrows: [
+        { from: 'g1', to: 'f3', label: '1' },
+        { from: 'b1', to: 'c3', label: '2' },
+      ],
+    });
+    expect(pref.arrowLabel()).toBe('3');
+
+    // Removing an arrow, or marking a square, doesn't count.
+    dialog.onDraw({ squares: ['e4'], arrows: [{ from: 'g1', to: 'f3', label: '1' }] });
+    expect(pref.arrowLabel()).toBe('3');
+
+    // Off, the number stays put.
+    pref.setAutoIncrement(false);
+    dialog.onDraw({
+      squares: ['e4'],
+      arrows: [
+        { from: 'g1', to: 'f3', label: '1' },
+        { from: 'd2', to: 'd4', label: '3' },
+      ],
+    });
+    expect(pref.arrowLabel()).toBe('3');
   });
 
   it('warns about a caption typed but not saved', () => {

@@ -10,6 +10,7 @@ import {
   DrawingColor,
   OUTLINE_PIECES,
   OutlinePiece,
+  ARROW_LABEL_MAX_LENGTH,
   sanitizeArrowLabel,
   SQUARE_MARKS,
   SquareMark,
@@ -47,6 +48,9 @@ export class DrawingPreference {
    */
   readonly arrowLabel = signal('');
 
+  /** Whether each numbered arrow drawn moves the number on by one. Not stored either. */
+  readonly autoIncrement = signal(false);
+
   /** The piece last picked for an outline, kept while another mark is in use. */
   readonly outlinePiece = signal<OutlinePiece>(
     read(OUTLINE_PIECE_KEY, OUTLINE_PIECES, DEFAULT_OUTLINE_PIECE),
@@ -64,6 +68,29 @@ export class DrawingPreference {
     const label = sanitizeArrowLabel(text);
     this.arrowLabel.set(label);
     return label;
+  }
+
+  /** Turns auto-increment on or off; turned on with no number, it starts counting at 1. */
+  setAutoIncrement(on: boolean): void {
+    this.autoIncrement.set(on);
+    if (on && !this.arrowLabel()) {
+      this.arrowLabel.set('1');
+    }
+  }
+
+  /**
+   * Moves the arrow number on by one after it has been used, while
+   * auto-increment is on. It stops at the largest number that fits.
+   */
+  advanceArrowLabel(): void {
+    const label = this.arrowLabel();
+    if (!this.autoIncrement() || !label) {
+      return;
+    }
+    const next = String(Number(label) + 1);
+    if (next.length <= ARROW_LABEL_MAX_LENGTH) {
+      this.arrowLabel.set(next);
+    }
   }
 
   /** Picks a kind of mark; a piece outline is drawn as the piece last picked. */
