@@ -1,0 +1,153 @@
+.search {
+  // Room for a large board's caption, the bars above it and the page's padding.
+  --large-board: min(calc(100dvh - 17rem), 100%);
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+
+  // Stays in reach while the results scroll beneath it.
+  &__bar {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.75rem 1rem;
+    padding: 0.5rem 1rem;
+    background: var(--mat-sys-surface);
+  }
+
+  &__title {
+    margin: 0;
+    font: var(--mat-sys-headline-small);
+  }
+
+  &__spacer {
+    flex: 1;
+  }
+
+  &__status,
+  &__count {
+    margin: 0;
+    padding: 0 1rem;
+    font: var(--mat-sys-body-medium);
+    color: var(--mat-sys-on-surface-variant);
+  }
+
+  &__count {
+    text-align: center;
+  }
+
+  // Still announced, but out of sight: visually hidden, not display: none.
+  &__status--hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  &__grid,
+  &__row {
+    display: flex;
+    gap: 0.75rem;
+    margin: 0;
+    padding: 0 1rem;
+    list-style: none;
+  }
+
+  // As many boards to a row as the page has room for.
+  &__grid {
+    flex-wrap: wrap;
+  }
+
+  // Every board large in one row, scrolling sideways.
+  &__row {
+    overflow-x: auto;
+    padding-bottom: 0.5rem;
+  }
+
+  &__tile {
+    flex: 0 0 11rem;
+
+    &--large {
+      flex: 0 0 auto;
+      width: var(--large-board);
+      max-width: 85vw;
+    }
+  }
+
+  // One large board between its previous and next buttons.
+  &__single {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+  }
+
+  &__nav {
+    flex: 0 0 auto;
+  }
+
+  &__button {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    width: 100%;
+    padding: 0.25rem;
+    border: 1px solid transparent;
+    border-radius: var(--mat-sys-corner-small);
+    background: none;
+    color: inherit;
+    cursor: pointer;
+
+    &:hover {
+      border-color: var(--mat-sys-outline);
+    }
+
+    &:focus-visible {
+      outline: 3px solid var(--mat-sys-primary);
+      outline-offset: 2px;
+    }
+  }
+
+  &__caption {
+    font: var(--mat-sys-label-large);
+    text-align: center;
+  }
+
+  // The move's file and line, above a large board; cut short when too long.
+  &__path {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font: var(--mat-sys-label-small);
+    color: var(--mat-sys-on-surface-variant);
+    text-align: left;
+  }
+}
+
+// The line previewed beside a move the pointer or focus rests on.
+.peek {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  width: 16rem;
+  max-height: 60vh;
+  padding: 0.75rem;
+  border-radius: var(--mat-sys-corner-medium);
+  background: var(--mat-sys-surface-container-high);
+  color: var(--mat-sys-on-surface);
+  box-shadow: var(--mat-sys-level3);
+
+  &__title {
+    margin: 0;
+    font: var(--mat-sys-title-small);
+  }
+
+  &__moves {
+    min-height: 0;
+  }
+}

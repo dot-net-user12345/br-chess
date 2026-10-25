@@ -28,16 +28,13 @@ import { BoardOrientation, GamePosition } from '../../core/chess-models';
 import { ChessService } from '../../core/chess-service';
 import { findMatchingSpan, MoveQuery, parseMoveQuery } from '../../core/line-search';
 import { analyzeMoves, SelectedMove } from '../../core/move-analysis';
-import { matchesPattern, patternToFen, PositionPattern } from '../../core/position-pattern';
+import { matchesPattern, PositionPattern } from '../../core/position-pattern';
 import { sharedPlacements } from '../../core/shared-placements';
 import { EMPTY_DRAWING, toggleSquare } from '../../core/board-drawing';
 import { BoardDrawing, UploadedImage } from '../../core/workspace-models';
 import { BoardDialog, BoardDialogTile } from '../board-dialog/board-dialog';
 import { ChessBoard } from '../chess-board/chess-board';
-import {
-  PositionFilterDialog,
-  PositionFilterDialogData,
-} from '../position-filter-dialog/position-filter-dialog';
+import { PositionFilterBar } from '../position-filter-dialog/position-filter-bar';
 
 /** One line the explorer lists as a column of clickable moves. */
 export interface MoveExplorerLine {
@@ -127,6 +124,7 @@ interface PinnedGroup {
     MatMenuModule,
     MatTooltipModule,
     ChessBoard,
+    PositionFilterBar,
   ],
   host: {
     class: 'move-explorer',
@@ -259,9 +257,6 @@ export class MoveExplorer {
   /** Whether the position filter has any pieces, which is when it filters at all. */
   protected readonly positionFilter = computed(() => Object.keys(this.positionPattern()).length > 0);
 
-  /** The position filter as the board part of a FEN, e.g. `8/8/8/8/8/5N2/8/8`. */
-  protected readonly positionFen = computed(() => patternToFen(this.positionPattern()));
-
   /**
    * For each line (by index), the plies whose board has every piece of the
    * position filter on its square, or null when the position filter is empty.
@@ -289,29 +284,6 @@ export class MoveExplorer {
 
   protected isPositionMatch(key: string): boolean {
     return this.positionKeys().has(key);
-  }
-
-  /** Opens the board to build the position filter on; Apply puts it in force. */
-  protected openPositionFilter(): void {
-    const data: PositionFilterDialogData = {
-      pattern: this.positionPattern(),
-      orientation: this.orientation(),
-    };
-    this.dialog
-      .open<PositionFilterDialog, PositionFilterDialogData, PositionPattern>(PositionFilterDialog, {
-        data,
-        panelClass: 'position-filter-dialog-panel',
-        width: '100vw',
-        height: '100dvh',
-        maxWidth: '100vw',
-        maxHeight: '100dvh',
-      })
-      .afterClosed()
-      .subscribe((pattern) => {
-        if (pattern) {
-          this.positionPattern.set(pattern);
-        }
-      });
   }
 
   protected clearPositionFilter(): void {

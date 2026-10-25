@@ -268,7 +268,6 @@ describe('MoveExplorer', () => {
     fixture.detectChanges();
     const explorer = fixture.componentInstance as unknown as {
       positionPattern: { set(pattern: Record<string, string>): void };
-      positionFen(): string;
       visibleColumns(): { label: string }[];
       isPositionMatch(key: string): boolean;
       clearPositionFilter(): void;
@@ -292,7 +291,6 @@ describe('MoveExplorer', () => {
     expect(labels()).toEqual(['B']);
     expect(explorer.isPositionMatch('1:4')).toBe(true);
     expect(explorer.isPositionMatch('1:3')).toBe(false);
-    expect(explorer.positionFen()).toBe('8/8/5n2/8/8/5N2/8/8');
 
     explorer.clearPositionFilter();
     expect(labels()).toEqual(['A', 'B', 'C']);

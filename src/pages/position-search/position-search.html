@@ -1,0 +1,159 @@
+<div class="search">
+  <div class="search__bar">
+    <h1 class="search__title">Position search</h1>
+    <mat-button-toggle-group
+      aria-label="Files to search, by the side they are viewed from"
+      hideSingleSelectionIndicator
+      [value]="orientation()"
+      (change)="orientation.set($event.value)"
+    >
+      <mat-button-toggle value="white">White</mat-button-toggle>
+      <mat-button-toggle value="black">Black</mat-button-toggle>
+    </mat-button-toggle-group>
+    <app-position-filter-bar [(pattern)]="pattern" [orientation]="orientation()" />
+    <span class="search__spacer"></span>
+    <mat-button-toggle-group
+      aria-label="Board size"
+      hideSingleSelectionIndicator
+      [value]="view()"
+      (change)="view.set($event.value)"
+    >
+      <mat-button-toggle value="grid">
+        <mat-icon>grid_view</mat-icon>
+        Grid
+      </mat-button-toggle>
+      <mat-button-toggle value="large">
+        <mat-icon>crop_square</mat-icon>
+        Large
+      </mat-button-toggle>
+    </mat-button-toggle-group>
+    @if (view() === 'large') {
+      <mat-button-toggle-group
+        aria-label="Large boards shown"
+        hideSingleSelectionIndicator
+        [value]="largeMode()"
+        (change)="largeMode.set($event.value)"
+      >
+        <mat-button-toggle value="single">
+          <mat-icon>filter_1</mat-icon>
+          One at a time
+        </mat-button-toggle>
+        <mat-button-toggle value="row">
+          <mat-icon>view_column</mat-icon>
+          All in a row
+        </mat-button-toggle>
+      </mat-button-toggle-group>
+    }
+  </div>
+
+  <!-- The count is for screen readers; on screen the boards speak for themselves. -->
+  <p
+    class="search__status"
+    [class.search__status--hidden]="results().length > 0"
+    aria-live="polite"
+  >
+    {{ status() }}
+  </p>
+
+  @if (results().length > 0) {
+    @if (view() === 'grid') {
+      <ul class="search__grid" aria-label="Matching moves">
+        @for (result of results(); track result.tile.key) {
+          <li class="search__tile">
+            <ng-container *ngTemplateOutlet="board; context: { $implicit: result }" />
+          </li>
+        }
+      </ul>
+    } @else if (largeMode() === 'row') {
+      <ul class="search__row" aria-label="Matching moves">
+        @for (result of results(); track result.tile.key) {
+          <li class="search__tile search__tile--large">
+            <ng-container *ngTemplateOutlet="board; context: { $implicit: result }" />
+          </li>
+        }
+      </ul>
+    } @else if (current(); as result) {
+      <div class="search__single" role="group" aria-label="Matching moves, one at a time">
+        <button
+          matIconButton
+          type="button"
+          class="search__nav"
+          aria-label="Previous move"
+          [disabled]="index() === 0"
+          (click)="prev()"
+        >
+          <mat-icon>chevron_left</mat-icon>
+        </button>
+        <div class="search__tile search__tile--large">
+          <ng-container *ngTemplateOutlet="board; context: { $implicit: result }" />
+        </div>
+        <button
+          matIconButton
+          type="button"
+          class="search__nav"
+          aria-label="Next move"
+          [disabled]="index() === results().length - 1"
+          (click)="next()"
+        >
+          <mat-icon>chevron_right</mat-icon>
+        </button>
+      </div>
+      <p class="search__count" aria-live="polite">{{ index() + 1 }} of {{ results().length }}</p>
+    }
+  }
+</div>
+
+<!-- One matching move: opens the large view, and resting on it previews the line. -->
+<ng-template #board let-result>
+  <button
+    type="button"
+    class="search__button"
+    cdkOverlayOrigin
+    #origin="cdkOverlayOrigin"
+    [attr.aria-label]="'View ' + result.tile.ariaLabel + ' with its line'"
+    [attr.aria-describedby]="peek()?.tile?.key === result.tile.key ? 'position-peek' : null"
+    (click)="open(result.group, result.tile.ply)"
+    (mouseenter)="startPeek(result.group, result.tile, origin)"
+    (mouseleave)="endPeek()"
+    (focus)="startPeek(result.group, result.tile, origin)"
+    (blur)="endPeek()"
+  >
+    @if (view() === 'large') {
+      <span class="search__path">{{ result.group.line.title }}</span>
+    }
+    <app-chess-board
+      [fen]="result.tile.fen"
+      [caption]="result.tile.ariaLabel"
+      [from]="result.tile.from"
+      [to]="result.tile.to"
+      [orientation]="orientation()"
+    />
+    <span class="search__caption">{{ result.tile.caption }}</span>
+  </button>
+</ng-template>
+
+@if (peek(); as peek) {
+  <ng-template
+    cdkConnectedOverlay
+    [cdkConnectedOverlayOrigin]="peek.origin"
+    [cdkConnectedOverlayOpen]="true"
+    [cdkConnectedOverlayPositions]="peekPositions"
+    [cdkConnectedOverlayPush]="true"
+    (detach)="hidePeek()"
+  >
+    <div
+      id="position-peek"
+      class="peek"
+      role="tooltip"
+      (mouseenter)="keepPeek()"
+      (mouseleave)="endPeek()"
+    >
+      <p class="peek__title">{{ peek.group.line.title }}</p>
+      <app-line-moves
+        class="peek__moves"
+        [moves]="peek.group.line.moves"
+        [currentPly]="peek.tile.ply"
+      />
+    </div>
+  </ng-template>
+}

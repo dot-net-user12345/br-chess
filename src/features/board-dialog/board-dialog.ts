@@ -32,6 +32,7 @@ import { DrawingPreference } from './drawing-preference';
 import { ChessBoard } from '../chess-board/chess-board';
 import { imageFilesIn } from '../../shared/image-drop';
 import { MoveImages } from './move-images';
+import { LineMove, LineMoves } from '../line-moves/line-moves';
 
 /** One board position the dialog can display. */
 export interface BoardDialogTile {
@@ -69,6 +70,8 @@ export interface BoardDialogData {
   readonly drawings?: Readonly<Record<number, BoardDrawing>>;
   /** Called with the full updated drawing map when the user saves drawing edits. */
   readonly onDrawingsChange?: (drawings: Record<number, BoardDrawing>) => void;
+  /** The line these boards come from, listed beside the board when given. */
+  readonly line?: { readonly label: string };
 }
 
 /** A board position shown large in a modal, navigable through the whole game. */
@@ -84,6 +87,7 @@ export interface BoardDialogData {
     ReactiveFormsModule,
     ChessBoard,
     MoveImages,
+    LineMoves,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: {
@@ -94,7 +98,7 @@ export interface BoardDialogData {
     '(document:paste)': 'onPaste($event)',
   },
   template: `
-    <div class="board-dialog">
+    <div class="board-dialog" [class.board-dialog--with-line]="line">
       <div class="board-dialog__bar">
         <button
           matIconButton
@@ -171,6 +175,18 @@ export interface BoardDialogData {
         </button>
       </div>
       <div class="board-dialog__body">
+        @if (line) {
+          <nav class="board-dialog__line" [attr.aria-label]="'Moves of ' + line.label">
+            <h3 class="board-dialog__caption-heading">{{ line.label }}</h3>
+            <app-line-moves
+              class="board-dialog__line-moves"
+              [moves]="lineMoves"
+              [currentPly]="current().ply"
+              [interactive]="true"
+              (select)="goToPly($event)"
+            />
+          </nav>
+        }
         <div class="board-dialog__board">
           <app-chess-board
             [fen]="current().fen"
@@ -343,8 +359,34 @@ export interface BoardDialogData {
       /* Reserved for the caption column (its own width + gap + padding), so the
          board never grows so wide that the caption is pushed off the surface. */
       --caption-column: 21rem;
+      /* Reserved for the line's move list, when there is one. */
+      --line-column: 0rem;
+      --board-size: min(
+        calc(97vw - var(--caption-column) - var(--line-column)),
+        calc(98vh - var(--bar-height))
+      );
       display: flex;
       flex-direction: column;
+    }
+
+    .board-dialog--with-line {
+      --line-column: 15rem;
+    }
+
+    /* The line's moves, as tall as the board, scrolling within it. */
+    .board-dialog__line {
+      flex: 0 0 14rem;
+      box-sizing: border-box;
+      max-height: var(--board-size);
+      padding: 1rem 0 1rem 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .board-dialog__line-moves {
+      flex: 1 1 auto;
+      min-height: 0;
     }
 
     .board-dialog__bar {
@@ -390,7 +432,7 @@ export interface BoardDialogData {
          so board + title bar fit within 98vh. Whichever is smaller wins, keeping
          the caption always beside the board rather than wrapping off-surface. */
       flex: 0 0 auto;
-      width: min(calc(97vw - var(--caption-column)), calc(98vh - var(--bar-height)));
+      width: var(--board-size);
       aspect-ratio: 1;
     }
 
@@ -408,7 +450,7 @@ export interface BoardDialogData {
       gap: 0.5rem;
       /* No taller than the board beside it; the images scroll within it. */
       box-sizing: border-box;
-      max-height: min(calc(97vw - var(--caption-column)), calc(98vh - var(--bar-height)));
+      max-height: var(--board-size);
       overflow-y: auto;
     }
 
@@ -518,6 +560,11 @@ export class BoardDialog {
   private copiedTimer: ReturnType<typeof setTimeout> | null = null;
 
   protected readonly index = signal(this.data.index);
+  protected readonly line = this.data.line ?? null;
+  /** The line's moves, for the list beside the board. */
+  protected readonly lineMoves: readonly LineMove[] = this.data.tiles.flatMap((tile) =>
+    tile.san === null ? [] : [{ ply: tile.ply, san: tile.san }],
+  );
   protected readonly orientation = signal<BoardOrientation>(this.data.orientation ?? 'white');
   protected readonly current = computed(() => this.data.tiles[this.index()]);
   protected readonly hasPrev = computed(() => this.index() > 0);
@@ -759,6 +806,14 @@ export class BoardDialog {
       : [...this.focusPlies(), ply].sort((a, b) => a - b);
     this.focusPlies.set(next);
     this.data.onFocusChange?.([...next]);
+  }
+
+  /** Moves to the board a move in the line list reaches. */
+  protected goToPly(ply: number): void {
+    const i = this.data.tiles.findIndex((tile) => tile.ply === ply);
+    if (i >= 0) {
+      this.goTo(i);
+    }
   }
 
   /** Moves to board `i`, closing the editor and re-seeding the field for it. */

@@ -7,6 +7,12 @@ export const routes: Routes = [
     title: 'Home',
   },
   {
+    path: 'positions',
+    loadComponent: () =>
+      import('../pages/position-search/position-search').then((m) => m.PositionSearch),
+    title: 'Position search',
+  },
+  {
     path: 'privacy',
     loadComponent: () => import('../pages/privacy/privacy').then((m) => m.PrivacyPolicy),
     title: 'Privacy Policy',

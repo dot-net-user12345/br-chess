@@ -12,4 +12,16 @@
     <mat-icon matListItemIcon fontSet="material-symbols-outlined">home</mat-icon>
     <span matListItemTitle>Home</span>
   </a>
+  <a
+    mat-list-item
+    routerLink="/positions"
+    routerLinkActive
+    #positionsLink="routerLinkActive"
+    [activated]="positionsLink.isActive"
+    [attr.aria-current]="positionsLink.isActive ? 'page' : null"
+    (click)="navigate.emit()"
+  >
+    <mat-icon matListItemIcon fontSet="material-symbols-outlined">grid_on</mat-icon>
+    <span matListItemTitle>Position search</span>
+  </a>
 </mat-nav-list>
