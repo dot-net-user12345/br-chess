@@ -4,7 +4,7 @@ import { BoardOrientation } from './chess-models';
  * The colors a user can draw with. Orange is deliberately absent: it's the
  * move arrow's color, so a drawn arrow could be mistaken for the move itself.
  */
-export type DrawingColor = 'purple' | 'green' | 'red' | 'blue' | 'yellow';
+export type DrawingColor = 'purple' | 'green' | 'red' | 'blue' | 'yellow' | 'grey';
 
 /** The color a mark has when none is recorded — every mark drawn before colors existed. */
 export const DEFAULT_DRAWING_COLOR: DrawingColor = 'purple';
@@ -18,6 +18,8 @@ export const DRAWING_COLORS: Readonly<
   red: { label: 'Red', arrow: 'rgba(198, 40, 40, 0.85)', fill: 'rgba(211, 47, 47, 0.55)' },
   blue: { label: 'Blue', arrow: 'rgba(21, 101, 192, 0.85)', fill: 'rgba(30, 136, 229, 0.55)' },
   yellow: { label: 'Yellow', arrow: 'rgba(230, 190, 0, 0.9)', fill: 'rgba(253, 216, 53, 0.65)' },
+  // Dark enough to stand apart from the dark squares, not just the light ones.
+  grey: { label: 'Grey', arrow: 'rgba(66, 66, 66, 0.85)', fill: 'rgba(97, 97, 97, 0.55)' },
 };
 
 export const DRAWING_COLOR_ORDER: readonly DrawingColor[] = [
@@ -26,6 +28,7 @@ export const DRAWING_COLOR_ORDER: readonly DrawingColor[] = [
   'red',
   'blue',
   'yellow',
+  'grey',
 ];
 
 /**
@@ -46,22 +49,69 @@ export const ARROW_STYLES: Readonly<Record<ArrowStyle, { readonly label: string 
 
 export const ARROW_STYLE_ORDER: readonly ArrowStyle[] = ['solid', 'dashed'];
 
+/** A piece whose dashed outline can mark a square, by its White FEN letter. */
+export type OutlinePiece = 'K' | 'Q' | 'R' | 'B' | 'N' | 'P';
+
+/** Each outline piece's name, for the piece picker. */
+export const OUTLINE_PIECES: Readonly<Record<OutlinePiece, { readonly label: string }>> = {
+  K: { label: 'King' },
+  Q: { label: 'Queen' },
+  R: { label: 'Rook' },
+  B: { label: 'Bishop' },
+  N: { label: 'Knight' },
+  P: { label: 'Pawn' },
+};
+
+export const OUTLINE_PIECE_ORDER: readonly OutlinePiece[] = ['K', 'Q', 'R', 'B', 'N', 'P'];
+
+/** The piece an outline mark is drawn as before one has been picked. */
+export const DEFAULT_OUTLINE_PIECE: OutlinePiece = 'N';
+
 /**
  * How a marked square is drawn: `fill` tints the whole square, `cross` lays an
- * X over it — both in the chosen color.
+ * X over it, and `outline-N` (and so on for each piece) draws that piece's
+ * outline over it, dashed — all in the chosen color.
  */
-export type SquareMark = 'fill' | 'cross';
+export type SquareMark = 'fill' | 'cross' | `outline-${OutlinePiece}`;
 
 /** The mark a square has when none is recorded — every square marked before marks existed. */
 export const DEFAULT_SQUARE_MARK: SquareMark = 'fill';
 
-/** Each square mark's name, for the mark picker. */
+/** Each square mark's name. */
 export const SQUARE_MARKS: Readonly<Record<SquareMark, { readonly label: string }>> = {
   fill: { label: 'Fill' },
   cross: { label: 'X' },
+  'outline-K': { label: 'King outline' },
+  'outline-Q': { label: 'Queen outline' },
+  'outline-R': { label: 'Rook outline' },
+  'outline-B': { label: 'Bishop outline' },
+  'outline-N': { label: 'Knight outline' },
+  'outline-P': { label: 'Pawn outline' },
 };
 
-export const SQUARE_MARK_ORDER: readonly SquareMark[] = ['fill', 'cross'];
+/**
+ * The kinds of mark the mark picker offers; `outline` stands for every piece
+ * outline, whose piece is picked separately.
+ */
+export type SquareMarkKind = 'fill' | 'cross' | 'outline';
+
+export const SQUARE_MARK_KINDS: Readonly<Record<SquareMarkKind, { readonly label: string }>> = {
+  fill: { label: 'Fill' },
+  cross: { label: 'X' },
+  outline: { label: 'Piece outline' },
+};
+
+export const SQUARE_MARK_KIND_ORDER: readonly SquareMarkKind[] = ['fill', 'cross', 'outline'];
+
+/** The piece a mark outlines, or null for a fill or an X. */
+export function outlinePiece(mark: SquareMark): OutlinePiece | null {
+  return mark.startsWith('outline-') ? (mark.slice('outline-'.length) as OutlinePiece) : null;
+}
+
+/** The kind of a mark, as the mark picker groups them. */
+export function squareMarkKind(mark: SquareMark): SquareMarkKind {
+  return outlinePiece(mark) ? 'outline' : (mark as 'fill' | 'cross');
+}
 
 /** A user-drawn arrow between two squares, e.g. `{ from: 'e2', to: 'e4' }`. */
 export interface BoardArrow {

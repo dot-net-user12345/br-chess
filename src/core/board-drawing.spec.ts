@@ -5,7 +5,9 @@ import {
   EMPTY_DRAWING,
   gridIndex,
   isEmptyDrawing,
+  outlinePiece,
   squareAt,
+  squareMarkKind,
   squareColor,
   squareMark,
   toggleArrow,
@@ -105,6 +107,24 @@ describe('board drawing', () => {
     // An X keys apart from a tint, so each renders its own image.
     expect(drawingKey(toggleSquare(EMPTY_DRAWING, 'e4', 'purple', 'cross'))).toBe('e4~cross/');
     expect(drawingKey(toggleSquare(EMPTY_DRAWING, 'e4', 'red', 'cross'))).toBe('e4:red~cross/');
+  });
+
+  it('marks a square with a piece outline, telling the pieces apart', () => {
+    const knight = toggleSquare(EMPTY_DRAWING, 'f3', 'grey', 'outline-N');
+    expect(squareMark(knight, 'f3')).toBe('outline-N');
+    expect(squareColor(knight, 'f3')).toBe('grey');
+    expect(outlinePiece('outline-N')).toBe('N');
+    expect(outlinePiece('cross')).toBeNull();
+    expect(squareMarkKind('outline-N')).toBe('outline');
+    expect(squareMarkKind('fill')).toBe('fill');
+
+    // Another piece re-marks the square; the same one again clears it.
+    const bishop = toggleSquare(knight, 'f3', 'grey', 'outline-B');
+    expect(squareMark(bishop, 'f3')).toBe('outline-B');
+    expect(toggleSquare(bishop, 'f3', 'grey', 'outline-B').squares).toEqual([]);
+
+    // Each piece keys its own image.
+    expect(drawingKey(knight)).toBe('f3:grey~outline-N/');
   });
 
   it('restyles a line between an arrow and a dashed link, in any color', () => {

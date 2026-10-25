@@ -13,6 +13,10 @@ import {
   moveArrowGeometry,
   MOVE_ARROW_COLOR,
   pieceAssetPath,
+  PIECE_OUTLINE_DASH,
+  PIECE_OUTLINE_SIZE,
+  PIECE_OUTLINE_STROKE,
+  PIECE_OUTLINES,
   rankLabels,
   squareCrossGeometry,
 } from './board-assets';
@@ -25,6 +29,8 @@ import {
   DRAWING_COLORS,
   drawingKey,
   gridIndex,
+  OutlinePiece,
+  outlinePiece,
   squareColor,
   squareMark,
 } from './board-drawing';
@@ -179,8 +185,16 @@ export class BoardImageService {
     }
     this.drawCoordinates(ctx, orientation);
     for (const square of drawing?.squares ?? []) {
-      if (drawing && squareMark(drawing, square) === 'cross') {
-        this.drawCross(ctx, square, DRAWING_COLORS[squareColor(drawing, square)].arrow, black);
+      if (!drawing) {
+        continue;
+      }
+      const color = DRAWING_COLORS[squareColor(drawing, square)].arrow;
+      const mark = squareMark(drawing, square);
+      const piece = outlinePiece(mark);
+      if (mark === 'cross') {
+        this.drawCross(ctx, square, color, black);
+      } else if (piece) {
+        this.drawOutline(ctx, square, piece, color, orientation);
       }
     }
     if (position.from && position.to) {
@@ -316,6 +330,32 @@ export class BoardImageService {
       ctx.moveTo(a.x * s, a.y * s);
       ctx.lineTo(b.x * s, b.y * s);
       ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  /** Traces a piece's outline over a square, dashed and upright from either side. */
+  private drawOutline(
+    ctx: CanvasRenderingContext2D,
+    square: string,
+    piece: OutlinePiece,
+    color: string,
+    orientation: BoardOrientation,
+  ): void {
+    const index = gridIndex(square, orientation);
+    if (index === null) {
+      return;
+    }
+    ctx.save();
+    ctx.translate((index % 8) * RENDER_SQUARE, Math.floor(index / 8) * RENDER_SQUARE);
+    ctx.scale(RENDER_SQUARE / PIECE_OUTLINE_SIZE, RENDER_SQUARE / PIECE_OUTLINE_SIZE);
+    ctx.strokeStyle = color;
+    ctx.lineWidth = PIECE_OUTLINE_STROKE;
+    ctx.lineCap = 'butt';
+    ctx.lineJoin = 'round';
+    ctx.setLineDash([...PIECE_OUTLINE_DASH]);
+    for (const path of PIECE_OUTLINES[piece]) {
+      ctx.stroke(new Path2D(path));
     }
     ctx.restore();
   }

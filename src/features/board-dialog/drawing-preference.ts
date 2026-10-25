@@ -4,16 +4,21 @@ import {
   ArrowStyle,
   DEFAULT_ARROW_STYLE,
   DEFAULT_DRAWING_COLOR,
+  DEFAULT_OUTLINE_PIECE,
   DEFAULT_SQUARE_MARK,
   DRAWING_COLORS,
   DrawingColor,
+  OUTLINE_PIECES,
+  OutlinePiece,
   SQUARE_MARKS,
   SquareMark,
+  SquareMarkKind,
 } from '../../core/board-drawing';
 
 const COLOR_KEY = 'br-chess-drawing-color';
 const ARROW_STYLE_KEY = 'br-chess-drawing-arrow-style';
 const SQUARE_MARK_KEY = 'br-chess-drawing-square-mark';
+const OUTLINE_PIECE_KEY = 'br-chess-drawing-outline-piece';
 
 /**
  * How the right mouse button draws on the large board view: the color, the
@@ -35,10 +40,27 @@ export class DrawingPreference {
     read(SQUARE_MARK_KEY, SQUARE_MARKS, DEFAULT_SQUARE_MARK),
   );
 
+  /** The piece last picked for an outline, kept while another mark is in use. */
+  readonly outlinePiece = signal<OutlinePiece>(
+    read(OUTLINE_PIECE_KEY, OUTLINE_PIECES, DEFAULT_OUTLINE_PIECE),
+  );
+
   constructor() {
     effect(() => store(COLOR_KEY, this.color()));
     effect(() => store(ARROW_STYLE_KEY, this.arrowStyle()));
     effect(() => store(SQUARE_MARK_KEY, this.squareMark()));
+    effect(() => store(OUTLINE_PIECE_KEY, this.outlinePiece()));
+  }
+
+  /** Picks a kind of mark; a piece outline is drawn as the piece last picked. */
+  setMarkKind(kind: SquareMarkKind): void {
+    this.squareMark.set(kind === 'outline' ? `outline-${this.outlinePiece()}` : kind);
+  }
+
+  /** Picks the piece to outline, and outlines with it. */
+  setOutlinePiece(piece: OutlinePiece): void {
+    this.outlinePiece.set(piece);
+    this.squareMark.set(`outline-${piece}`);
   }
 }
 

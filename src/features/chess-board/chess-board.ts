@@ -18,6 +18,10 @@ import {
   moveArrowGeometry,
   MOVE_ARROW_COLOR,
   pieceAssetPath,
+  PIECE_OUTLINE_DASH,
+  PIECE_OUTLINE_SIZE,
+  PIECE_OUTLINE_STROKE,
+  PIECE_OUTLINES,
   Point,
   rankLabels,
   squareCrossGeometry,
@@ -34,6 +38,7 @@ import {
   DrawingColor,
   EMPTY_DRAWING,
   gridIndex,
+  outlinePiece,
   squareAt,
   squareColor,
   squareMark,
@@ -72,6 +77,14 @@ interface RenderedArrow {
 
 /** A user-drawn arrow, ready to render in its own color. */
 interface DrawnArrow extends RenderedArrow {
+  readonly color: string;
+}
+
+/** A piece's dashed outline over a square, ready to render. */
+interface RenderedOutline {
+  /** Places and scales the 45-unit outline onto its square of the 8×8 board. */
+  readonly transform: string;
+  readonly paths: readonly string[];
   readonly color: string;
 }
 
@@ -144,7 +157,7 @@ const PIECE_NAMES: Record<string, string> = {
         }
       </span>
     }
-    @if (arrow() || drawnArrows().length > 0 || crosses().length > 0) {
+    @if (arrow() || drawnArrows().length > 0 || crosses().length > 0 || outlines().length > 0) {
       <svg class="chess-board__arrow" viewBox="0 0 8 8" aria-hidden="true">
         @for (cross of crosses(); track $index) {
           @for (stroke of cross.lines; track $index) {
@@ -158,6 +171,21 @@ const PIECE_NAMES: Record<string, string> = {
               stroke-linecap="round"
             />
           }
+        }
+        @for (outline of outlines(); track $index) {
+          <g
+            [attr.transform]="outline.transform"
+            fill="none"
+            [attr.stroke]="outline.color"
+            [attr.stroke-width]="outlineStroke"
+            [attr.stroke-dasharray]="outlineDash"
+            stroke-linecap="butt"
+            stroke-linejoin="round"
+          >
+            @for (path of outline.paths; track $index) {
+              <path [attr.d]="path" />
+            }
+          </g>
         }
         @if (arrow(); as arrow) {
           <line
@@ -294,6 +322,32 @@ export class ChessBoard {
       });
     }
     return crosses;
+  });
+
+  protected readonly outlineStroke = PIECE_OUTLINE_STROKE;
+  protected readonly outlineDash = PIECE_OUTLINE_DASH.join(' ');
+
+  /**
+   * The dashed piece outline on each square the user marked with one. Upright
+   * from either side: it is placed on the square as the viewer sees it, never
+   * rotated with the board.
+   */
+  protected readonly outlines = computed<RenderedOutline[]>(() => {
+    const drawing = this.drawing();
+    const outlines: RenderedOutline[] = [];
+    for (const square of drawing?.squares ?? []) {
+      const piece = drawing ? outlinePiece(squareMark(drawing, square)) : null;
+      const index = gridIndex(square, this.orientation());
+      if (!drawing || !piece || index === null) {
+        continue;
+      }
+      outlines.push({
+        transform: `translate(${index % 8} ${Math.floor(index / 8)}) scale(${1 / PIECE_OUTLINE_SIZE})`,
+        paths: PIECE_OUTLINES[piece],
+        color: DRAWING_COLORS[squareColor(drawing, square)].arrow,
+      });
+    }
+    return outlines;
   });
 
   protected readonly ariaLabel = computed(() => {

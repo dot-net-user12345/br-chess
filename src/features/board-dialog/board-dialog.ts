@@ -25,9 +25,13 @@ import {
   DRAWING_COLORS,
   EMPTY_DRAWING,
   isEmptyDrawing,
-  SQUARE_MARK_ORDER,
-  SQUARE_MARKS,
+  OUTLINE_PIECE_ORDER,
+  OUTLINE_PIECES,
+  SQUARE_MARK_KIND_ORDER,
+  SQUARE_MARK_KINDS,
+  squareMarkKind,
 } from '../../core/board-drawing';
+import { PIECE_OUTLINES } from '../../core/board-assets';
 import { DrawingPreference } from './drawing-preference';
 import { ChessBoard } from '../chess-board/chess-board';
 import { imageFilesIn } from '../../shared/image-drop';
@@ -292,8 +296,8 @@ export interface BoardDialogData {
               <mat-radio-group
                 class="board-dialog__colors"
                 aria-labelledby="board-dialog-square-label"
-                [value]="drawPref.squareMark()"
-                (change)="drawPref.squareMark.set($event.value)"
+                [value]="markKind()"
+                (change)="drawPref.setMarkKind($event.value)"
               >
                 @for (mark of squareMarks; track mark) {
                   <mat-radio-button [value]="mark" class="board-dialog__color">
@@ -307,6 +311,20 @@ export interface BoardDialogData {
                         <line x1="1.5" y1="1.5" x2="8.5" y2="8.5" stroke-width="1.6" />
                         <line x1="1.5" y1="8.5" x2="8.5" y2="1.5" stroke-width="1.6" />
                       </svg>
+                    } @else if (mark === 'outline') {
+                      <svg
+                        class="board-dialog__mark"
+                        viewBox="0 0 45 45"
+                        aria-hidden="true"
+                        fill="none"
+                        stroke-width="3"
+                        stroke-dasharray="4 3"
+                        [attr.stroke]="drawingPalette[drawPref.color()].arrow"
+                      >
+                        @for (path of pieceOutlines[drawPref.outlinePiece()]; track $index) {
+                          <path [attr.d]="path" />
+                        }
+                      </svg>
                     } @else {
                       <span
                         class="board-dialog__mark board-dialog__mark--fill"
@@ -318,6 +336,34 @@ export interface BoardDialogData {
                   </mat-radio-button>
                 }
               </mat-radio-group>
+              @if (markKind() === 'outline') {
+                <p id="board-dialog-piece-label" class="board-dialog__drawing-label">Piece</p>
+                <mat-radio-group
+                  class="board-dialog__colors"
+                  aria-labelledby="board-dialog-piece-label"
+                  [value]="drawPref.outlinePiece()"
+                  (change)="drawPref.setOutlinePiece($event.value)"
+                >
+                  @for (piece of outlinePieces; track piece) {
+                    <mat-radio-button [value]="piece" class="board-dialog__color">
+                      <svg
+                        class="board-dialog__piece"
+                        viewBox="0 0 45 45"
+                        aria-hidden="true"
+                        fill="none"
+                        stroke-width="2.5"
+                        stroke-dasharray="4 3"
+                        [attr.stroke]="drawingPalette[drawPref.color()].arrow"
+                      >
+                        @for (path of pieceOutlines[piece]; track $index) {
+                          <path [attr.d]="path" />
+                        }
+                      </svg>
+                      {{ outlinePieceLabels[piece].label }}
+                    </mat-radio-button>
+                  }
+                </mat-radio-group>
+              }
               @if (hasUnsavedDrawings()) {
                 <p class="board-dialog__drawing-status" role="status">Unsaved drawing changes</p>
               }
@@ -477,6 +523,15 @@ export interface BoardDialogData {
       stroke-linecap: round;
     }
 
+    /* Preview of a piece outline, large enough to tell the pieces apart. */
+    .board-dialog__piece {
+      display: inline-block;
+      width: 1.25rem;
+      height: 1.25rem;
+      margin-right: 0.25rem;
+      vertical-align: -0.3rem;
+    }
+
     .board-dialog__mark--fill {
       border: 1px solid var(--mat-sys-outline);
       border-radius: 0.125rem;
@@ -614,8 +669,13 @@ export class BoardDialog {
   protected readonly drawingPalette = DRAWING_COLORS;
   protected readonly arrowStyles = ARROW_STYLE_ORDER;
   protected readonly arrowStyleLabels = ARROW_STYLES;
-  protected readonly squareMarks = SQUARE_MARK_ORDER;
-  protected readonly squareMarkLabels = SQUARE_MARKS;
+  protected readonly squareMarks = SQUARE_MARK_KIND_ORDER;
+  protected readonly squareMarkLabels = SQUARE_MARK_KINDS;
+  protected readonly outlinePieces = OUTLINE_PIECE_ORDER;
+  protected readonly outlinePieceLabels = OUTLINE_PIECES;
+  protected readonly pieceOutlines = PIECE_OUTLINES;
+  /** The kind of mark a right-clicked square gets, as the mark picker shows it. */
+  protected readonly markKind = computed(() => squareMarkKind(this.drawPref.squareMark()));
 
   /** Every move's drawing as last saved. */
   private readonly savedDrawings = signal<Record<number, BoardDrawing>>({

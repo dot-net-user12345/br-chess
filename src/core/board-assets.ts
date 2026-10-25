@@ -1,4 +1,4 @@
-import { ArrowStyle, DEFAULT_ARROW_STYLE } from './board-drawing';
+import { ArrowStyle, DEFAULT_ARROW_STYLE, OutlinePiece } from './board-drawing';
 import { BoardOrientation, PieceCode } from './chess-models';
 
 /** Maps each FEN piece code to its bundled SVG asset basename. */
@@ -51,6 +51,59 @@ export const COMPARISON_PALETTE = [
 export function pieceAssetPath(piece: PieceCode): string {
   return `assets/pieces/Chess_${PIECE_ASSETS[piece]}.svg`;
 }
+
+/**
+ * Each piece's outline as SVG path data, in the 45×45 units of the bundled
+ * piece images — the strokes of the light pieces, so a dashed trace of them
+ * reads as the piece. The knight's small filled eye and nostril are left out:
+ * dashed, they would only be specks.
+ */
+export const PIECE_OUTLINES: Readonly<Record<OutlinePiece, readonly string[]>> = {
+  K: [
+    'M22.5 11.63V6M20 8h5',
+    'M22.5 25s4.5-7.5 3-10.5c0 0-1-2.5-3-2.5s-3 2.5-3 2.5c-1.5 3 3 10.5 3 10.5',
+    'M12.5 37c5.5 3.5 14.5 3.5 20 0v-7s9-4.5 6-10.5c-4-6.5-13.5-3.5-16 4V27v-3.5c-2.5-7.5-12-10.5-16-4-3 6 6 10.5 6 10.5v7',
+    'M12.5 30c5.5-3 14.5-3 20 0m-20 3.5c5.5-3 14.5-3 20 0m-20 3.5c5.5-3 14.5-3 20 0',
+  ],
+  Q: [
+    'M9 26C17.5 24.5 30 24.5 36 26L38.5 13.5 31 25 30.7 10.9 25.5 24.5 22.5 10 19.5 24.5 14.3 10.9 14 25 6.5 13.5 9 26z',
+    'M9 26C9 28 10.5 28 11.5 30 12.5 31.5 12.5 31 12 33.5 10.5 34.5 11 36 11 36 9.5 37.5 11 38.5 11 38.5 17.5 39.5 27.5 39.5 34 38.5 34 38.5 35.5 37.5 34 36 34 36 34.5 34.5 33 33.5 32.5 31 32.5 31.5 33.5 30 34.5 28 36 28 36 26 27.5 24.5 17.5 24.5 9 26z',
+    'M11.5 30C15 29 30 29 33.5 30',
+    'M12 33.5C18 32.5 27 32.5 33 33.5',
+    'M8 12A2 2 0 1 1 4 12 2 2 0 1 1 8 12z',
+    'M16 9A2 2 0 1 1 12 9 2 2 0 1 1 16 9z',
+    'M24.5 8A2 2 0 1 1 20.5 8 2 2 0 1 1 24.5 8z',
+    'M33 9A2 2 0 1 1 29 9 2 2 0 1 1 33 9z',
+    'M41 12A2 2 0 1 1 37 12 2 2 0 1 1 41 12z',
+  ],
+  R: [
+    'M9 39.3H36V36.3H9z',
+    'M12 36.3V32.3H33V36.3z',
+    'M11 14.3V9.3H15V11.3H20V9.3H25V11.3H30V9.3H34V14.3',
+    'M34 14.3L31 17.3H14L11 14.3',
+    'M31 17.3V29.8H14V17.3',
+    'M31 29.8L32.5 32.3H12.5L14 29.8',
+    'M11 14.3H34',
+  ],
+  B: [
+    'M9 36.6C12.39 35.63 19.11 37.03 22.5 34.6 25.89 37.03 32.61 35.63 36 36.6 36 36.6 37.65 37.14 39 38.6 38.32 39.57 37.35 39.59 36 39.1 32.61 38.13 25.89 39.56 22.5 38.1 19.11 39.56 12.39 38.13 9 39.1 7.65 39.59 6.68 39.57 6 38.6 7.35 37.14 9 36.6 9 36.6z',
+    'M15 32.6C17.5 35.1 27.5 35.1 30 32.6 30.5 31.1 30 30.6 30 30.6 30 28.1 27.5 26.6 27.5 26.6 33 25.1 33.5 15.1 22.5 11.1 11.5 15.1 12 25.1 17.5 26.6 17.5 26.6 15 28.1 15 30.6 15 30.6 14.5 31.1 15 32.6z',
+    'M25 8.6A2.5 2.5 0 1 1 20 8.6 2.5 2.5 0 1 1 25 8.6z',
+    'M17.5 26.6H27.5M15 30.6H30M22.5 16.1V21.1M20 18.6H25',
+  ],
+  N: [
+    'M22 10.3C32.5 11.3 38.5 18.3 38 39.3H15C15 30.3 25 32.8 23 18.3',
+    'M24 18.3C24.38 21.21 18.45 25.67 16 27.3 13 29.3 13.18 31.64 11 31.3 9.958 30.36 12.41 28.26 11 28.3 10 28.3 11.19 29.53 10 30.3 9 30.3 5.997 31.3 6 26.3 6 24.3 12 14.3 12 14.3 12 14.3 13.89 12.4 14 10.8 13.27 9.806 13.5 8.8 13.5 7.8 14.5 6.8 16.5 10.3 16.5 10.3H18.5C18.5 10.3 19.28 8.308 21 7.3 22 7.3 22 10.3 22 10.3',
+  ],
+  P: [
+    'M22.5 9C20.29 9 18.5 10.79 18.5 13 18.5 13.89 18.79 14.71 19.28 15.38 17.33 16.5 16 18.59 16 21 16 23.03 16.94 24.84 18.41 26.03 15.41 27.09 11 31.58 11 39.5H34C34 31.58 29.59 27.09 26.59 26.03 28.06 24.84 29 23.03 29 21 29 18.59 27.67 16.5 25.72 15.38 26.21 14.71 26.5 13.89 26.5 13 26.5 10.79 24.71 9 22.5 9z',
+  ],
+};
+
+/** The outline paths' coordinate size, and their dashed stroke in those units. */
+export const PIECE_OUTLINE_SIZE = 45;
+export const PIECE_OUTLINE_STROKE = 2;
+export const PIECE_OUTLINE_DASH: readonly number[] = [3, 2];
 
 /** A point in board units, where 1 unit = 1 square and (0,0) is the top-left corner. */
 export interface Point {

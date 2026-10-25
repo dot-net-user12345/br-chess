@@ -45,3 +45,23 @@ describe('ChessBoard coordinates', () => {
     ]);
   });
 });
+
+describe('ChessBoard piece outlines', () => {
+  it('traces an upright dashed outline on its square, in the mark color', () => {
+    const fixture = TestBed.createComponent(ChessBoard);
+    fixture.componentRef.setInput('fen', START_FEN);
+    fixture.componentRef.setInput('orientation', 'black');
+    fixture.componentRef.setInput('drawing', {
+      squares: ['f3'],
+      arrows: [],
+      squareColors: { f3: 'grey' },
+      squareMarks: { f3: 'outline-N' },
+    });
+    fixture.detectChanges();
+    const outline = (fixture.nativeElement as HTMLElement).querySelector('svg g[stroke-dasharray]');
+    // From Black's side f3 sits in column 2 of row 2 (rank 1 on top), placed there unrotated.
+    expect(outline?.getAttribute('transform')).toBe(`translate(2 2) scale(${1 / 45})`);
+    expect(outline?.getAttribute('stroke')).toBe('rgba(66, 66, 66, 0.85)');
+    expect(outline?.querySelectorAll('path').length).toBe(2);
+  });
+});
