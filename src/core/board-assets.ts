@@ -105,6 +105,34 @@ export const PIECE_OUTLINE_SIZE = 45;
 export const PIECE_OUTLINE_STROKE = 2;
 export const PIECE_OUTLINE_DASH: readonly number[] = [3, 2];
 
+/** An arrow's number badge: a disc on the middle of the shaft, in board units. */
+export interface ArrowLabelBadge {
+  readonly center: Point;
+  readonly radius: number;
+  /** The digits' font size; smaller for more digits, so they fit inside the disc. */
+  readonly fontSize: number;
+}
+
+/** The badge's radius, and its digits' font size when there's room for it. */
+const ARROW_LABEL_RADIUS = 0.2;
+const ARROW_LABEL_FONT = 0.28;
+/** A digit's width as a share of the font size, for fitting the number in the disc. */
+const DIGIT_WIDTH = 0.6;
+
+/**
+ * Where an arrow's number sits and how large it is drawn: centered on the
+ * shaft, shrunk so every digit fits across the disc. Shared by the live board
+ * and the canvas renderer.
+ */
+export function arrowLabelBadge(shaftFrom: Point, shaftTo: Point, label: string): ArrowLabelBadge {
+  const fits = (ARROW_LABEL_RADIUS * 2 * 0.8) / (DIGIT_WIDTH * Math.max(1, label.length));
+  return {
+    center: { x: (shaftFrom.x + shaftTo.x) / 2, y: (shaftFrom.y + shaftTo.y) / 2 },
+    radius: ARROW_LABEL_RADIUS,
+    fontSize: Math.min(ARROW_LABEL_FONT, fits),
+  };
+}
+
 /** A point in board units, where 1 unit = 1 square and (0,0) is the top-left corner. */
 export interface Point {
   readonly x: number;

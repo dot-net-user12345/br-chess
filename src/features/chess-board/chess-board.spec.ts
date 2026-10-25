@@ -65,3 +65,28 @@ describe('ChessBoard piece outlines', () => {
     expect(outline?.querySelectorAll('path').length).toBe(2);
   });
 });
+
+describe('ChessBoard arrow numbers', () => {
+  it('puts the number on the arrow, in a disc of its color, shrinking longer ones', () => {
+    const fixture = TestBed.createComponent(ChessBoard);
+    fixture.componentRef.setInput('fen', START_FEN);
+    fixture.componentRef.setInput('drawing', {
+      squares: [],
+      arrows: [
+        { from: 'g1', to: 'f3', color: 'yellow', label: '1' },
+        { from: 'b1', to: 'c3', label: '123' },
+      ],
+    });
+    fixture.detectChanges();
+    const texts = Array.from(
+      (fixture.nativeElement as HTMLElement).querySelectorAll('svg text'),
+    ) as SVGTextElement[];
+    expect(texts.map((t) => t.textContent?.trim())).toEqual(['1', '123']);
+    // Dark digits on yellow, white on the default purple.
+    expect(texts[0].getAttribute('fill')).toBe('#1f1f1f');
+    expect(texts[1].getAttribute('fill')).toBe('#ffffff');
+    expect(Number(texts[1].getAttribute('font-size'))).toBeLessThan(
+      Number(texts[0].getAttribute('font-size')),
+    );
+  });
+});

@@ -10,6 +10,7 @@ import {
   DrawingColor,
   OUTLINE_PIECES,
   OutlinePiece,
+  sanitizeArrowLabel,
   SQUARE_MARKS,
   SquareMark,
   SquareMarkKind,
@@ -40,6 +41,12 @@ export class DrawingPreference {
     read(SQUARE_MARK_KEY, SQUARE_MARKS, DEFAULT_SQUARE_MARK),
   );
 
+  /**
+   * The number new solid arrows carry; '' for none. Not stored, so a number
+   * doesn't linger into a later visit and turn up on arrows unasked.
+   */
+  readonly arrowLabel = signal('');
+
   /** The piece last picked for an outline, kept while another mark is in use. */
   readonly outlinePiece = signal<OutlinePiece>(
     read(OUTLINE_PIECE_KEY, OUTLINE_PIECES, DEFAULT_OUTLINE_PIECE),
@@ -50,6 +57,13 @@ export class DrawingPreference {
     effect(() => store(ARROW_STYLE_KEY, this.arrowStyle()));
     effect(() => store(SQUARE_MARK_KEY, this.squareMark()));
     effect(() => store(OUTLINE_PIECE_KEY, this.outlinePiece()));
+  }
+
+  /** Sets the arrow number from what was typed, keeping its digits only; returns what was kept. */
+  setArrowLabel(text: string): string {
+    const label = sanitizeArrowLabel(text);
+    this.arrowLabel.set(label);
+    return label;
   }
 
   /** Picks a kind of mark; a piece outline is drawn as the piece last picked. */

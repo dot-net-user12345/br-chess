@@ -9,17 +9,44 @@ export type DrawingColor = 'purple' | 'green' | 'red' | 'blue' | 'yellow' | 'gre
 /** The color a mark has when none is recorded — every mark drawn before colors existed. */
 export const DEFAULT_DRAWING_COLOR: DrawingColor = 'purple';
 
-/** Each drawing color's name and its shades, shared by the live board and the exported PNG. */
+/**
+ * Each drawing color's name and its shades, shared by the live board and the
+ * exported PNG. `text` is what reads on the arrow color, for an arrow's number.
+ */
 export const DRAWING_COLORS: Readonly<
-  Record<DrawingColor, { readonly label: string; readonly arrow: string; readonly fill: string }>
+  Record<
+    DrawingColor,
+    { readonly label: string; readonly arrow: string; readonly fill: string; readonly text: string }
+  >
 > = {
-  purple: { label: 'Purple', arrow: 'rgba(123, 31, 162, 0.85)', fill: 'rgba(123, 31, 162, 0.55)' },
-  green: { label: 'Green', arrow: 'rgba(21, 120, 27, 0.85)', fill: 'rgba(56, 142, 60, 0.6)' },
-  red: { label: 'Red', arrow: 'rgba(198, 40, 40, 0.85)', fill: 'rgba(211, 47, 47, 0.55)' },
-  blue: { label: 'Blue', arrow: 'rgba(21, 101, 192, 0.85)', fill: 'rgba(30, 136, 229, 0.55)' },
-  yellow: { label: 'Yellow', arrow: 'rgba(230, 190, 0, 0.9)', fill: 'rgba(253, 216, 53, 0.65)' },
+  purple: {
+    label: 'Purple',
+    arrow: 'rgba(123, 31, 162, 0.85)',
+    fill: 'rgba(123, 31, 162, 0.55)',
+    text: '#ffffff',
+  },
+  green: {
+    label: 'Green',
+    arrow: 'rgba(21, 120, 27, 0.85)',
+    fill: 'rgba(56, 142, 60, 0.6)',
+    text: '#ffffff',
+  },
+  red: { label: 'Red', arrow: 'rgba(198, 40, 40, 0.85)', fill: 'rgba(211, 47, 47, 0.55)', text: '#ffffff' },
+  blue: {
+    label: 'Blue',
+    arrow: 'rgba(21, 101, 192, 0.85)',
+    fill: 'rgba(30, 136, 229, 0.55)',
+    text: '#ffffff',
+  },
+  // White on yellow would be unreadable, so its number is dark.
+  yellow: {
+    label: 'Yellow',
+    arrow: 'rgba(230, 190, 0, 0.9)',
+    fill: 'rgba(253, 216, 53, 0.65)',
+    text: '#1f1f1f',
+  },
   // Dark enough to stand apart from the dark squares, not just the light ones.
-  grey: { label: 'Grey', arrow: 'rgba(66, 66, 66, 0.85)', fill: 'rgba(97, 97, 97, 0.55)' },
+  grey: { label: 'Grey', arrow: 'rgba(66, 66, 66, 0.85)', fill: 'rgba(97, 97, 97, 0.55)', text: '#ffffff' },
 };
 
 export const DRAWING_COLOR_ORDER: readonly DrawingColor[] = [
@@ -121,6 +148,21 @@ export interface BoardArrow {
   readonly color?: DrawingColor;
   /** Absent for the default solid shaft. */
   readonly style?: ArrowStyle;
+  /** A number shown on the shaft, solid arrows only; absent for none. */
+  readonly label?: string;
+}
+
+/** The most digits an arrow's number can have. */
+export const ARROW_LABEL_MAX_LENGTH = 3;
+
+/** Keeps only the digits of what was typed for an arrow's number, at most three. */
+export function sanitizeArrowLabel(text: string): string {
+  return text.replace(/\D/g, '').slice(0, ARROW_LABEL_MAX_LENGTH);
+}
+
+/** The number shown on an arrow; '' for none. */
+export function arrowLabel(arrow: BoardArrow): string {
+  return arrow.label ?? '';
 }
 
 /** What the user has drawn on one move's board: marked squares and arrows. */
@@ -194,8 +236,9 @@ export function toggleSquare(
 }
 
 /**
- * Draws the arrow in `color` and `style`. Removes it when that arrow is already
- * drawn exactly that way, and restyles it when it differs in either.
+ * Draws the arrow in `color` and `style`, with `label` on a solid shaft.
+ * Removes it when that arrow is already drawn exactly that way, and redraws it
+ * when it differs in any of them.
  */
 export function toggleArrow(
   drawing: BoardDrawing,
@@ -203,10 +246,18 @@ export function toggleArrow(
   to: string,
   color: DrawingColor = DEFAULT_DRAWING_COLOR,
   style: ArrowStyle = DEFAULT_ARROW_STYLE,
+  label = '',
 ): BoardDrawing {
+  // Only a solid arrow carries a number; a dashed link has nowhere to put it.
+  const number = style === 'solid' ? sanitizeArrowLabel(label) : '';
   const existing = drawing.arrows.find((a) => a.from === from && a.to === to);
   const others = drawing.arrows.filter((a) => a !== existing);
-  if (existing && arrowColor(existing) === color && arrowStyle(existing) === style) {
+  if (
+    existing &&
+    arrowColor(existing) === color &&
+    arrowStyle(existing) === style &&
+    arrowLabel(existing) === number
+  ) {
     return { ...drawing, arrows: others };
   }
   // Default color and style are left out, so an arrow drawn the plain way keeps
@@ -216,6 +267,7 @@ export function toggleArrow(
     to,
     ...(color === DEFAULT_DRAWING_COLOR ? {} : { color }),
     ...(style === DEFAULT_ARROW_STYLE ? {} : { style }),
+    ...(number ? { label: number } : {}),
   };
   return { ...drawing, arrows: [...others, arrow] };
 }
@@ -259,7 +311,11 @@ export function drawingKey(drawing: BoardDrawing | null | undefined): string {
     .sort()
     .join(',');
   const arrows = drawing.arrows
-    .map((a) => `${a.from}${a.to}${suffix(arrowColor(a))}${styleSuffix(arrowStyle(a))}`)
+    .map(
+      (a) =>
+        `${a.from}${a.to}${suffix(arrowColor(a))}${styleSuffix(arrowStyle(a))}` +
+        (a.label ? `#${a.label}` : ''),
+    )
     .sort()
     .join(',');
   return `${squares}/${arrows}`;

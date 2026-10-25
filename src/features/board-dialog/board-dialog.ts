@@ -25,6 +25,7 @@ import {
   DRAWING_COLORS,
   EMPTY_DRAWING,
   isEmptyDrawing,
+  ARROW_LABEL_MAX_LENGTH,
   OUTLINE_PIECE_ORDER,
   OUTLINE_PIECES,
   SQUARE_MARK_KIND_ORDER,
@@ -203,6 +204,7 @@ export interface BoardDialogData {
             [drawable]="canDraw"
             [drawColor]="drawPref.color()"
             [drawArrowStyle]="drawPref.arrowStyle()"
+            [drawArrowLabel]="drawPref.arrowLabel()"
             [drawSquareMark]="drawPref.squareMark()"
             (drawingChange)="onDraw($event)"
           />
@@ -242,6 +244,8 @@ export interface BoardDialogData {
               <p class="board-dialog__drawing-hint">
                 Right-click a square to mark it; right-drag between squares to draw a line.
               </p>
+              <div class="board-dialog__options">
+              <div class="board-dialog__option board-dialog__option--wide">
               <p id="board-dialog-color-label" class="board-dialog__drawing-label">Color</p>
               <mat-radio-group
                 class="board-dialog__colors"
@@ -260,6 +264,8 @@ export interface BoardDialogData {
                   </mat-radio-button>
                 }
               </mat-radio-group>
+              </div>
+              <div class="board-dialog__option">
               <p id="board-dialog-arrow-label" class="board-dialog__drawing-label">Line</p>
               <mat-radio-group
                 class="board-dialog__colors"
@@ -292,6 +298,30 @@ export interface BoardDialogData {
                   </mat-radio-button>
                 }
               </mat-radio-group>
+              </div>
+              <!-- A number on the shaft; arrows only, since a dashed link has no room for one. -->
+              <div class="board-dialog__option">
+                <p id="board-dialog-number-label" class="board-dialog__drawing-label">Number on arrow</p>
+                <mat-form-field appearance="outline" subscriptSizing="dynamic" class="board-dialog__number">
+                  <input
+                    #arrowLabelInput
+                    matInput
+                    type="text"
+                    inputmode="numeric"
+                    autocomplete="off"
+                    [attr.maxlength]="arrowLabelMax"
+                    aria-labelledby="board-dialog-number-label"
+                    aria-describedby="board-dialog-number-hint"
+                    [value]="drawPref.arrowLabel()"
+                    [disabled]="drawPref.arrowStyle() !== 'solid'"
+                    (input)="onArrowLabel(arrowLabelInput)"
+                  />
+                  <mat-hint id="board-dialog-number-hint">
+                    {{ drawPref.arrowStyle() === 'solid' ? 'Blank for none' : 'Arrows only' }}
+                  </mat-hint>
+                </mat-form-field>
+              </div>
+              <div class="board-dialog__option board-dialog__option--wide">
               <p id="board-dialog-square-label" class="board-dialog__drawing-label">Square</p>
               <mat-radio-group
                 class="board-dialog__colors"
@@ -364,6 +394,8 @@ export interface BoardDialogData {
                   }
                 </mat-radio-group>
               }
+              </div>
+              </div>
               @if (hasUnsavedDrawings()) {
                 <p class="board-dialog__drawing-status" role="status">Unsaved drawing changes</p>
               }
@@ -404,7 +436,7 @@ export interface BoardDialogData {
       --bar-height: 3.25rem;
       /* Reserved for the caption column (its own width + gap + padding), so the
          board never grows so wide that the caption is pushed off the surface. */
-      --caption-column: 21rem;
+      --caption-column: 31rem;
       /* Reserved for the line's move list, when there is one. */
       --line-column: 0rem;
       --board-size: min(
@@ -485,8 +517,8 @@ export interface BoardDialogData {
     .board-dialog__caption {
       /* Fixed width so read-only text wraps to the same width as the input
          instead of its long max-content stretching the dialog wide. */
-      flex: 0 0 20rem;
-      max-width: 20rem;
+      flex: 0 0 30rem;
+      max-width: 30rem;
       /* The dialog surface has padding: 0 (so the board can fill it) and
          overflow: hidden, which would jam this column against the top/right
          edges and clip the form field's floating label. Inset it here. */
@@ -505,6 +537,28 @@ export interface BoardDialogData {
       flex-direction: column;
       gap: 0.5rem;
       margin-top: 0.5rem;
+    }
+
+    /* The drawing options in two columns, the wide ones across both. */
+    .board-dialog__options {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 0.5rem 1rem;
+    }
+
+    .board-dialog__option {
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+      min-width: 0;
+    }
+
+    .board-dialog__option--wide {
+      grid-column: 1 / -1;
+    }
+
+    .board-dialog__number {
+      width: 7rem;
     }
 
     .board-dialog__colors {
@@ -669,6 +723,7 @@ export class BoardDialog {
   protected readonly drawingPalette = DRAWING_COLORS;
   protected readonly arrowStyles = ARROW_STYLE_ORDER;
   protected readonly arrowStyleLabels = ARROW_STYLES;
+  protected readonly arrowLabelMax = ARROW_LABEL_MAX_LENGTH;
   protected readonly squareMarks = SQUARE_MARK_KIND_ORDER;
   protected readonly squareMarkLabels = SQUARE_MARK_KINDS;
   protected readonly outlinePieces = OUTLINE_PIECE_ORDER;
@@ -774,6 +829,11 @@ export class BoardDialog {
   protected cancelEdit(): void {
     this.captionControl.setValue(this.savedCaption(), { emitEvent: false });
     this.editing.set(false);
+  }
+
+  /** Keeps the arrow number to its digits, in the field as well as the preference. */
+  protected onArrowLabel(input: HTMLInputElement): void {
+    input.value = this.drawPref.setArrowLabel(input.value);
   }
 
   /** Records a right-click or right-drag on the board as an unsaved edit. */

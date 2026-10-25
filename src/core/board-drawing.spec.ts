@@ -5,6 +5,7 @@ import {
   EMPTY_DRAWING,
   gridIndex,
   isEmptyDrawing,
+  sanitizeArrowLabel,
   outlinePiece,
   squareAt,
   squareMarkKind,
@@ -125,6 +126,21 @@ describe('board drawing', () => {
 
     // Each piece keys its own image.
     expect(drawingKey(knight)).toBe('f3:grey~outline-N/');
+  });
+
+  it('puts a number on a solid arrow only, keeping its digits', () => {
+    const one = toggleArrow(EMPTY_DRAWING, 'g1', 'f3', 'purple', 'solid', '1');
+    expect(one.arrows).toEqual([{ from: 'g1', to: 'f3', label: '1' }]);
+    expect(drawingKey(one)).toBe('/g1f3#1');
+
+    // Another number redraws the arrow; the same one again removes it.
+    const two = toggleArrow(one, 'g1', 'f3', 'purple', 'solid', '2');
+    expect(two.arrows).toEqual([{ from: 'g1', to: 'f3', label: '2' }]);
+    expect(toggleArrow(two, 'g1', 'f3', 'purple', 'solid', '2').arrows).toEqual([]);
+
+    // A dashed link takes no number, and only digits are kept, three at most.
+    expect(toggleArrow(EMPTY_DRAWING, 'g1', 'f3', 'red', 'dashed', '4').arrows[0].label).toBeUndefined();
+    expect(sanitizeArrowLabel('a1b2c3d4')).toBe('123');
   });
 
   it('restyles a line between an arrow and a dashed link, in any color', () => {

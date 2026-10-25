@@ -12,6 +12,7 @@ import { NgOptimizedImage } from '@angular/common';
 import { ChessService } from '../../core/chess-service';
 import { BoardOrientation, PieceCode } from '../../core/chess-models';
 import {
+  arrowLabelBadge,
   DIVERGENT_MOVE_COLOR,
   fileLabels,
   flipPoint,
@@ -28,6 +29,7 @@ import {
 } from '../../core/board-assets';
 import {
   arrowColor as drawnArrowColor,
+  arrowLabel as drawnArrowLabel,
   arrowStyle as drawnArrowStyle,
   ArrowStyle,
   BoardDrawing,
@@ -78,6 +80,15 @@ interface RenderedArrow {
 /** A user-drawn arrow, ready to render in its own color. */
 interface DrawnArrow extends RenderedArrow {
   readonly color: string;
+  /** The number on the shaft, drawn in a disc of the arrow's color; null for none. */
+  readonly badge: {
+    readonly cx: number;
+    readonly cy: number;
+    readonly r: number;
+    readonly fontSize: number;
+    readonly text: string;
+    readonly textColor: string;
+  } | null;
 }
 
 /** A piece's dashed outline over a square, ready to render. */
@@ -230,6 +241,21 @@ const PIECE_NAMES: Record<string, string> = {
               [attr.fill]="drawn.color"
             />
           }
+          @if (drawn.badge; as badge) {
+            <circle [attr.cx]="badge.cx" [attr.cy]="badge.cy" [attr.r]="badge.r" [attr.fill]="drawn.color" />
+            <text
+              [attr.x]="badge.cx"
+              [attr.y]="badge.cy"
+              [attr.font-size]="badge.fontSize"
+              [attr.fill]="badge.textColor"
+              text-anchor="middle"
+              dominant-baseline="central"
+              font-weight="700"
+              font-family="system-ui, sans-serif"
+            >
+              {{ badge.text }}
+            </text>
+          }
         }
       </svg>
     }
@@ -260,6 +286,8 @@ export class ChessBoard {
   readonly drawColor = input<DrawingColor>(DEFAULT_DRAWING_COLOR);
   /** The shaft style new arrows are drawn with. */
   readonly drawArrowStyle = input<ArrowStyle>(DEFAULT_ARROW_STYLE);
+  /** The number new solid arrows carry on their shaft; '' for none. */
+  readonly drawArrowLabel = input<string>('');
   /** The mark a right-clicked square is given: a fill or an X. */
   readonly drawSquareMark = input<SquareMark>(DEFAULT_SQUARE_MARK);
 
@@ -363,17 +391,38 @@ export class ChessBoard {
 
   /** The user's arrows, plus a preview of the one being dragged. */
   protected readonly drawnArrows = computed<DrawnArrow[]>(() => {
-    const arrows = (this.drawing()?.arrows ?? []).map((a) => ({
-      ...this.renderArrow(a.from, a.to, drawnArrowStyle(a)),
-      color: DRAWING_COLORS[drawnArrowColor(a)].arrow,
-    }));
+    const drawn = (
+      from: string,
+      to: string,
+      style: ArrowStyle,
+      color: DrawingColor,
+      label: string,
+    ): DrawnArrow => {
+      const arrow = this.renderArrow(from, to, style);
+      const text = style === 'solid' ? label : '';
+      const badge = text ? arrowLabelBadge(arrow.shaftFrom, arrow.shaftTo, text) : null;
+      return {
+        ...arrow,
+        color: DRAWING_COLORS[color].arrow,
+        badge: badge && {
+          cx: badge.center.x,
+          cy: badge.center.y,
+          r: badge.radius,
+          fontSize: badge.fontSize,
+          text,
+          textColor: DRAWING_COLORS[color].text,
+        },
+      };
+    };
+    const arrows = (this.drawing()?.arrows ?? []).map((a) =>
+      drawn(a.from, a.to, drawnArrowStyle(a), drawnArrowColor(a), drawnArrowLabel(a)),
+    );
     const from = this.dragFrom();
     const over = this.dragOver();
     if (from && over && from !== over) {
-      arrows.push({
-        ...this.renderArrow(from, over, this.drawArrowStyle()),
-        color: DRAWING_COLORS[this.drawColor()].arrow,
-      });
+      arrows.push(
+        drawn(from, over, this.drawArrowStyle(), this.drawColor(), this.drawArrowLabel()),
+      );
     }
     return arrows;
   });
@@ -443,7 +492,14 @@ export class ChessBoard {
     this.drawingChange.emit(
       to === from
         ? toggleSquare(drawing, from, this.drawColor(), this.drawSquareMark())
-        : toggleArrow(drawing, from, to, this.drawColor(), this.drawArrowStyle()),
+        : toggleArrow(
+            drawing,
+            from,
+            to,
+            this.drawColor(),
+            this.drawArrowStyle(),
+            this.drawArrowLabel(),
+          ),
     );
   }
 

@@ -2,6 +2,7 @@ import { inject, Injectable } from '@angular/core';
 import { getDownloadURL, ref, Storage, StorageError, uploadBytes } from '@angular/fire/storage';
 import { ChessService } from './chess-service';
 import {
+  arrowLabelBadge,
   COORDINATE_COLOR,
   COORDINATE_FONT_SCALE,
   COORDINATE_INSET,
@@ -23,6 +24,7 @@ import {
 import { BoardOrientation, GamePosition } from './chess-models';
 import {
   arrowColor,
+  arrowLabel,
   arrowStyle,
   ArrowStyle,
   BoardDrawing,
@@ -201,13 +203,16 @@ export class BoardImageService {
       this.drawArrow(ctx, position.from, position.to, highlighted ? DIVERGENT_MOVE_COLOR : MOVE_ARROW_COLOR, black);
     }
     for (const arrow of drawing?.arrows ?? []) {
+      const palette = DRAWING_COLORS[arrowColor(arrow)];
       this.drawArrow(
         ctx,
         arrow.from,
         arrow.to,
-        DRAWING_COLORS[arrowColor(arrow)].arrow,
+        palette.arrow,
         black,
         arrowStyle(arrow),
+        arrowLabel(arrow),
+        palette.text,
       );
     }
     if (highlighted) {
@@ -249,7 +254,8 @@ export class BoardImageService {
 
   /**
    * Draws a colored line between two squares: an arrow with a triangular head,
-   * or, for the dashed style, a headless line ringed at both ends.
+   * or, for the dashed style, a headless line ringed at both ends. A solid
+   * arrow can carry a number on its shaft, in `labelColor` on a disc.
    */
   private drawArrow(
     ctx: CanvasRenderingContext2D,
@@ -258,6 +264,8 @@ export class BoardImageService {
     color: string,
     black: boolean,
     style?: ArrowStyle,
+    label = '',
+    labelColor = '#ffffff',
   ): void {
     // Geometry is in board units (1 unit = 1 square); scale up to pixels.
     const arrow = moveArrowGeometry(from, to, style);
@@ -304,6 +312,23 @@ export class BoardImageService {
         ctx.arc(point.x * s, point.y * s, dotRadius * s, 0, 2 * Math.PI);
         ctx.fill();
       }
+    }
+    if (label && head.length === 3) {
+      const badge = arrowLabelBadge(shaftFrom, shaftTo, label);
+      ctx.beginPath();
+      ctx.arc(badge.center.x * s, badge.center.y * s, badge.radius * s, 0, 2 * Math.PI);
+      ctx.fill();
+      ctx.fillStyle = labelColor;
+      ctx.font = `700 ${badge.fontSize * s}px system-ui, sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      // Measured too, in case the font's digits run wider than the estimate.
+      const room = badge.radius * 2 * 0.8 * s;
+      const width = ctx.measureText(label).width;
+      if (width > room) {
+        ctx.font = `700 ${(badge.fontSize * s * room) / width}px system-ui, sans-serif`;
+      }
+      ctx.fillText(label, badge.center.x * s, badge.center.y * s);
     }
     ctx.restore();
   }
