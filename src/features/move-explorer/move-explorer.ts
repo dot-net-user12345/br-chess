@@ -4,6 +4,7 @@ import {
   ChangeDetectionStrategy,
   Component,
   computed,
+  DOCUMENT,
   ElementRef,
   inject,
   Injector,
@@ -130,7 +131,10 @@ interface PinnedGroup {
     MatTooltipModule,
     ChessBoard,
   ],
-  host: { class: 'move-explorer' },
+  host: {
+    class: 'move-explorer',
+    '(document:fullscreenchange)': 'onFullscreenChange()',
+  },
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './move-explorer.html',
   styleUrl: './move-explorer.scss',
@@ -154,6 +158,7 @@ export class MoveExplorer {
   readonly drawingsChange = output<{ id: string; drawings: Record<number, BoardDrawing> }>();
 
   private readonly dialog = inject(MatDialog);
+  private readonly document = inject(DOCUMENT);
   private readonly injector = inject(Injector);
   private readonly clipboard = inject(Clipboard);
   private readonly chess = inject(ChessService);
@@ -451,6 +456,16 @@ export class MoveExplorer {
   /** The pinned-board strip, scrolled to keep a freshly pinned board in view. */
   private readonly strip = viewChild<ElementRef<HTMLElement>>('strip');
 
+  /** The strip's section, which is what goes fullscreen. */
+  private readonly stripSection = viewChild.required<ElementRef<HTMLElement>>('stripSection');
+  private readonly fullscreenButton = viewChild('fullscreenButton', { read: ElementRef });
+  private readonly exitFullscreenButton = viewChild('exitFullscreenButton', { read: ElementRef });
+
+  /** Whether the browser can put an element fullscreen at all; iPhone Safari can't. */
+  protected readonly canFullscreen = this.document.fullscreenEnabled;
+  /** Whether the pinned strip is filling the screen, kept in step with the browser. */
+  protected readonly stripFullscreen = signal(false);
+
   /** Cursor-anchored trigger for the move right-click menu. */
   private readonly contextTrigger = viewChild<ElementRef<HTMLElement>>('contextTrigger');
   private readonly contextMenu = viewChild(MatMenuTrigger);
@@ -692,6 +707,41 @@ export class MoveExplorer {
   protected clear(): void {
     this.pinnedKeys.set([]);
     this.analysisShown.set(false);
+  }
+
+  /**
+   * Shows the pinned strip across the whole screen. The boards are sized by the
+   * strip's height, so they grow to fill it with no layout of their own.
+   */
+  protected enterFullscreen(): void {
+    // Refused when not triggered by a click, or by a browser policy; the
+    // strip simply stays where it is.
+    this.stripSection().nativeElement.requestFullscreen().catch(() => undefined);
+  }
+
+  protected exitFullscreen(): void {
+    if (this.document.fullscreenElement) {
+      this.document.exitFullscreen().catch(() => undefined);
+    }
+  }
+
+  /**
+   * Follows the browser's fullscreen state, however it changed — the exit
+   * button, Escape, or the browser's own controls — and moves focus with it,
+   * since the button that had it is out of sight while the strip is fullscreen.
+   */
+  protected onFullscreenChange(): void {
+    const wasFullscreen = this.stripFullscreen();
+    const isFullscreen = this.document.fullscreenElement === this.stripSection().nativeElement;
+    this.stripFullscreen.set(isFullscreen);
+    if (isFullscreen === wasFullscreen) {
+      return;
+    }
+    afterNextRender(
+      () =>
+        (isFullscreen ? this.exitFullscreenButton() : this.fullscreenButton())?.nativeElement.focus(),
+      { injector: this.injector },
+    );
   }
 
   /**

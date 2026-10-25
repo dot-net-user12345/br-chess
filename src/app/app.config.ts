@@ -5,6 +5,7 @@ import {
   provideAppInitializer,
   provideBrowserGlobalErrorListeners,
 } from '@angular/core';
+import { FullscreenOverlayContainer, OverlayContainer } from '@angular/cdk/overlay';
 import { provideRouter } from '@angular/router';
 import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
 import { MAT_ICON_DEFAULT_OPTIONS } from '@angular/material/icon';
@@ -43,5 +44,9 @@ export const appConfig: ApplicationConfig = {
     // Material Symbols (loaded in index.html) use the `material-symbols-outlined`
     // CSS class, not mat-icon's default `material-icons`.
     { provide: MAT_ICON_DEFAULT_OPTIONS, useValue: { fontSet: 'material-symbols-outlined' } },
+    // Dialogs, menus and tooltips open into an overlay container on the body,
+    // which a fullscreen element hides. This one moves itself into whatever is
+    // fullscreen, so the pinned strip's large view and menus still show there.
+    { provide: OverlayContainer, useClass: FullscreenOverlayContainer },
   ],
 };

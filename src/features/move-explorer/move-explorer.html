@@ -74,6 +74,19 @@
       <mat-icon>layers_clear</mat-icon>
       Clear pinned
     </button>
+    @if (canFullscreen) {
+      <button
+        #fullscreenButton
+        matButton
+        type="button"
+        (click)="enterFullscreen()"
+        [disabled]="!hasPinned()"
+        matTooltip="Show the pinned boards across the whole screen"
+      >
+        <mat-icon>fullscreen</mat-icon>
+        Fullscreen
+      </button>
+    }
   </div>
 
   <!-- Position filter: lines reaching a board with this piece on this square. -->
@@ -342,7 +355,21 @@
     }
   </div>
 
-  <div class="explorer__strip">
+  <div #stripSection class="explorer__strip">
+    @if (stripFullscreen()) {
+      <div class="explorer__strip-bar">
+        <h2 class="explorer__strip-title">Pinned positions</h2>
+        <button
+          #exitFullscreenButton
+          matIconButton
+          type="button"
+          aria-label="Exit fullscreen"
+          (click)="exitFullscreen()"
+        >
+          <mat-icon>fullscreen_exit</mat-icon>
+        </button>
+      </div>
+    }
     @if (hasPinned()) {
       <!-- One container per line, so pinned positions stay with the line they
            came from however they were clicked. -->

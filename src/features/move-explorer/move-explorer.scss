@@ -114,6 +114,47 @@
     overflow-x: auto;
     overflow-y: hidden;
     padding: 0 0.25rem;
+
+    // The strip alone across the whole screen, under its own title bar. The
+    // boards take their size from the strip's height, so they grow with it;
+    // past the screen's width the strip scrolls sideways, as it does in place.
+    &:fullscreen {
+      box-sizing: border-box;
+      display: grid;
+      grid-template-rows: auto minmax(0, 1fr);
+      gap: 0.75rem;
+      padding: 0.75rem 1rem 1rem;
+      overflow: hidden;
+      background: var(--mat-sys-surface);
+      color: var(--mat-sys-on-surface);
+
+      .strip {
+        overflow-x: auto;
+        overflow-y: hidden;
+        // A few boards sit in the middle; more than fit start at the left edge.
+        justify-content: safe center;
+      }
+
+      .group__title {
+        font: var(--mat-sys-title-large);
+      }
+
+      .group__caption {
+        font: var(--mat-sys-body-large);
+      }
+    }
+  }
+
+  &__strip-bar {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  &__strip-title {
+    flex: 1;
+    margin: 0;
+    font: var(--mat-sys-headline-small);
   }
 
   // Zero-size, cursor-anchored element the right-click menu opens from. Fixed,
