@@ -6,7 +6,7 @@ import {
   provideBrowserGlobalErrorListeners,
 } from '@angular/core';
 import { FullscreenOverlayContainer, OverlayContainer } from '@angular/cdk/overlay';
-import { provideRouter } from '@angular/router';
+import { provideRouter, withComponentInputBinding } from '@angular/router';
 import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
 import { MAT_ICON_DEFAULT_OPTIONS } from '@angular/material/icon';
 import { FirebaseApp, initializeApp, provideFirebaseApp } from '@angular/fire/app';
@@ -21,7 +21,8 @@ export const appConfig: ApplicationConfig = {
   providers: [
     provideBrowserGlobalErrorListeners(),
     provideAnimationsAsync(),
-    provideRouter(routes),
+    // Route data binds to page inputs, e.g. which tree the workspace page shows.
+    provideRouter(routes, withComponentInputBinding()),
     provideFirebaseApp(() => initializeApp(environment.firebase)),
     provideFirestore(() => getFirestore(inject(FirebaseApp), 'chessified')),
     provideStorage(() => getStorage()),

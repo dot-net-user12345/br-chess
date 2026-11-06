@@ -48,6 +48,7 @@ describe('PositionSearch', () => {
           provide: WorkspaceStore,
           useValue: {
             pgnGridFiles: signal(files),
+            multiStepNotes: signal([]),
             pathOf: (id: string) => id,
             node: (id: string) => files.find((f) => f.id === id) ?? null,
           },

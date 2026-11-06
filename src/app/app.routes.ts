@@ -7,6 +7,18 @@ export const routes: Routes = [
     title: 'Home',
   },
   {
+    path: 'diagrams',
+    loadComponent: () => import('../pages/home/home').then((m) => m.Home),
+    data: { tree: 'diagrams' },
+    title: 'Board diagrams',
+  },
+  {
+    path: 'notes',
+    loadComponent: () => import('../pages/home/home').then((m) => m.Home),
+    data: { tree: 'notes' },
+    title: 'Multi step notes',
+  },
+  {
     path: 'positions',
     loadComponent: () =>
       import('../pages/position-search/position-search').then((m) => m.PositionSearch),

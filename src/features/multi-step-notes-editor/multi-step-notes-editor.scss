@@ -1,0 +1,268 @@
+.notes {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  max-width: 72rem;
+
+  &__header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  &__title {
+    flex: 1 1 18rem;
+  }
+
+  &__status {
+    margin: -1rem 0 0;
+    font: var(--mat-sys-body-small);
+    color: var(--mat-sys-primary);
+  }
+
+  &__heading {
+    margin: 0 0 0.5rem;
+    font: var(--mat-sys-title-medium);
+    color: var(--mat-sys-on-surface);
+  }
+
+  &__hint {
+    margin: 0;
+    font: var(--mat-sys-body-small);
+    color: var(--mat-sys-on-surface-variant);
+  }
+
+  &__actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+  }
+
+  &__position-body {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.25rem;
+    align-items: flex-start;
+  }
+
+  &__position-board {
+    flex: 0 0 auto;
+    width: 12rem;
+    aspect-ratio: 1;
+  }
+
+  &__position-info {
+    flex: 1 1 18rem;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+
+  // Selectable, so it can be copied out; never wrapped mid-rank.
+  &__fen {
+    overflow-x: auto;
+    white-space: nowrap;
+    font: var(--mat-sys-body-large);
+    font-family: ui-monospace, monospace;
+    user-select: all;
+  }
+
+  &__line-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  &__line {
+    text-align: left;
+  }
+
+  &__list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  &__add {
+    width: 100%;
+  }
+}
+
+.note {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem 1rem;
+  border: 1px solid var(--mat-sys-outline-variant);
+  border-radius: var(--mat-sys-corner-medium);
+  background: var(--mat-sys-surface-container-low);
+
+  &__bar {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+  }
+
+  &__heading {
+    margin: 0;
+    font: var(--mat-sys-title-small);
+    color: var(--mat-sys-on-surface-variant);
+  }
+
+  &__spacer {
+    flex: 1 1 auto;
+  }
+
+  &__top {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    align-items: flex-start;
+  }
+
+  &__diagram {
+    flex: 0 0 auto;
+    width: 11rem;
+  }
+
+  &__diagram-button,
+  &__diagram-add,
+  &__move-button {
+    display: block;
+    width: 100%;
+    padding: 0;
+    border: 1px solid var(--mat-sys-outline-variant);
+    border-radius: var(--mat-sys-corner-small);
+    background: none;
+    color: inherit;
+    cursor: pointer;
+
+    &:hover {
+      border-color: var(--mat-sys-primary);
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--mat-sys-primary);
+      outline-offset: 2px;
+    }
+  }
+
+  &__diagram-button {
+    aspect-ratio: 1;
+  }
+
+  // An empty square to click, where the diagram will go.
+  &__diagram-add {
+    aspect-ratio: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.25rem;
+    padding: 0.5rem;
+    border: 2px dashed var(--mat-sys-outline);
+    font: var(--mat-sys-label-large);
+    color: var(--mat-sys-on-surface-variant);
+    text-align: center;
+  }
+
+  &__diagram-footer {
+    display: flex;
+    align-items: center;
+    gap: 0.125rem;
+  }
+
+  &__diagram-name {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font: var(--mat-sys-body-small);
+  }
+
+  &__text {
+    flex: 1 1 20rem;
+    min-width: 0;
+  }
+
+  // The moves scroll sideways, with the add button fixed at the end.
+  &__moves {
+    display: flex;
+    align-items: stretch;
+    border: 1px solid var(--mat-sys-outline-variant);
+    border-radius: var(--mat-sys-corner-small);
+  }
+
+  &__move-list {
+    flex: 1 1 auto;
+    min-width: 0;
+    list-style: none;
+    margin: 0;
+    padding: 0.5rem;
+    display: flex;
+    gap: 0.75rem;
+    overflow-x: auto;
+  }
+
+  &__move {
+    position: relative;
+    flex: 0 0 8rem;
+  }
+
+  &__move-button {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    padding: 0.25rem;
+  }
+
+  &__move-caption {
+    font: var(--mat-sys-label-large);
+    text-align: center;
+  }
+
+  &__move-missing {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    aspect-ratio: 1;
+    padding: 0.5rem;
+    border: 1px dashed var(--mat-sys-outline);
+    border-radius: var(--mat-sys-corner-small);
+    font: var(--mat-sys-body-small);
+    color: var(--mat-sys-on-surface-variant);
+    text-align: center;
+  }
+
+  &__move-remove {
+    position: absolute;
+    top: 0.125rem;
+    right: 0.125rem;
+    background: color-mix(in srgb, var(--mat-sys-surface) 75%, transparent);
+  }
+
+  &__moves-empty {
+    align-self: center;
+    font: var(--mat-sys-body-small);
+    color: var(--mat-sys-on-surface-variant);
+  }
+
+  &__moves-add {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    padding: 0 0.5rem;
+    border-left: 1px solid var(--mat-sys-outline-variant);
+  }
+}

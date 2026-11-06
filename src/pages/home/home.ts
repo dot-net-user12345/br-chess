@@ -1,7 +1,9 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, input, signal } from '@angular/core';
 import { WorkspaceStore } from '../../core/workspace-store';
-import { PgnGridFileNode } from '../../core/workspace-models';
+import { FileNode, isFile, WorkspaceTree } from '../../core/workspace-models';
+import { BoardDiagramEditor } from '../../features/board-diagram-editor/board-diagram-editor';
 import { FileExplorer } from '../../features/file-explorer/file-explorer';
+import { MultiStepNotesEditor } from '../../features/multi-step-notes-editor/multi-step-notes-editor';
 import { PgnGridEditor } from '../../features/pgn-grid-editor/pgn-grid-editor';
 import { SaveStatusDialog } from '../../features/save-status-dialog/save-status-dialog';
 
@@ -12,7 +14,13 @@ const KEYBOARD_STEP = 16;
 
 @Component({
   selector: 'app-home',
-  imports: [FileExplorer, PgnGridEditor, SaveStatusDialog],
+  imports: [
+    FileExplorer,
+    PgnGridEditor,
+    BoardDiagramEditor,
+    MultiStepNotesEditor,
+    SaveStatusDialog,
+  ],
   templateUrl: './home.html',
   styleUrl: './home.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -20,9 +28,12 @@ const KEYBOARD_STEP = 16;
 export class Home {
   private readonly store = inject(WorkspaceStore);
 
-  protected readonly selectedFile = computed<PgnGridFileNode | null>(() => {
-    const node = this.store.selectedNode();
-    return node && node.kind === 'file' && node.fileType === 'pgn-grid' ? node : null;
+  /** Which file structure the page shows, from the route: lines, diagrams, or notes. */
+  readonly tree = input<WorkspaceTree>('lines');
+
+  protected readonly selectedFile = computed<FileNode | null>(() => {
+    const node = this.store.selectedIn(this.tree());
+    return node && isFile(node) ? node : null;
   });
 
   /** Current file-explorer width in px, adjusted by dragging its right edge. */

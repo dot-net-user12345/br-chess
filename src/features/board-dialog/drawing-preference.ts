@@ -2,6 +2,7 @@ import { effect, Injectable, signal } from '@angular/core';
 import {
   ARROW_STYLES,
   ArrowStyle,
+  BoardDrawing,
   DEFAULT_ARROW_STYLE,
   DEFAULT_DRAWING_COLOR,
   DEFAULT_OUTLINE_PIECE,
@@ -30,9 +31,7 @@ const OUTLINE_PIECE_KEY = 'br-chess-drawing-outline-piece';
  */
 @Injectable({ providedIn: 'root' })
 export class DrawingPreference {
-  readonly color = signal<DrawingColor>(
-    read(COLOR_KEY, DRAWING_COLORS, DEFAULT_DRAWING_COLOR),
-  );
+  readonly color = signal<DrawingColor>(read(COLOR_KEY, DRAWING_COLORS, DEFAULT_DRAWING_COLOR));
 
   readonly arrowStyle = signal<ArrowStyle>(
     read(ARROW_STYLE_KEY, ARROW_STYLES, DEFAULT_ARROW_STYLE),
@@ -90,6 +89,24 @@ export class DrawingPreference {
     const next = String(Number(label) + 1);
     if (next.length <= ARROW_LABEL_MAX_LENGTH) {
       this.arrowLabel.set(next);
+    }
+  }
+
+  /**
+   * Called after each edit of a drawing. A new arrow carrying the number moves
+   * it on, when auto-increment is on; removing an arrow, or drawing anything
+   * else, leaves it alone.
+   */
+  recordDraw(before: BoardDrawing | null, after: BoardDrawing): void {
+    const label = this.arrowLabel();
+    const previous = before?.arrows ?? [];
+    const numbered = after.arrows.some(
+      (arrow) =>
+        arrow.label === label &&
+        !previous.some((b) => b.from === arrow.from && b.to === arrow.to && b.label === label),
+    );
+    if (label && numbered) {
+      this.advanceArrowLabel();
     }
   }
 

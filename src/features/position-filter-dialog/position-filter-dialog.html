@@ -1,12 +1,19 @@
-<h2 mat-dialog-title>Filter by position</h2>
+<h2 mat-dialog-title>{{ setup ? 'Set up the board' : 'Filter by position' }}</h2>
 
 <div class="filter">
-  <p id="position-filter-help" class="filter__help">
-    Drag pieces onto the board, or select a piece and then a square. Drop an X on a square that must
-    be empty. Drag a piece or X off the board, or select its square with nothing selected, to remove
-    it. Lines are shown when any of their moves has every placed piece on its square and nothing on
-    its X squares.
-  </p>
+  @if (setup) {
+    <p id="position-filter-help" class="filter__help">
+      Drag pieces onto the board, or select a piece and then a square. Drag a piece off the board,
+      or select its square with nothing selected, to remove it. The position needn't be legal.
+    </p>
+  } @else {
+    <p id="position-filter-help" class="filter__help">
+      Drag pieces onto the board, or select a piece and then a square. Drop an X on a square that
+      must be empty. Drag a piece or X off the board, or select its square with nothing selected, to
+      remove it. Lines are shown when any of their moves has every placed piece on its square and
+      nothing on its X squares.
+    </p>
+  }
 
   <div class="filter__body">
     <div class="filter__board" role="group" aria-label="Board" aria-describedby="position-filter-help">
@@ -84,7 +91,7 @@
   </button>
   <span class="filter__spacer"></span>
   <button matButton type="button" mat-dialog-close>Cancel</button>
-  <button matButton="filled" type="button" (click)="apply()">Apply</button>
+  <button matButton="filled" type="button" (click)="apply()">{{ setup ? 'Done' : 'Apply' }}</button>
 </mat-dialog-actions>
 
 @if (ghost(); as ghost) {

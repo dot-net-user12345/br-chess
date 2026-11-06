@@ -1,13 +1,13 @@
 <div class="file-explorer">
   <div class="file-explorer__toolbar">
-    <h2 class="file-explorer__title">Files</h2>
+    <h2 class="file-explorer__title">{{ labels().title }}</h2>
     <span class="file-explorer__spacer"></span>
     <button
       matIconButton
       type="button"
       (click)="newFile()"
-      matTooltip="New PGN grid file"
-      aria-label="New PGN grid file"
+      [matTooltip]="'New ' + labels().file"
+      [attr.aria-label]="'New ' + labels().file"
     >
       <mat-icon>note_add</mat-icon>
     </button>
@@ -22,11 +22,14 @@
     </button>
   </div>
 
-  <app-line-search
-    class="file-explorer__search"
-    [class.file-explorer__search--expanded]="searching()"
-    (searching)="searching.set($event)"
-  />
+  <!-- The move search looks through lines, so it belongs to the lines tree only. -->
+  @if (tree() === 'lines') {
+    <app-line-search
+      class="file-explorer__search"
+      [class.file-explorer__search--expanded]="searching()"
+      (searching)="searching.set($event)"
+    />
+  }
 
   <!-- The search results take the tree's place while a search is running. -->
   @if (!searching()) {
@@ -35,7 +38,7 @@
         class="file-explorer__tree"
         [class.file-explorer__tree--drop-target]="rootDropActive()"
         role="tree"
-        aria-label="Workspace files"
+        [attr.aria-label]="labels().title"
         (dragover)="onRootDragOver($event)"
         (dragleave)="onRootDragLeave()"
         (drop)="onRootDrop($event)"
@@ -48,7 +51,7 @@
       </ul>
     } @else {
       <p class="file-explorer__empty">
-        No files yet. Use the buttons above to create a folder or a PGN grid file.
+        Nothing here yet. Use the buttons above to create a folder or a {{ labels().file }}.
       </p>
     }
   }

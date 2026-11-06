@@ -13,6 +13,7 @@ import {
 } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
+import { Router } from '@angular/router';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDividerModule } from '@angular/material/divider';
@@ -22,31 +23,26 @@ import { MatInputModule } from '@angular/material/input';
 import { MatMenuModule, MatMenuTrigger } from '@angular/material/menu';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatDialog } from '@angular/material/dialog';
-import { BoardDrawing, NodeId, PgnEntry, UploadedImage } from '../../core/workspace-models';
+import { BoardDrawing, NodeId } from '../../core/workspace-models';
 import { BoardOrientation, GamePosition } from '../../core/chess-models';
 import { ChessService } from '../../core/chess-service';
+import {
+  moveLabel,
+  patternMatches,
+  pgnMatches,
+  SearchLine,
+  searchLines,
+} from '../../core/move-search';
 import { matchesPattern, patternToFen, PositionPattern } from '../../core/position-pattern';
 import { WorkspaceStore } from '../../core/workspace-store';
-import { ImageAttachments } from '../../shared/image-attachments';
-import { BoardDialog, BoardDialogTile } from '../../features/board-dialog/board-dialog';
+import { LineBoardDialog } from '../../features/board-dialog/line-board-dialog';
 import { ChessBoard } from '../../features/chess-board/chess-board';
 import {
   FileScopeDialog,
   FileScopeDialogData,
 } from '../../features/file-scope-dialog/file-scope-dialog';
-import { LineMove, LineMoves } from '../../features/line-moves/line-moves';
+import { LineMoves } from '../../features/line-moves/line-moves';
 import { PositionFilterBar } from '../../features/position-filter-dialog/position-filter-bar';
-
-/** One line of one file, parsed, that the search looks through. */
-interface SearchLine {
-  readonly fileId: string;
-  readonly entryId: string;
-  /** `Openings/London › Line 3` — the file's path and the line's label. */
-  readonly title: string;
-  readonly positions: readonly GamePosition[];
-  readonly moves: readonly LineMove[];
-  readonly entry: PgnEntry;
-}
 
 /** A move the filter matched: one whose board has its pieces in place, or that ends its PGN. */
 interface ResultTile {
@@ -119,7 +115,8 @@ export class PositionSearch {
   private readonly store = inject(WorkspaceStore);
   private readonly chess = inject(ChessService);
   private readonly dialog = inject(MatDialog);
-  private readonly attachments = inject(ImageAttachments);
+  private readonly lineDialog = inject(LineBoardDialog);
+  private readonly router = inject(Router);
 
   protected readonly pattern = signal<PositionPattern>({});
   /** Only files viewed from this side are searched, and every board is drawn from it. */
@@ -179,32 +176,16 @@ export class PositionSearch {
   private readonly lines = computed<SearchLine[]>(() => {
     const orientation = this.orientation();
     const excluded = this.excluded();
-    return this.store
+    const files = this.store
       .pgnGridFiles()
       .filter(
-        (file) =>
-          !excluded.has(file.id) && (file.content.orientation ?? 'white') === orientation,
-      )
-      .map((file) => ({ file, path: this.store.pathOf(file.id) }))
-      .sort((a, b) => a.path.localeCompare(b.path))
-      .flatMap(({ file, path }) =>
-        file.content.entries.flatMap((entry, index) => {
-          const result = this.chess.parsePgn(entry.pgn);
-          if (!result.valid || result.positions.length < 2) {
-            return [];
-          }
-          return [
-            {
-              fileId: file.id,
-              entryId: entry.id,
-              title: `${path} › ${entry.label || `Line ${index + 1}`}`,
-              positions: result.positions,
-              moves: result.positions.flatMap((p) => (p.san ? [{ ply: p.ply, san: p.san }] : [])),
-              entry,
-            },
-          ];
-        }),
+        (file) => !excluded.has(file.id) && (file.content.orientation ?? 'white') === orientation,
       );
+    return searchLines(
+      files,
+      (id) => this.store.pathOf(id),
+      (pgn) => this.chess.parsePgn(pgn),
+    );
   });
 
   /**
@@ -221,24 +202,37 @@ export class PositionSearch {
       return [];
     }
     return this.lines().flatMap((line) => {
-      const tiles: ResultTile[] = [];
-      if (sans) {
-        // Positions run from the starting board, so move i is position i + 1.
-        if (sans.every((san, i) => line.positions[i + 1]?.san === san)) {
-          tiles.push(resultTile(line, line.positions[sans.length]));
-        }
-      } else {
-        let previous = false;
-        for (const position of line.positions) {
-          const matches = position.ply > 0 && matchesPattern(position.fen, pattern);
-          if (matches && !previous) {
-            tiles.push(resultTile(line, position));
-          }
-          previous = matches;
-        }
-      }
+      const matches = sans ? pgnMatches(line, sans) : patternMatches(line, pattern);
+      const tiles = matches.map((position) => resultTile(line, position));
       return tiles.length > 0 ? [{ key: `${line.fileId}:${line.entryId}`, line, tiles }] : [];
     });
+  });
+
+  /**
+   * Multi step notes whose position has the filter's pieces in place, by
+   * path. Only the position filter finds them; notes have no moves of their own
+   * to open with a PGN.
+   */
+  protected readonly noteMatches = computed(() => {
+    const pattern = this.pattern();
+    if (this.pgnSans() !== null || Object.keys(pattern).length === 0) {
+      return [];
+    }
+    return this.store
+      .multiStepNotes()
+      .flatMap((file) =>
+        file.content.fen && matchesPattern(file.content.fen, pattern)
+          ? [
+              {
+                id: file.id,
+                path: this.store.pathOf(file.id),
+                fen: file.content.fen,
+                orientation: file.content.orientation ?? 'white',
+              },
+            ]
+          : [],
+      )
+      .sort((a, b) => a.path.localeCompare(b.path));
   });
 
   /** The filter as one string, which a saved order is kept against; '' when there is none. */
@@ -266,9 +260,7 @@ export class PositionSearch {
    * doesn't know — from a file added or checked since — goes after the rest.
    */
   protected readonly results = computed(() => {
-    const results = this.groups().flatMap((group) =>
-      group.tiles.map((tile) => ({ group, tile })),
-    );
+    const results = this.groups().flatMap((group) => group.tiles.map((tile) => ({ group, tile })));
     const order = this.savedOrder();
     if (!order || !this.reordered()) {
       return results;
@@ -291,7 +283,10 @@ export class PositionSearch {
     source: this.results,
     computation: (results, previous) => {
       const key = previous?.source[previous.value]?.tile.key;
-      return Math.max(0, results.findIndex((result) => result.tile.key === key));
+      return Math.max(
+        0,
+        results.findIndex((result) => result.tile.key === key),
+      );
     },
   });
   protected readonly current = computed(() => this.results()[this.index()] ?? null);
@@ -460,68 +455,15 @@ export class PositionSearch {
       });
   }
 
+  /** Shows a multi step notes file on its own page. */
+  protected openNotes(id: NodeId): void {
+    void this.router.navigateByUrl('/notes').then(() => this.store.reveal(id));
+  }
+
   /** Opens the move in the large view, its line's moves beside the board. */
   protected open(group: ResultGroup, ply: number): void {
     this.hidePeek();
-    const line = group.line;
-    const entry = line.entry;
-    const tiles: BoardDialogTile[] = line.positions.map((position) => ({
-      ply: position.ply,
-      fen: position.fen,
-      caption: position.ply === 0 || position.san === null ? 'Start' : moveLabel(position),
-      san: position.san,
-      from: position.from,
-      to: position.to,
-    }));
-    this.dialog.open(BoardDialog, {
-      data: {
-        tiles,
-        // Positions run from the starting board, so a ply is its own tile index.
-        index: ply,
-        line: { label: line.title },
-        orientation: this.orientation(),
-        captions: entry.captions ?? {},
-        onCaptionChange: (captions: Record<number, string>) =>
-          this.updateEntry(line, (e) => ({ ...e, captions })),
-        focusPlies: entry.focusPlies ?? [],
-        onFocusChange: (focusPlies: number[]) =>
-          this.updateEntry(line, ({ focusPlies: _dropped, ...rest }) =>
-            focusPlies.length > 0 ? { ...rest, focusPlies } : rest,
-          ),
-        moveImages: entry.moveImages ?? {},
-        onMoveImagesChange: (moveImages: Record<number, readonly UploadedImage[]>) =>
-          this.updateEntry(line, ({ moveImages: _dropped, ...rest }) =>
-            Object.keys(moveImages).length > 0 ? { ...rest, moveImages } : rest,
-          ),
-        drawings: entry.drawings ?? {},
-        onDrawingsChange: (drawings: Record<number, BoardDrawing>) =>
-          this.updateEntry(line, ({ drawings: _dropped, ...rest }) =>
-            Object.keys(drawings).length > 0 ? { ...rest, drawings } : rest,
-          ),
-      },
-      panelClass: 'board-dialog-panel',
-      ariaLabel: 'Board preview',
-      maxWidth: '98vw',
-      maxHeight: '98vh',
-      autoFocus: 'dialog',
-    });
-  }
-
-  /** Writes an edit made in the large view back to its line's file, and saves the file. */
-  private async updateEntry(line: SearchLine, update: (entry: PgnEntry) => PgnEntry): Promise<void> {
-    const file = this.store.node(line.fileId);
-    if (!file || file.kind !== 'file' || file.fileType !== 'pgn-grid') {
-      return;
-    }
-    this.store.updatePgnGridContent(file.id, {
-      ...file.content,
-      entries: file.content.entries.map((entry) =>
-        entry.id === line.entryId ? update(entry) : entry,
-      ),
-    });
-    if (await this.attachments.ensureSignedIn()) {
-      await this.store.saveFile(file.id);
-    }
+    this.lineDialog.open(group.line, ply, this.orientation());
   }
 }
 
@@ -588,11 +530,4 @@ function resultTile(line: SearchLine, position: GamePosition): ResultTile {
     caption,
     ariaLabel: `${caption}, ${line.title}`,
   };
-}
-
-/** `5. Qd2` for White, `5… O-O` for Black — how the app captions a move. */
-function moveLabel(position: GamePosition): string {
-  return position.color === 'white'
-    ? `${position.moveNumber}. ${position.san}`
-    : `${position.moveNumber}… ${position.san}`;
 }

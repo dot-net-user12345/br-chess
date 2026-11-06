@@ -5,15 +5,23 @@ import { ChessService } from './chess-service';
 import { comparisonIndex, divergentPlies } from './move-comparison';
 import { WorkspaceRepository } from './workspace-repository';
 import {
+  BoardDiagramContent,
+  BoardDiagramFileNode,
+  FileNode,
   FileType,
+  FILE_TYPE_TREES,
   FolderNode,
   isFile,
   isFolder,
+  MultiStepNotesContent,
+  MultiStepNotesFileNode,
   NodeId,
   PgnEntry,
   PgnGridContent,
   PgnGridFileNode,
+  treeOf,
   WorkspaceNode,
+  WorkspaceTree,
 } from './workspace-models';
 
 export interface StatusMessage {
@@ -37,6 +45,23 @@ export interface DuplicateLinePair {
   /** The identical line — in another file, or another line of the same file. */
   readonly match: DuplicateLineRef;
 }
+
+/** The board of a new diagram: empty, ready to be set up. */
+export const EMPTY_BOARD_FEN = '8/8/8/8/8/8/8/8';
+
+/** Name each new file of a type starts with, before the user renames it. */
+const NEW_FILE_NAMES: Readonly<Record<FileType, string>> = {
+  'pgn-grid': 'New Comparison',
+  'board-diagram': 'New diagram',
+  'multi-step-notes': 'New notes',
+};
+
+/** No node selected, in any tree. */
+const NO_SELECTION: Readonly<Record<WorkspaceTree, NodeId | null>> = {
+  lines: null,
+  diagrams: null,
+  notes: null,
+};
 
 /** Safety stop when walking a node's ancestors, guarding against a parent cycle. */
 const MAX_TREE_DEPTH = 100;
@@ -65,7 +90,9 @@ export class WorkspaceStore {
   private readonly auth = inject(AuthService);
 
   private readonly nodes = signal<Record<NodeId, WorkspaceNode>>({});
-  private readonly selectedId = signal<NodeId | null>(null);
+  /** The selected node of each tree, so each page keeps its own selection. */
+  private readonly selectedIds =
+    signal<Readonly<Record<WorkspaceTree, NodeId | null>>>(NO_SELECTION);
   private readonly expandedIds = signal<ReadonlySet<NodeId>>(new Set());
 
   /** The uid whose workspace is currently loaded; guards against re-loading. */
@@ -95,23 +122,47 @@ export class WorkspaceStore {
   readonly status = signal<StatusMessage | null>(null);
   readonly configured = this.repo.isConfigured;
 
-  readonly selectedNode = computed<WorkspaceNode | null>(() => {
-    const id = this.selectedId();
+  /** The node selected in `tree`, or null. */
+  selectedIn(tree: WorkspaceTree): WorkspaceNode | null {
+    const id = this.selectedIds()[tree];
     return id ? (this.nodes()[id] ?? null) : null;
-  });
+  }
 
-  readonly rootNodes = computed(() => this.childrenOf(null));
+  /** The top-level folders and files of `tree`, sorted for display. */
+  rootsOf(tree: WorkspaceTree): WorkspaceNode[] {
+    return this.childrenOf(null, tree);
+  }
 
   /** Every pgn-grid file in the workspace, in no particular order. */
-  readonly pgnGridFiles = computed<PgnGridFileNode[]>(() =>
-    Object.values(this.nodes()).filter(
-      (node): node is PgnGridFileNode => isFile(node) && node.fileType === 'pgn-grid',
-    ),
+  readonly pgnGridFiles = computed<PgnGridFileNode[]>(() => this.filesOfType('pgn-grid'));
+
+  /** Every board diagram in the workspace, in no particular order. */
+  readonly boardDiagrams = computed<BoardDiagramFileNode[]>(() =>
+    this.filesOfType('board-diagram'),
   );
 
-  /** Reactive list of a folder's direct children, sorted for display. */
-  childrenOf(parentId: NodeId | null): WorkspaceNode[] {
-    return sortNodes(Object.values(this.nodes()).filter((node) => node.parentId === parentId));
+  /** Every multi step notes file in the workspace, in no particular order. */
+  readonly multiStepNotes = computed<MultiStepNotesFileNode[]>(() =>
+    this.filesOfType('multi-step-notes'),
+  );
+
+  private filesOfType<T extends FileType>(fileType: T): Extract<FileNode, { fileType: T }>[] {
+    return Object.values(this.nodes()).filter(
+      (node): node is Extract<FileNode, { fileType: T }> =>
+        isFile(node) && node.fileType === fileType,
+    );
+  }
+
+  /**
+   * Reactive list of a folder's direct children, sorted for display. At the
+   * root, only those of `tree`; a folder's children are all of its own tree.
+   */
+  childrenOf(parentId: NodeId | null, tree: WorkspaceTree = 'lines'): WorkspaceNode[] {
+    return sortNodes(
+      Object.values(this.nodes()).filter(
+        (node) => node.parentId === parentId && treeOf(node) === tree,
+      ),
+    );
   }
 
   node(id: NodeId): WorkspaceNode | null {
@@ -154,7 +205,8 @@ export class WorkspaceStore {
   }
 
   isSelected(id: NodeId): boolean {
-    return this.selectedId() === id;
+    const node = this.nodes()[id];
+    return !!node && this.selectedIds()[treeOf(node)] === id;
   }
 
   isExpanded(id: NodeId): boolean {
@@ -184,19 +236,26 @@ export class WorkspaceStore {
       }
       this.nodes.set(record);
     } catch (err) {
-      this.status.set({ type: 'error', text: this.describe(err, 'Could not load your workspace.') });
+      this.status.set({
+        type: 'error',
+        text: this.describe(err, 'Could not load your workspace.'),
+      });
     }
   }
 
   /** Drops all in-memory workspace state; used when the user signs out. */
   private clearWorkspace(): void {
     this.nodes.set({});
-    this.selectedId.set(null);
+    this.selectedIds.set(NO_SELECTION);
     this.expandedIds.set(new Set());
   }
 
+  /** Selects a node within its own tree, leaving the other trees' selections alone. */
   select(id: NodeId): void {
-    this.selectedId.set(id);
+    const node = this.nodes()[id];
+    if (node) {
+      this.selectedIds.update((ids) => ({ ...ids, [treeOf(node)]: id }));
+    }
   }
 
   toggleExpanded(id: NodeId): void {
@@ -211,25 +270,27 @@ export class WorkspaceStore {
     });
   }
 
-  /** The folder new nodes should be created in, based on the current selection. */
-  targetParentId(): NodeId | null {
-    const selected = this.selectedNode();
+  /** The folder new nodes of `tree` should be created in, based on its selection. */
+  targetParentId(tree: WorkspaceTree = 'lines'): NodeId | null {
+    const selected = this.selectedIn(tree);
     if (!selected) {
       return null;
     }
     return isFolder(selected) ? selected.id : selected.parentId;
   }
 
-  createFolder(parentId: NodeId | null): FolderNode {
+  createFolder(parentId: NodeId | null, tree: WorkspaceTree = 'lines'): FolderNode {
     const now = this.now();
     const folder: FolderNode = {
       id: this.id(),
       kind: 'folder',
-      name: this.uniqueName(parentId, 'New folder'),
+      name: this.uniqueName(parentId, 'New folder', tree),
       parentId,
       ownerId: this.ownerId(),
       createdAt: now,
       updatedAt: now,
+      // Left out for the lines tree, so its folders keep their old shape.
+      ...(tree === 'lines' ? {} : { tree }),
     };
     this.put(folder);
     this.expand(parentId);
@@ -240,17 +301,21 @@ export class WorkspaceStore {
 
   createFile(parentId: NodeId | null, fileType: FileType = 'pgn-grid'): WorkspaceNode {
     const now = this.now();
-    const file: WorkspaceNode = {
+    const base = {
       id: this.id(),
-      kind: 'file',
-      fileType,
-      name: this.uniqueName(parentId, 'New Comparison'),
+      kind: 'file' as const,
+      name: this.uniqueName(parentId, NEW_FILE_NAMES[fileType], FILE_TYPE_TREES[fileType]),
       parentId,
       ownerId: this.ownerId(),
       createdAt: now,
       updatedAt: now,
-      content: { entries: [{ id: this.id(), pgn: '' }] },
     };
+    const file: FileNode =
+      fileType === 'board-diagram'
+        ? { ...base, fileType, content: { fen: EMPTY_BOARD_FEN } }
+        : fileType === 'multi-step-notes'
+          ? { ...base, fileType, content: { notes: [{ id: this.id() }] } }
+          : { ...base, fileType, content: { entries: [{ id: this.id(), pgn: '' }] } };
     this.put(file);
     this.expand(parentId);
     this.select(file.id);
@@ -279,9 +344,15 @@ export class WorkspaceStore {
       }
       return next;
     });
-    if (ids.includes(this.selectedId() ?? '')) {
-      this.selectedId.set(null);
-    }
+    this.selectedIds.update((selected) => {
+      const next = { ...selected };
+      for (const tree of Object.keys(next) as WorkspaceTree[]) {
+        if (ids.includes(next[tree] ?? '')) {
+          next[tree] = null;
+        }
+      }
+      return next;
+    });
     for (const nodeId of ids) {
       void this.persistDelete(nodeId);
     }
@@ -312,7 +383,12 @@ export class WorkspaceStore {
     }
     if (targetId !== null) {
       const target = this.nodes()[targetId];
-      if (!target || !isFolder(target) || this.collectSubtree(dragId).includes(targetId)) {
+      if (
+        !target ||
+        !isFolder(target) ||
+        treeOf(target) !== treeOf(node) ||
+        this.collectSubtree(dragId).includes(targetId)
+      ) {
         return false;
       }
     }
@@ -327,7 +403,7 @@ export class WorkspaceStore {
     }
     const updated: WorkspaceNode = {
       ...node,
-      name: this.uniqueName(newParentId, node.name),
+      name: this.uniqueName(newParentId, node.name, treeOf(node)),
       parentId: newParentId,
       updatedAt: this.now(),
     };
@@ -344,7 +420,12 @@ export class WorkspaceStore {
     }
     if (newParentId !== null) {
       const target = this.nodes()[newParentId];
-      if (!target || !isFolder(target) || this.collectSubtree(id).includes(newParentId)) {
+      if (
+        !target ||
+        !isFolder(target) ||
+        treeOf(target) !== treeOf(node) ||
+        this.collectSubtree(id).includes(newParentId)
+      ) {
         return false;
       }
     }
@@ -358,6 +439,22 @@ export class WorkspaceStore {
       return;
     }
     this.put({ ...node, content, updatedAt: this.now() });
+  }
+
+  /** Replaces a board diagram's content locally. Persist with {@link saveFile}. */
+  updateBoardDiagram(id: NodeId, content: BoardDiagramContent): void {
+    const node = this.nodes()[id];
+    if (node && isFile(node) && node.fileType === 'board-diagram') {
+      this.put({ ...node, content, updatedAt: this.now() });
+    }
+  }
+
+  /** Replaces a multi step notes file's content locally. Persist with {@link saveFile}. */
+  updateMultiStepNotes(id: NodeId, content: MultiStepNotesContent): void {
+    const node = this.nodes()[id];
+    if (node && isFile(node) && node.fileType === 'multi-step-notes') {
+      this.put({ ...node, content, updatedAt: this.now() });
+    }
   }
 
   /**
@@ -399,7 +496,10 @@ export class WorkspaceStore {
             }
             seenInFilePairs.add(pairKey);
           }
-          pairs.push({ line, match: this.lineRef(node, node.content.entries[otherIndex], otherIndex) });
+          pairs.push({
+            line,
+            match: this.lineRef(node, node.content.entries[otherIndex], otherIndex),
+          });
         });
       }
     });
@@ -506,9 +606,7 @@ export class WorkspaceStore {
             ...(entry.focusPlies !== undefined ? { focusPlies: entry.focusPlies } : {}),
             ...(entry.moveImages !== undefined ? { moveImages: entry.moveImages } : {}),
             ...(entry.drawings !== undefined ? { drawings: entry.drawings } : {}),
-            ...(entry.middleGamePlan !== undefined
-              ? { middleGamePlan: entry.middleGamePlan }
-              : {}),
+            ...(entry.middleGamePlan !== undefined ? { middleGamePlan: entry.middleGamePlan } : {}),
           };
         }
         const reference = parsed[comparisonIndex(index, parsed.length)];
@@ -557,8 +655,8 @@ export class WorkspaceStore {
     return result;
   }
 
-  private uniqueName(parentId: NodeId | null, base: string): string {
-    const siblings = new Set(this.childrenOf(parentId).map((node) => node.name));
+  private uniqueName(parentId: NodeId | null, base: string, tree: WorkspaceTree): string {
+    const siblings = new Set(this.childrenOf(parentId, tree).map((node) => node.name));
     if (!siblings.has(base)) {
       return base;
     }
@@ -601,7 +699,10 @@ export class WorkspaceStore {
     try {
       await this.repo.deleteNode(id);
     } catch (err) {
-      this.status.set({ type: 'error', text: this.describe(err, 'Could not delete a node remotely.') });
+      this.status.set({
+        type: 'error',
+        text: this.describe(err, 'Could not delete a node remotely.'),
+      });
     }
   }
 

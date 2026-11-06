@@ -1,0 +1,251 @@
+@if (file(); as file) {
+  <div class="notes">
+    <header class="notes__header">
+      <app-file-title-field class="notes__title" [fileId]="file.id" />
+      <button matButton="filled" type="button" (click)="save()">
+        <mat-icon>save</mat-icon>
+        Save
+      </button>
+    </header>
+    @if (dirty()) {
+      <p class="notes__status" role="status">Unsaved changes</p>
+    }
+
+    <section class="notes__position" aria-labelledby="notes-position-heading">
+      <h2 id="notes-position-heading" class="notes__heading">Position</h2>
+      @if (file.content.fen; as fen) {
+        <div class="notes__position-body">
+          <div class="notes__position-board">
+            <app-chess-board
+              [fen]="fen"
+              [caption]="'Position of ' + file.name"
+              [orientation]="orientation()"
+            />
+          </div>
+          <div class="notes__position-info">
+            <code class="notes__fen">{{ fen }}</code>
+            <p class="notes__hint">Position search finds these notes by this position.</p>
+            <div class="notes__actions">
+              <button
+                matButton="outlined"
+                type="button"
+                aria-haspopup="dialog"
+                (click)="setUpPosition()"
+              >
+                <mat-icon>grid_on</mat-icon>
+                Change position
+              </button>
+              <button matButton type="button" (click)="removePosition()">
+                <mat-icon>close</mat-icon>
+                Remove position
+              </button>
+              <mat-button-toggle-group
+                [value]="orientation()"
+                (change)="setOrientation($event.value)"
+                aria-label="Board perspective"
+                hideSingleSelectionIndicator
+              >
+                <mat-button-toggle value="white">White</mat-button-toggle>
+                <mat-button-toggle value="black">Black</mat-button-toggle>
+              </mat-button-toggle-group>
+            </div>
+          </div>
+        </div>
+      } @else {
+        <p class="notes__hint">
+          Optional. Set up a position (it needn't be legal) to make these notes findable in Position
+          search.
+        </p>
+        <div class="notes__actions">
+          <button
+            matButton="outlined"
+            type="button"
+            aria-haspopup="dialog"
+            (click)="setUpPosition()"
+          >
+            <mat-icon>grid_on</mat-icon>
+            Add position FEN
+          </button>
+        </div>
+      }
+    </section>
+
+    <section class="notes__lines" aria-labelledby="notes-lines-heading">
+      <h2 id="notes-lines-heading" class="notes__heading">Associated lines</h2>
+      @if (associatedLines().length > 0) {
+        <ul class="notes__line-list">
+          @for (line of associatedLines(); track line.fileId + ':' + line.entryId) {
+            <li>
+              <button matButton type="button" class="notes__line" (click)="openLine(line)">
+                {{ line.title }}
+              </button>
+            </li>
+          }
+        </ul>
+      } @else {
+        <p class="notes__hint">The lines of the moves you add to the notes are listed here.</p>
+      }
+    </section>
+
+    <ol class="notes__list" aria-label="Notes">
+      @for (view of notes(); track view.note.id; let i = $index; let last = $last) {
+        <li class="note">
+          <div class="note__bar">
+            <h3 class="note__heading">Note {{ i + 1 }}</h3>
+            <span class="note__spacer"></span>
+            <button
+              matIconButton
+              type="button"
+              [disabled]="i === 0"
+              [attr.aria-label]="'Move note ' + (i + 1) + ' up'"
+              (click)="moveNote(i, -1)"
+            >
+              <mat-icon>arrow_upward</mat-icon>
+            </button>
+            <button
+              matIconButton
+              type="button"
+              [disabled]="last"
+              [attr.aria-label]="'Move note ' + (i + 1) + ' down'"
+              (click)="moveNote(i, 1)"
+            >
+              <mat-icon>arrow_downward</mat-icon>
+            </button>
+            <button
+              matIconButton
+              type="button"
+              [attr.aria-label]="'Delete note ' + (i + 1)"
+              (click)="removeNote(view, i)"
+            >
+              <mat-icon>delete_outline</mat-icon>
+            </button>
+          </div>
+
+          <div class="note__top">
+            <div class="note__diagram">
+              @if (view.diagram; as diagram) {
+                <button
+                  type="button"
+                  class="note__diagram-button"
+                  [attr.aria-label]="'Change board diagram ' + diagram.name + ' of note ' + (i + 1)"
+                  aria-haspopup="dialog"
+                  (click)="pickDiagram(view.note.id)"
+                >
+                  <app-chess-board
+                    [fen]="diagram.content.fen"
+                    [caption]="'Board diagram ' + diagram.name"
+                    [orientation]="diagram.content.orientation ?? 'white'"
+                    [drawing]="diagram.content.drawing ?? null"
+                  />
+                </button>
+                <div class="note__diagram-footer">
+                  <span class="note__diagram-name">{{ diagram.name }}</span>
+                  <button
+                    matIconButton
+                    type="button"
+                    matTooltip="Edit diagram"
+                    [attr.aria-label]="'Edit board diagram ' + diagram.name"
+                    (click)="openDiagram(diagram.id)"
+                  >
+                    <mat-icon>edit</mat-icon>
+                  </button>
+                  <button
+                    matIconButton
+                    type="button"
+                    matTooltip="Remove diagram"
+                    [attr.aria-label]="'Remove board diagram from note ' + (i + 1)"
+                    (click)="removeDiagram(view.note.id)"
+                  >
+                    <mat-icon>close</mat-icon>
+                  </button>
+                </div>
+              } @else {
+                <button
+                  type="button"
+                  class="note__diagram-add"
+                  aria-haspopup="dialog"
+                  (click)="pickDiagram(view.note.id)"
+                >
+                  <mat-icon aria-hidden="true">add</mat-icon>
+                  <span>{{
+                    view.diagramMissing ? 'Diagram deleted — add another' : 'Add board diagram'
+                  }}</span>
+                </button>
+              }
+            </div>
+
+            <mat-form-field appearance="outline" class="note__text">
+              <mat-label>Explanation</mat-label>
+              <textarea
+                #text
+                matInput
+                rows="6"
+                [value]="view.note.text ?? ''"
+                (input)="setText(view.note.id, text.value)"
+              ></textarea>
+            </mat-form-field>
+          </div>
+
+          <div class="note__moves">
+            <ul class="note__move-list" [attr.aria-label]="'Moves of note ' + (i + 1)">
+              @for (move of view.moves; track move.ref.id) {
+                <li class="note__move">
+                  @if (move.position && move.line; as line) {
+                    <button
+                      type="button"
+                      class="note__move-button"
+                      [matTooltip]="line.title"
+                      [attr.aria-label]="'View ' + move.caption + ', ' + line.title"
+                      (click)="openMove(move)"
+                    >
+                      <app-chess-board
+                        [fen]="move.position.fen"
+                        [caption]="move.caption + ', ' + line.title"
+                        [from]="move.position.from"
+                        [to]="move.position.to"
+                        [orientation]="line.orientation"
+                        [drawing]="line.entry.drawings?.[move.ref.ply] ?? null"
+                      />
+                      <span class="note__move-caption">{{ move.caption }}</span>
+                    </button>
+                  } @else {
+                    <span class="note__move-missing">{{ move.caption }}</span>
+                  }
+                  <button
+                    matIconButton
+                    type="button"
+                    class="note__move-remove"
+                    [attr.aria-label]="'Remove ' + move.caption + ' from note ' + (i + 1)"
+                    (click)="removeMove(view.note.id, move.ref.id)"
+                  >
+                    <mat-icon>close</mat-icon>
+                  </button>
+                </li>
+              } @empty {
+                <li class="note__moves-empty">No moves yet.</li>
+              }
+            </ul>
+            <div class="note__moves-add">
+              <button
+                matIconButton
+                type="button"
+                class="note__add-move"
+                aria-haspopup="dialog"
+                matTooltip="Add moves"
+                [attr.aria-label]="'Add moves to note ' + (i + 1)"
+                (click)="pickMoves(view.note.id)"
+              >
+                <mat-icon>add_circle</mat-icon>
+              </button>
+            </div>
+          </div>
+        </li>
+      }
+    </ol>
+
+    <button matButton="outlined" type="button" class="notes__add" (click)="addNote()">
+      <mat-icon>add</mat-icon>
+      Add note
+    </button>
+  </div>
+}

@@ -24,6 +24,11 @@ import {
 export interface PositionFilterDialogData {
   readonly pattern: PositionPattern;
   readonly orientation: BoardOrientation;
+  /**
+   * `filter` (the default) builds a search pattern, X squares and all;
+   * `setup` sets up a board to keep, with pieces only.
+   */
+  readonly mode?: 'filter' | 'setup';
 }
 
 interface PaletteSide {
@@ -72,11 +77,15 @@ export class PositionFilterDialog {
   private readonly dialogRef = inject(MatDialogRef<PositionFilterDialog, PositionPattern>);
   private readonly document = inject(DOCUMENT);
 
+  /** Setting up a board to keep, rather than building a filter. */
+  protected readonly setup = this.data.mode === 'setup';
+
   protected readonly palette: readonly PaletteSide[] = [
     { label: 'White pieces', pieces: ['K', 'Q', 'R', 'B', 'N', 'P'] },
     { label: 'Black pieces', pieces: ['k', 'q', 'r', 'b', 'n', 'p'] },
-    // Dropped like a piece, an X asks for the square to be empty.
-    { label: 'Empty square', pieces: [EMPTY_MARK] },
+    // Dropped like a piece, an X asks for the square to be empty. A board that
+    // is set up has no use for one.
+    ...(this.setup ? [] : [{ label: 'Empty square', pieces: [EMPTY_MARK] } satisfies PaletteSide]),
   ];
 
   protected readonly pattern = signal<PositionPattern>({ ...this.data.pattern });
@@ -88,7 +97,9 @@ export class PositionFilterDialog {
   private drag: PendingDrag | null = null;
 
   protected readonly summary = computed(
-    () => describePattern(this.pattern()) || 'No pieces placed. Apply to show every line.',
+    () =>
+      describePattern(this.pattern()) ||
+      (this.setup ? 'No pieces placed.' : 'No pieces placed. Apply to show every line.'),
   );
 
   protected readonly squares = computed<BoardSquare[]>(() => {
@@ -105,7 +116,9 @@ export class PositionFilterDialog {
           // a1 is dark: a light square's file index and rank sum to an even number.
           light: (FILES.indexOf(file) + rank) % 2 === 0,
           piece,
-          label: piece ? `${square}, ${this.name(piece).toLowerCase()}` : `${square}, not in the filter`,
+          label: piece
+            ? `${square}, ${this.name(piece).toLowerCase()}`
+            : `${square}, ${this.setup ? 'empty' : 'not in the filter'}`,
           rankLabel: col === 0 ? String(rank) : '',
           fileLabel: row === 7 ? file : '',
         };
@@ -155,7 +168,11 @@ export class PositionFilterDialog {
     }
   }
 
-  protected onPointerDown(event: PointerEvent, piece: PatternMark | null, source: string | null): void {
+  protected onPointerDown(
+    event: PointerEvent,
+    piece: PatternMark | null,
+    source: string | null,
+  ): void {
     if (event.button !== 0) {
       return;
     }

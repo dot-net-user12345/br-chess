@@ -35,7 +35,13 @@
         (keydown.escape)="clearPgn()"
       />
       @if (pgnFilter()) {
-        <button matIconButton matSuffix type="button" (click)="clearPgn()" aria-label="Clear PGN filter">
+        <button
+          matIconButton
+          matSuffix
+          type="button"
+          (click)="clearPgn()"
+          aria-label="Clear PGN filter"
+        >
           <mat-icon>close</mat-icon>
         </button>
       } @else {
@@ -133,6 +139,34 @@
     }
   }
 </div>
+
+<!-- Multi step notes tied to a position the filter matches. -->
+@if (noteMatches().length > 0) {
+  <section class="search__notes" aria-labelledby="search-notes-heading">
+    <h2 id="search-notes-heading" class="search__notes-title">
+      Multi step notes ({{ noteMatches().length }})
+    </h2>
+    <ul class="search__grid" aria-label="Matching multi step notes">
+      @for (note of noteMatches(); track note.id) {
+        <li class="search__tile">
+          <button
+            type="button"
+            class="search__button"
+            [attr.aria-label]="'Open notes ' + note.path"
+            (click)="openNotes(note.id)"
+          >
+            <app-chess-board
+              [fen]="note.fen"
+              [caption]="'Position of ' + note.path"
+              [orientation]="note.orientation"
+            />
+            <span class="search__caption">{{ note.path }}</span>
+          </button>
+        </li>
+      }
+    </ul>
+  </section>
+}
 
 <!-- One matching move: opens the large view, and resting on it previews the line. -->
 <ng-template #board let-result>

@@ -4,7 +4,7 @@
   [style.--explorer-width]="explorerWidth() + 'px'"
 >
   <aside class="workspace__explorer">
-    <app-file-explorer />
+    <app-file-explorer [tree]="tree()" />
     <div
       class="workspace__resizer"
       role="separator"
@@ -23,14 +23,42 @@
 
   <div class="workspace__main">
     @if (selectedFile(); as file) {
-      <app-pgn-grid-editor [fileId]="file.id" />
+      @switch (file.fileType) {
+        @case ('board-diagram') {
+          <app-board-diagram-editor [fileId]="file.id" />
+        }
+        @case ('multi-step-notes') {
+          <app-multi-step-notes-editor [fileId]="file.id" />
+        }
+        @default {
+          <app-pgn-grid-editor [fileId]="file.id" />
+        }
+      }
     } @else {
       <div class="workspace__empty">
-        <h1 class="workspace__empty-title">Chess workspace</h1>
-        <p>
-          Create folders and PGN grid files in the panel on the left, then select a file to paste
-          its PGNs and preview each game as a grid of boards.
-        </p>
+        @switch (tree()) {
+          @case ('diagrams') {
+            <h1 class="workspace__empty-title">Board diagrams</h1>
+            <p>
+              Create a board diagram in the panel on the left, then set up its pieces and draw
+              arrows and marks on it. Diagrams can be added to your multi step notes.
+            </p>
+          }
+          @case ('notes') {
+            <h1 class="workspace__empty-title">Multi step notes</h1>
+            <p>
+              Create a notes file in the panel on the left. Each note pairs a board diagram with
+              your explanation and the moves from your lines that go with it.
+            </p>
+          }
+          @default {
+            <h1 class="workspace__empty-title">Chess workspace</h1>
+            <p>
+              Create folders and PGN grid files in the panel on the left, then select a file to
+              paste its PGNs and preview each game as a grid of boards.
+            </p>
+          }
+        }
       </div>
     }
   </div>

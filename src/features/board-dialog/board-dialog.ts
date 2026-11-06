@@ -9,33 +9,17 @@ import {
 import { Clipboard } from '@angular/cdk/clipboard';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
-import { MatCheckboxModule } from '@angular/material/checkbox';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MAT_DIALOG_DATA, MatDialog, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
-import { MatRadioModule } from '@angular/material/radio';
 import { ChessService } from '../../core/chess-service';
 import { BoardOrientation } from '../../core/chess-models';
 import { UploadedImage } from '../../core/workspace-models';
-import {
-  ARROW_STYLE_ORDER,
-  ARROW_STYLES,
-  BoardDrawing,
-  DRAWING_COLOR_ORDER,
-  DRAWING_COLORS,
-  EMPTY_DRAWING,
-  isEmptyDrawing,
-  ARROW_LABEL_MAX_LENGTH,
-  OUTLINE_PIECE_ORDER,
-  OUTLINE_PIECES,
-  SQUARE_MARK_KIND_ORDER,
-  SQUARE_MARK_KINDS,
-  squareMarkKind,
-} from '../../core/board-drawing';
-import { PIECE_OUTLINES } from '../../core/board-assets';
+import { BoardDrawing, EMPTY_DRAWING, isEmptyDrawing } from '../../core/board-drawing';
 import { DrawingPreference } from './drawing-preference';
+import { DrawingTools } from './drawing-tools';
 import { ChessBoard } from '../chess-board/chess-board';
 import { ConfirmDialog, ConfirmDialogData } from '../confirm-dialog/confirm-dialog';
 import { imageFilesIn } from '../../shared/image-drop';
@@ -91,12 +75,11 @@ export interface BoardDialogData {
     MatIconModule,
     MatFormFieldModule,
     MatInputModule,
-    MatRadioModule,
-    MatCheckboxModule,
     ReactiveFormsModule,
     ChessBoard,
     MoveImages,
     LineMoves,
+    DrawingTools,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: {
@@ -248,165 +231,7 @@ export interface BoardDialogData {
               <p class="board-dialog__drawing-hint">
                 Right-click a square to mark it; right-drag between squares to draw a line.
               </p>
-              <div class="board-dialog__options">
-              <div class="board-dialog__option board-dialog__option--wide">
-              <p id="board-dialog-color-label" class="board-dialog__drawing-label">Color</p>
-              <mat-radio-group
-                class="board-dialog__colors"
-                aria-labelledby="board-dialog-color-label"
-                [value]="drawPref.color()"
-                (change)="drawPref.color.set($event.value)"
-              >
-                @for (color of drawingColors; track color) {
-                  <mat-radio-button [value]="color" class="board-dialog__color">
-                    <span
-                      class="board-dialog__swatch"
-                      [style.background]="drawingPalette[color].arrow"
-                      aria-hidden="true"
-                    ></span>
-                    {{ drawingPalette[color].label }}
-                  </mat-radio-button>
-                }
-              </mat-radio-group>
-              </div>
-              <div class="board-dialog__option">
-              <p id="board-dialog-arrow-label" class="board-dialog__drawing-label">Line</p>
-              <mat-radio-group
-                class="board-dialog__colors"
-                aria-labelledby="board-dialog-arrow-label"
-                [value]="drawPref.arrowStyle()"
-                (change)="drawPref.arrowStyle.set($event.value)"
-              >
-                @for (style of arrowStyles; track style) {
-                  <mat-radio-button [value]="style" class="board-dialog__color">
-                    <!-- The line as it will be drawn, in whichever color is selected. -->
-                    <svg
-                      class="board-dialog__line"
-                      viewBox="0 0 24 10"
-                      aria-hidden="true"
-                      [attr.stroke]="drawingPalette[drawPref.color()].arrow"
-                      [attr.fill]="drawingPalette[drawPref.color()].arrow"
-                    >
-                      @if (style === 'dashed') {
-                        <line x1="4.6" y1="5" x2="19.4" y2="5" stroke-width="1.1" stroke-dasharray="3 2" />
-                        <circle cx="3" cy="5" r="2.4" fill="none" stroke-width="0.9" />
-                        <circle cx="3" cy="5" r="1.1" stroke="none" />
-                        <circle cx="21" cy="5" r="2.4" fill="none" stroke-width="0.9" />
-                        <circle cx="21" cy="5" r="1.1" stroke="none" />
-                      } @else {
-                        <line x1="2" y1="5" x2="15.6" y2="5" stroke-width="2.6" stroke-linecap="round" />
-                        <polygon points="22,5 15,1.6 15,8.4" stroke="none" />
-                      }
-                    </svg>
-                    {{ arrowStyleLabels[style].label }}
-                  </mat-radio-button>
-                }
-              </mat-radio-group>
-              </div>
-              <!-- A number on the shaft; arrows only, since a dashed link has no room for one. -->
-              <div class="board-dialog__option">
-                <p id="board-dialog-number-label" class="board-dialog__drawing-label">Number on arrow</p>
-                <mat-form-field appearance="outline" subscriptSizing="dynamic" class="board-dialog__number">
-                  <input
-                    #arrowLabelInput
-                    matInput
-                    type="text"
-                    inputmode="numeric"
-                    autocomplete="off"
-                    [attr.maxlength]="arrowLabelMax"
-                    aria-labelledby="board-dialog-number-label"
-                    aria-describedby="board-dialog-number-hint"
-                    [value]="drawPref.arrowLabel()"
-                    [disabled]="drawPref.arrowStyle() !== 'solid'"
-                    (input)="onArrowLabel(arrowLabelInput)"
-                  />
-                  <mat-hint id="board-dialog-number-hint">
-                    {{ drawPref.arrowStyle() === 'solid' ? 'Blank for none' : 'Arrows only' }}
-                  </mat-hint>
-                </mat-form-field>
-                <mat-checkbox
-                  [checked]="drawPref.autoIncrement()"
-                  [disabled]="drawPref.arrowStyle() !== 'solid'"
-                  (change)="drawPref.setAutoIncrement($event.checked)"
-                >
-                  Auto-increment
-                </mat-checkbox>
-              </div>
-              <div class="board-dialog__option board-dialog__option--wide">
-              <p id="board-dialog-square-label" class="board-dialog__drawing-label">Square</p>
-              <mat-radio-group
-                class="board-dialog__colors"
-                aria-labelledby="board-dialog-square-label"
-                [value]="markKind()"
-                (change)="drawPref.setMarkKind($event.value)"
-              >
-                @for (mark of squareMarks; track mark) {
-                  <mat-radio-button [value]="mark" class="board-dialog__color">
-                    @if (mark === 'cross') {
-                      <svg
-                        class="board-dialog__mark"
-                        viewBox="0 0 10 10"
-                        aria-hidden="true"
-                        [attr.stroke]="drawingPalette[drawPref.color()].arrow"
-                      >
-                        <line x1="1.5" y1="1.5" x2="8.5" y2="8.5" stroke-width="1.6" />
-                        <line x1="1.5" y1="8.5" x2="8.5" y2="1.5" stroke-width="1.6" />
-                      </svg>
-                    } @else if (mark === 'outline') {
-                      <svg
-                        class="board-dialog__mark"
-                        viewBox="0 0 45 45"
-                        aria-hidden="true"
-                        fill="none"
-                        stroke-width="3"
-                        stroke-dasharray="4 3"
-                        [attr.stroke]="drawingPalette[drawPref.color()].arrow"
-                      >
-                        @for (path of pieceOutlines[drawPref.outlinePiece()]; track $index) {
-                          <path [attr.d]="path" />
-                        }
-                      </svg>
-                    } @else {
-                      <span
-                        class="board-dialog__mark board-dialog__mark--fill"
-                        [style.background]="drawingPalette[drawPref.color()].fill"
-                        aria-hidden="true"
-                      ></span>
-                    }
-                    {{ squareMarkLabels[mark].label }}
-                  </mat-radio-button>
-                }
-              </mat-radio-group>
-              @if (markKind() === 'outline') {
-                <p id="board-dialog-piece-label" class="board-dialog__drawing-label">Piece</p>
-                <mat-radio-group
-                  class="board-dialog__colors"
-                  aria-labelledby="board-dialog-piece-label"
-                  [value]="drawPref.outlinePiece()"
-                  (change)="drawPref.setOutlinePiece($event.value)"
-                >
-                  @for (piece of outlinePieces; track piece) {
-                    <mat-radio-button [value]="piece" class="board-dialog__color">
-                      <svg
-                        class="board-dialog__piece"
-                        viewBox="0 0 45 45"
-                        aria-hidden="true"
-                        fill="none"
-                        stroke-width="2.5"
-                        stroke-dasharray="4 3"
-                        [attr.stroke]="drawingPalette[drawPref.color()].arrow"
-                      >
-                        @for (path of pieceOutlines[piece]; track $index) {
-                          <path [attr.d]="path" />
-                        }
-                      </svg>
-                      {{ outlinePieceLabels[piece].label }}
-                    </mat-radio-button>
-                  }
-                </mat-radio-group>
-              }
-              </div>
-              </div>
+              <app-drawing-tools />
               @if (hasUnsavedDrawings()) {
                 <p class="board-dialog__drawing-status" role="status">Unsaved drawing changes</p>
               }
@@ -550,83 +375,6 @@ export interface BoardDialogData {
       margin-top: 0.5rem;
     }
 
-    /* The drawing options in two columns, the wide ones across both. */
-    .board-dialog__options {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 0.5rem 1rem;
-    }
-
-    .board-dialog__option {
-      display: flex;
-      flex-direction: column;
-      gap: 0.25rem;
-      min-width: 0;
-    }
-
-    .board-dialog__option--wide {
-      grid-column: 1 / -1;
-    }
-
-    .board-dialog__number {
-      width: 7rem;
-    }
-
-    .board-dialog__colors {
-      display: flex;
-      flex-wrap: wrap;
-      column-gap: 0.25rem;
-    }
-
-    /* Preview of a square mark, in whichever color is selected. */
-    .board-dialog__mark {
-      display: inline-block;
-      width: 0.875rem;
-      height: 0.875rem;
-      margin-right: 0.25rem;
-      vertical-align: -0.125rem;
-      stroke-linecap: round;
-    }
-
-    /* Preview of a piece outline, large enough to tell the pieces apart. */
-    .board-dialog__piece {
-      display: inline-block;
-      width: 1.25rem;
-      height: 1.25rem;
-      margin-right: 0.25rem;
-      vertical-align: -0.3rem;
-    }
-
-    .board-dialog__mark--fill {
-      border: 1px solid var(--mat-sys-outline);
-      border-radius: 0.125rem;
-    }
-
-    /* Preview of a line, drawn the way the board draws it. */
-    .board-dialog__line {
-      display: inline-block;
-      width: 1.75rem;
-      height: 0.875rem;
-      margin-right: 0.25rem;
-      vertical-align: -0.125rem;
-    }
-
-    .board-dialog__swatch {
-      display: inline-block;
-      width: 0.875rem;
-      height: 0.875rem;
-      margin-right: 0.25rem;
-      border-radius: 50%;
-      border: 1px solid var(--mat-sys-outline);
-      vertical-align: -0.125rem;
-    }
-
-    .board-dialog__drawing-label {
-      margin: 0;
-      font: var(--mat-sys-label-medium);
-      color: var(--mat-sys-on-surface-variant);
-    }
-
     .board-dialog__drawing-hint,
     .board-dialog__drawing-status {
       margin: 0;
@@ -734,18 +482,6 @@ export class BoardDialog {
 
   /** How the right mouse button draws (color and arrow style), remembered across dialogs. */
   protected readonly drawPref = inject(DrawingPreference);
-  protected readonly drawingColors = DRAWING_COLOR_ORDER;
-  protected readonly drawingPalette = DRAWING_COLORS;
-  protected readonly arrowStyles = ARROW_STYLE_ORDER;
-  protected readonly arrowStyleLabels = ARROW_STYLES;
-  protected readonly arrowLabelMax = ARROW_LABEL_MAX_LENGTH;
-  protected readonly squareMarks = SQUARE_MARK_KIND_ORDER;
-  protected readonly squareMarkLabels = SQUARE_MARK_KINDS;
-  protected readonly outlinePieces = OUTLINE_PIECE_ORDER;
-  protected readonly outlinePieceLabels = OUTLINE_PIECES;
-  protected readonly pieceOutlines = PIECE_OUTLINES;
-  /** The kind of mark a right-clicked square gets, as the mark picker shows it. */
-  protected readonly markKind = computed(() => squareMarkKind(this.drawPref.squareMark()));
 
   /** Every move's drawing as last saved. */
   private readonly savedDrawings = signal<Record<number, BoardDrawing>>({
@@ -905,27 +641,12 @@ export class BoardDialog {
     this.editing.set(false);
   }
 
-  /** Keeps the arrow number to its digits, in the field as well as the preference. */
-  protected onArrowLabel(input: HTMLInputElement): void {
-    input.value = this.drawPref.setArrowLabel(input.value);
-  }
-
   /** Records a right-click or right-drag on the board as an unsaved edit. */
   protected onDraw(drawing: BoardDrawing): void {
     const ply = this.current().ply;
-    const before = this.currentDrawing()?.arrows ?? [];
+    const before = this.currentDrawing();
     this.draftDrawings.update((drafts) => ({ ...drafts, [ply]: drawing }));
-    // A new arrow carrying the number moves it on, when auto-increment is on;
-    // removing an arrow, or drawing anything else, leaves it alone.
-    const label = this.drawPref.arrowLabel();
-    const numbered = drawing.arrows.some(
-      (arrow) =>
-        arrow.label === label &&
-        !before.some((b) => b.from === arrow.from && b.to === arrow.to && b.label === label),
-    );
-    if (label && numbered) {
-      this.drawPref.advanceArrowLabel();
-    }
+    this.drawPref.recordDraw(before, drawing);
   }
 
   /** Clears the current move's drawing (as an unsaved edit, like any other). */

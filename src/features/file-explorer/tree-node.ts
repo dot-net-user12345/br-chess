@@ -14,8 +14,16 @@ import { MatDialog } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule, MatMenuTrigger } from '@angular/material/menu';
 import { WorkspaceStore } from '../../core/workspace-store';
-import { isFolder, NodeId, WorkspaceNode } from '../../core/workspace-models';
+import {
+  isFile,
+  isFolder,
+  NodeId,
+  TREE_FILE_TYPES,
+  treeOf,
+  WorkspaceNode,
+} from '../../core/workspace-models';
 import { ConfirmDialog, ConfirmDialogData } from '../confirm-dialog/confirm-dialog';
+import { TREE_LABELS } from './tree-labels';
 
 /** One row in the workspace tree; recurses to render a folder's children. */
 @Component({
@@ -36,10 +44,15 @@ export class TreeNode {
     const node = this.node();
     return node ? isFolder(node) : false;
   });
+  /** The file structure this row belongs to. */
+  private readonly tree = computed(() => {
+    const node = this.node();
+    return node ? treeOf(node) : 'lines';
+  });
   protected readonly expanded = computed(() => this.store.isExpanded(this.nodeId()));
   protected readonly selected = computed(() => this.store.isSelected(this.nodeId()));
   protected readonly children = computed(() =>
-    this.isFolderNode() ? this.store.childrenOf(this.nodeId()) : [],
+    this.isFolderNode() ? this.store.childrenOf(this.nodeId(), this.tree()) : [],
   );
 
   protected readonly editing = signal(false);
@@ -63,7 +76,8 @@ export class TreeNode {
     if (this.isFolderNode()) {
       return this.expanded() ? 'folder_open' : 'folder';
     }
-    return 'grid_on';
+    const node = this.node();
+    return node && isFile(node) ? TREE_LABELS[treeOf(node)].fileIcon : 'grid_on';
   }
 
   protected startRename(): void {
@@ -86,14 +100,14 @@ export class TreeNode {
   protected newFile(): void {
     const parent = this.containerFolder();
     if (parent !== undefined) {
-      this.store.createFile(parent);
+      this.store.createFile(parent, TREE_FILE_TYPES[this.tree()]);
     }
   }
 
   protected newFolder(): void {
     const parent = this.containerFolder();
     if (parent !== undefined) {
-      this.store.createFolder(parent);
+      this.store.createFolder(parent, this.tree());
     }
   }
 
