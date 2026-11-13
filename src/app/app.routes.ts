@@ -4,6 +4,8 @@ export const routes: Routes = [
   {
     path: '',
     loadComponent: () => import('../pages/home/home').then((m) => m.Home),
+    // Always set: the router binds a missing route-data key as `undefined`, overriding the input default.
+    data: { tree: 'lines' },
     title: 'Home',
   },
   {
